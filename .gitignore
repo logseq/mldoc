@@ -1,0 +1,11 @@
+_build/
+setup.data
+setup.log
+setup.bin
+*.native
+*.byte
+TAGS
+tmp
+_tags
+*.merlin
+*.install

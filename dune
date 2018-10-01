@@ -1,0 +1,14 @@
+(include_subdirs unqualified)
+
+(executable
+  (name org_parser)
+  (libraries angstrom)
+  (js_of_ocaml (flags (--opt=3 --setenv FORCE_DROP_INLINE_TEST=true))))
+
+(alias
+  (name DEFAULT)
+  (deps org_parser.exe))
+
+(alias
+  (name JS)
+  (deps org_parser.bc.js))
