@@ -2,8 +2,7 @@
 
 (executable
   (name org_parser)
-  (libraries angstrom)
-  (js_of_ocaml (flags (--opt=3))))
+  (libraries angstrom))
 
 (alias
   (name DEFAULT)
