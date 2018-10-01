@@ -2,7 +2,8 @@
 
 (executable
   (name org_parser)
-  (libraries angstrom))
+  (preprocess (pps js_of_ocaml-ppx))
+  (libraries angstrom js_of_ocaml))
 
 (alias
   (name DEFAULT)
