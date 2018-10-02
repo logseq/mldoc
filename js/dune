@@ -1,0 +1,8 @@
+(executable
+ (name        org)
+ (preprocess (pps js_of_ocaml-ppx))
+ (libraries angstrom js_of_ocaml org_parser))
+
+(alias
+  (name JS)
+  (deps org.bc.js))

@@ -1,0 +1,18 @@
+* ml-org-parser
+  Another Org-mode parser implemented using OCaml.
+  Don't use it right now, it's just a hobby project.
+  
+** Usage
+   TODO...
+*** Invoke utop in Emacs
+    #+BEGIN_SRC sh
+      opam config exec -- dune utop lib -- -emacs
+    #+END_SRC
+*** Js_of_ocaml build release js.
+    #+BEGIN_SRC sh
+      # Replace `(profile dev)` to `profile release` in `dune-workspace`
+
+      # make will output to `_build/default/js/org.bc.js`
+      make
+    #+END_SRC
+    

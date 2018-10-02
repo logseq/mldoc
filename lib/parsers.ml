@@ -14,6 +14,10 @@ let is_digit = function '0' .. '9' -> true | _ -> false
 
 let digits = take_while1 is_digit
 
+let token = take_till is_eol
+
+let eols = take_while1 is_eol
+
 let ws = take_while1 is_space
 
 let spaces = skip_while is_space
