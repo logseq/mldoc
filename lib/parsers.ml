@@ -14,8 +14,6 @@ let is_digit = function '0' .. '9' -> true | _ -> false
 
 let digits = take_while1 is_digit
 
-let token = take_till is_eol
-
 let eols = take_while1 is_eol
 
 let ws = take_while1 is_space
@@ -32,4 +30,9 @@ let optional_list p = option [] p
 
 let lift5 f a b c d e = lift4 f a b c d <*> e
 
-let between_char p c = char c *> p <* char c
+let between_char p c = char c *> p
+
+let chainl1 e op =
+  let rec go acc =
+    (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
+  e >>= fun init -> go init

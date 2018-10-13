@@ -1,4 +1,5 @@
 #use "topfind";;
 #require "angstrom";;
+#directory "_build";;
 open Angstrom;;
 let _ = Printexc.record_backtrace true;;

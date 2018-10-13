@@ -1,7 +1,7 @@
 * ml-org-parser
   Another Org-mode parser implemented using OCaml.
   Don't use it right now, it's just a hobby project.
-  
+
 ** Usage
    TODO...
 *** Invoke utop in Emacs
@@ -15,4 +15,3 @@
       # make will output to `_build/default/js/org.bc.js`
       make
     #+END_SRC
-    

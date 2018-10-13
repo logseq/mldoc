@@ -1,28 +1,14 @@
 open Angstrom
 open Parsers
+open Bigstringaf
 
 type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list
 
 and t =
   | Emphasis of emphasis
-  (* | Entity of entity *)
-  (* | Export_Snippet of export_snippet *)
-  (* | Footnote_Reference of footnote_reference *)
-  (* | Inline_Call of inline_call *)
-  (* | Inline_Source_Block of inline_source_block *)
-  (* | Latex_Fragment of latex_fragment *)
   | Break_Lines of int
-  (* lines count *)
-  (* | Link of link *)
-  | Macro of string * string list
-  | Radio_Target of string
-  | Target of string
-  | Subscript of t list
-  | Superscript of t list
   | Verbatim of string
-  (* | Cookie of stats_cookie *)
-  (* | Timestamp of timestamp *)
-  | List of t list
+  | Code of string
   | Plain of string
 
 (* emphasis *)
@@ -31,63 +17,161 @@ let delims =
   ; ('_', ('_', `Underline))
   ; ('/', ('/', `Italic))
   ; ('+', ('+', `Strike_through))
-  ; ('~', ('~', `Verbatim))
+  ; ('~', ('~', `Code))
   ; ('=', ('=', `Verbatim))
   ; ('[', (']', `Bracket))
   ; ('<', ('>', `Chev))
   ; ('{', ('}', `Brace))
   ; ('(', (')', `Paren)) ]
 
-let emphasis_token c =
-  take_while (function
-    | x when x = c -> false
-    | '\r' | '\n' -> false
-    | _ -> true )
+let prev = ref None
 
-let between_char c = between_char (emphasis_token c) c
+let emphasis_token c =
+  let blank_before_delimiter = ref false in
+  peek_char_fail
+  >>= fun x ->
+  if is_space x then fail "space before token"
+  else
+    take_while1 (function
+        | x when x = c -> (
+            match !prev with
+            | Some x ->
+              if x = ' ' then blank_before_delimiter := true;
+              false
+            | None -> false )
+        | '\r' | '\n' -> false
+        | x ->
+          prev := Some x ;
+          true )
+    >>= (fun s ->
+        let blank_before = !blank_before_delimiter in
+        blank_before_delimiter := false;
+        if blank_before then fail "emphasis_token"
+        else return s)
+
+let between c = between_char (emphasis_token c) c
+  >>= fun s ->
+  peek_char
+  >>= fun c ->
+  match c with
+  | None -> return s
+  | Some c ->
+    match c with
+    | '\n' | '\r' | ' ' | '\t' -> return s
+    | _ -> fail "between"
 
 let bold =
-  between_char '*'
+  between '*'
   >>= fun s -> return (Emphasis (`Bold, [Plain s])) <?> "Inline bold"
 
 let underline =
-  between_char '_'
+  between '_'
   >>= fun s -> return (Emphasis (`Underline, [Plain s])) <?> "Inline underline"
 
 let italic =
-  between_char '/'
+  between '/'
   >>= fun s -> return (Emphasis (`Italic, [Plain s])) <?> "Inline italic"
 
 let strike_through =
-  between_char '+'
+  between '+'
   >>= fun s ->
   return (Emphasis (`Strike_through, [Plain s])) <?> "Inline strike_through"
 
 (* '=', '~' verbatim *)
 let verbatim =
-  between_char '=' <|> between_char '~'
+  between '='
   >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
 
-let emphasis =
+let code =
+  between '~'
+  >>= fun s -> return (Code s) <?> "Inline code"
+
+let emphasis_choice =
   choice [bold; underline; italic; strike_through] <?> "Inline emphasis"
+
+(* /*hello* +great+/
+   Emphasis (Underline, [Emphasis (Bold [Plain hello]), Emphasis (Strike_through [great])])
+
+*)
+
+let non_emphasis =
+  take_while1 (function
+      | '*' | '_' | '/' | '+' -> false
+      | _ -> true)
+  >>= fun s -> return (Plain s) <?> "Non emphasis"
+
+let nested_emphasis =
+  many @@ choice [emphasis_choice; non_emphasis]
+
+let emphasis =
+  emphasis_choice >>=
+  function
+  | Emphasis (typ, [Plain s]) as e ->
+    return e
+  | _ -> fail "emphasis don't know how to handle it"
+
 
 let blanks = ws >>= fun s -> return (Plain s)
 
-let concat_tokens t1 t2 = t1 ^ t2
-
-let token =
-  take_while1 (fun c -> (not (is_eol c)) && not (List.mem_assoc c delims))
-  >>= fun s -> print_endline s ; return (Plain s)
-
 let breaklines = eols >>= fun s -> return (Break_Lines (String.length s))
 
-(* run through parsers *)
-let inline = many @@ choice [verbatim; emphasis; blanks; breaklines; token]
+type delimited = [`Non_delimited | `Delimited]
+
+let string_buf = Buffer.create 8
+
+let token =
+  scan_state (false, false, None) (fun state c ->
+      (*     (start?, delimited?, Option (open_char, close_char, type)) *)
+      match c with
+      | '\r' | '\n' -> None
+      | c -> (
+          match state with
+          | false, false, _ -> (
+              Buffer.add_char string_buf c ;
+              match List.assoc_opt c delims with
+              | Some (close, typ) -> Some (true, true, Some (c, close, typ))
+              | None -> Some (true, false, None) )
+          | true, false, _ -> (
+              match List.assoc_opt c delims with
+              | Some (close, typ) -> None
+              | None ->
+                Buffer.add_char string_buf c ;
+                Some (true, false, None) )
+          | (true, true, Some (c', close, typ)) as state ->
+            if c <> c' && List.mem_assoc c delims then None
+            (* another delimiter *)
+            else if c = close then None (* close *)
+            else (
+              Buffer.add_char string_buf c ;
+              Some state )
+          | _ -> None ) )
+  >>= fun _ ->
+  let s = Buffer.contents string_buf in
+  Buffer.clear string_buf ; return @@ Plain s
+
+(* TODO: `many` and `choice` together may affect performance, benchmarks are needed *)
+let inline = many @@ choice [verbatim; code; blanks; breaklines; emphasis; token]
 
 (* TODO: *)
-(* Case 1: Delims not matched
-   "*foo"
+(* Case 1: DONE
+   "world *great*"
 
-   Case 2: Nested emphasis
-   "*/foo/*"
+   Case 2: DONE
+   "*great *"
+
+   Case 3: Nested
+   a. "*/foo/*"
+
+   b. "/*_foo_*/"
+
 *)
+
+(*
+   open Org_parser__Inline;;
+   parse_string inline "* hello*";;
+*)
+
+(*
+   let s = "*/hello/*"
+   let s2 = "+/_*hello*_/+"
+ *)
