@@ -1,10 +1,18 @@
 open Angstrom
+open Util
 
-let is_space = function ' ' | '\t' -> true | _ -> false
+let is_space = function
+  | ' ' | '\010' | '\013' | '\009' | '\026' | '\012' -> true
+  | _ -> false
 
-let non_space c = not (is_space c)
+let non_space = not << is_space
 
 let is_eol = function '\r' | '\n' -> true | _ -> false
+
+let non_eol = not << is_eol
+
+let non_space_eol c =
+  non_space c && non_eol c
 
 let is_hex = function
   | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
@@ -13,6 +21,11 @@ let is_hex = function
 let is_digit = function '0' .. '9' -> true | _ -> false
 
 let digits = take_while1 is_digit
+
+let is_uppercase c = 'A' <= c && c <= 'Z'
+let is_lowercase c = 'a' <= c && c <= 'z'
+let is_letter c =
+  is_uppercase c || is_lowercase c
 
 let eols = take_while1 is_eol
 
@@ -30,7 +43,9 @@ let optional_list p = option [] p
 
 let lift5 f a b c d e = lift4 f a b c d <*> e
 
-let between_char p c = char c *> p
+let between_char p c = char c *> p <* char c
+
+let between_string begin' p end' = string begin' *> p <* string end'
 
 let chainl1 e op =
   let rec go acc =

@@ -2,4 +2,5 @@
 #require "angstrom";;
 #directory "_build";;
 open Angstrom;;
+open Org_parser__Inline;;
 let _ = Printexc.record_backtrace true;;

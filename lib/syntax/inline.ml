@@ -4,12 +4,18 @@ open Bigstringaf
 
 type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list
 
+and url = File of string | Search of string | Complex of complex
+and complex = {protocol: string; link: string}
+and link = {url: url; label: t list}
+
 and t =
   | Emphasis of emphasis
   | Break_Lines of int
   | Verbatim of string
   | Code of string
   | Plain of string
+  | Link of link
+  | Target of string
 
 (* emphasis *)
 let delims =
@@ -23,6 +29,8 @@ let delims =
   ; ('<', ('>', `Chev))
   ; ('{', ('}', `Brace))
   ; ('(', (')', `Paren)) ]
+
+let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
 
 let prev = ref None
 
@@ -53,6 +61,7 @@ let between c = between_char (emphasis_token c) c
   >>= fun s ->
   peek_char
   >>= fun c ->
+  let _ = match c with None -> print_endline "" | Some c -> print_char c in
   match c with
   | None -> return s
   | Some c ->
@@ -86,88 +95,92 @@ let code =
   between '~'
   >>= fun s -> return (Code s) <?> "Inline code"
 
-let emphasis_choice =
-  choice [bold; underline; italic; strike_through] <?> "Inline emphasis"
-
-(* /*hello* +great+/
-   Emphasis (Underline, [Emphasis (Bold [Plain hello]), Emphasis (Strike_through [great])])
-
-*)
-
-let non_emphasis =
-  take_while1 (function
-      | '*' | '_' | '/' | '+' -> false
-      | _ -> true)
-  >>= fun s -> return (Plain s) <?> "Non emphasis"
-
-let nested_emphasis =
-  many @@ choice [emphasis_choice; non_emphasis]
-
 let emphasis =
-  emphasis_choice >>=
-  function
-  | Emphasis (typ, [Plain s]) as e ->
-    return e
-  | _ -> fail "emphasis don't know how to handle it"
-
+  choice [bold; underline; italic; strike_through] <?> "Inline emphasis"
 
 let blanks = ws >>= fun s -> return (Plain s)
 
 let breaklines = eols >>= fun s -> return (Break_Lines (String.length s))
 
-type delimited = [`Non_delimited | `Delimited]
+(* link *)
+(* 1. [[url][label]] *)
+(* 2. [[search]] *)
+let link =
+  let url_part = (string "[[" *>
+                  take_while (fun c -> c <> ']')
+                  <* optional (string "][")) in
+  let label_part = (take_while (fun c -> c <> ']')
+                    <* string "]]") in
+  lift2 (fun url label ->
+      let url = if label = "" then
+          Search url
+        else if url.[0] = '/' || url.[0] = '.' then
+          File url
+        else
+          try
+            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                Complex {protocol; link} )
+          with _ -> Search url in
+      Link {label = [Plain label]; url}
+    )
+    url_part label_part
 
-let string_buf = Buffer.create 8
+(* complex link *)
+(* :// *)
+let link_inline =
+  let protocol_part = (take_while1 is_letter
+                       <* string "://") in
+  let link_part = (take_while1 (fun c ->
+      non_space c && (List.for_all (fun c' -> c <> c') link_delims))) in
+  lift2 (fun protocol link ->
+      Link
+        { label= [Plain (protocol ^ "://" ^ link)]
+        ; url= Complex {protocol; link= "//" ^ link} } )
+    protocol_part link_part
 
-let token =
-  scan_state (false, false, None) (fun state c ->
-      (*     (start?, delimited?, Option (open_char, close_char, type)) *)
-      match c with
-      | '\r' | '\n' -> None
-      | c -> (
-          match state with
-          | false, false, _ -> (
-              Buffer.add_char string_buf c ;
-              match List.assoc_opt c delims with
-              | Some (close, typ) -> Some (true, true, Some (c, close, typ))
-              | None -> Some (true, false, None) )
-          | true, false, _ -> (
-              match List.assoc_opt c delims with
-              | Some (close, typ) -> None
-              | None ->
-                Buffer.add_char string_buf c ;
-                Some (true, false, None) )
-          | (true, true, Some (c', close, typ)) as state ->
-            if c <> c' && List.mem_assoc c delims then None
-            (* another delimiter *)
-            else if c = close then None (* close *)
-            else (
-              Buffer.add_char string_buf c ;
-              Some state )
-          | _ -> None ) )
-  >>= fun _ ->
-  let s = Buffer.contents string_buf in
-  Buffer.clear string_buf ; return @@ Plain s
+let target =
+  between_string
+    "<<"
+    (take_while1 (function
+         | '>' | '\r' | '\n' -> false
+         | _ -> true)
+     >>=
+     (fun s ->
+        print_endline s;
+        return @@ Target s))
+    ">>"
+
+let plain =
+  take_while1 non_space_eol >>= (fun s -> return (Plain s))
+
+(* TODO: configurable *)
+let inline_choices =
+  choice [link; link_inline; target; verbatim; code; blanks; breaklines; emphasis; plain]
+
+let inline =
+  fix (fun inline ->
+      let nested_inline = function
+        | Emphasis (typ, [Plain s]) ->
+          (match parse_string inline s with
+             Ok result -> Emphasis (typ, result)
+           | Error error -> Emphasis (typ, [Plain s])
+          )
+        (* TODO: footnote *)
+        | Link {label = [Plain s]; url} ->
+          (match parse_string inline s with
+             Ok result -> Link {label = result; url}
+           | Error error -> Link {label = [Plain s]; url}
+          )
+        | e -> e
+      in
+      many inline_choices
+      >>= fun l ->
+      return @@ List.map nested_inline l
+    )
 
 (* TODO: `many` and `choice` together may affect performance, benchmarks are needed *)
-let inline = many @@ choice [verbatim; code; blanks; breaklines; emphasis; token]
-
-(* TODO: *)
-(* Case 1: DONE
-   "world *great*"
-
-   Case 2: DONE
-   "*great *"
-
-   Case 3: Nested
-   a. "*/foo/*"
-
-   b. "/*_foo_*/"
-
-*)
 
 (*
-   open Org_parser__Inline;;
    parse_string inline "* hello*";;
 *)
 

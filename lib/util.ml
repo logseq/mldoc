@@ -1,3 +1,5 @@
+let (<<) f g x = f(g(x))
+
 let remove p = List.find_all (fun x -> not (p x))
 
 (* TODO: only used in dev profile. *)
