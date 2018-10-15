@@ -43,9 +43,9 @@ let optional_list p = option [] p
 
 let lift5 f a b c d e = lift4 f a b c d <*> e
 
-let between_char p c = char c *> p <* char c
+let between_char c1 c2 p = char c1 *> p <* char c2
 
-let between_string begin' p end' = string begin' *> p <* string end'
+let between_string begin' end' p = string begin' *> p <* string end'
 
 let chainl1 e op =
   let rec go acc =

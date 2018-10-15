@@ -2,11 +2,24 @@ open Angstrom
 open Parsers
 open Bigstringaf
 
+(* TODO: `many` and `choice` together may affect performance, benchmarks are needed *)
+
 type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list
+
+and footnote_reference = {name: string; definition: t list option}
 
 and url = File of string | Search of string | Complex of complex
 and complex = {protocol: string; link: string}
 and link = {url: url; label: t list}
+
+(** {2 Cookies} *)
+
+(** Cookies are a way to indicate the progress of a task.
+    They can be of two form : percentage or absolute value *)
+and stats_cookie =
+  | Percent of int
+  | Absolute of int * int (** current, max *)
+
 
 and t =
   | Emphasis of emphasis
@@ -16,6 +29,10 @@ and t =
   | Plain of string
   | Link of link
   | Target of string
+  | Subscript of string
+  | Superscript of string
+  | Footnote_Reference of footnote_reference
+  | Cookie of stats_cookie
 
 (* emphasis *)
 let delims =
@@ -57,7 +74,7 @@ let emphasis_token c =
         if blank_before then fail "emphasis_token"
         else return s)
 
-let between c = between_char (emphasis_token c) c
+let between c = between_char c c (emphasis_token c)
   >>= fun s ->
   peek_char
   >>= fun c ->
@@ -140,22 +157,74 @@ let link_inline =
 
 let target =
   between_string
-    "<<"
+    "<<" ">>"
     (take_while1 (function
          | '>' | '\r' | '\n' -> false
          | _ -> true)
      >>=
      (fun s ->
-        print_endline s;
         return @@ Target s))
-    ">>"
+
 
 let plain =
   take_while1 non_space_eol >>= (fun s -> return (Plain s))
 
+(* foo_{bar}, foo^{bar} *)
+let subscript, superscript =
+  let gen s f =
+    string s *>
+    take_while1 (fun c ->
+        non_space c && c <> '}')
+    <* char '}'
+    >>| f
+  in
+  (gen "_{" (fun x ->
+       print_endline x;
+       Subscript x), gen "^{" (fun x -> Superscript x))
+(* 1. fn:name *)
+(* 2. fn::latex_inline_definition, ignore now *)
+(* 3. fn:name:description *)
+let id = ref 0
+let footnote_reference =
+  let name_part = (string "fn:" *>
+                   take_while (fun c -> c <> ':' && non_eol c)
+                   <* optional (char ':')) in
+  let definition_part = (take_while non_space) in
+  lift2 (fun name definition ->
+      let name = if name = "" then (
+          incr id ;
+          "_anon_" ^ string_of_int !id )
+        else name
+      in
+      if definition = "" then
+        Footnote_Reference {name; definition = None}
+      else
+        Footnote_Reference {name; definition = Some [Plain definition]}
+    )
+    name_part definition_part
+
+let statistics_cookie =
+  between_char '[' ']'
+    (take_while1 (fun c ->
+         if c = '/' || c = '%' || is_digit c then true else false))
+  >>= (fun s ->
+      let cookie =
+        try Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n'))
+        with _ -> Scanf.sscanf s "%d%%" (fun n -> Percent n)
+      in
+      return (Cookie cookie))
+
+let timestamp () = failwith "unimplemented!"
+let macro () = failwith "unimplemented!"
+let latex_fragment () = failwith "unimplemented!"
+let inline_source_block () = failwith "unimplemented!"
+let radio_target () = failwith "unimplemented!"
+let export_snippet () = failwith "unimplemented!"
+let entity () = failwith "unimplemented!"
+
 (* TODO: configurable *)
 let inline_choices =
-  choice [link; link_inline; target; verbatim; code; blanks; breaklines; emphasis; plain]
+  choice [statistics_cookie; footnote_reference; link; link_inline; target; verbatim; code; blanks; breaklines; emphasis; subscript; superscript; plain]
 
 let inline =
   fix (fun inline ->
@@ -165,26 +234,23 @@ let inline =
              Ok result -> Emphasis (typ, result)
            | Error error -> Emphasis (typ, [Plain s])
           )
-        (* TODO: footnote *)
         | Link {label = [Plain s]; url} ->
           (match parse_string inline s with
              Ok result -> Link {label = result; url}
            | Error error -> Link {label = [Plain s]; url}
           )
+        | Footnote_Reference {definition; name} as f ->
+          (match definition with
+             None -> f
+           | Some [Plain s] ->
+             (match parse_string inline s with
+                Ok result -> Footnote_Reference {definition = Some result; name}
+              | Error error -> f
+             )
+           | _ -> failwith "definition")
         | e -> e
       in
       many inline_choices
       >>= fun l ->
       return @@ List.map nested_inline l
     )
-
-(* TODO: `many` and `choice` together may affect performance, benchmarks are needed *)
-
-(*
-   parse_string inline "* hello*";;
-*)
-
-(*
-   let s = "*/hello/*"
-   let s2 = "+/_*hello*_/+"
- *)
