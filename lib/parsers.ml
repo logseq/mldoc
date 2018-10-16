@@ -52,13 +52,25 @@ let chainl1 e op =
     (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
   e >>= fun init -> go init
 
-let double_chars c1 c2 f =
+let end_string s f =
+  let open String in
   let prev = ref None in
   take_while1 (fun c ->
-      let p = !prev in
-      prev := Some c;
-      if (c == c2 && p == Some c1) || is_eol c then false
+      let p = (match !prev with
+            None -> (make 1 c)
+          | Some s' -> let s' = s' ^ (make 1 c) in
+            if length s' > length s then
+              sub s' 1 (length s)
+            else s'
+        ) in
+      prev := Some p;
+      if (p = s) then false
       else true)
-  >>| fun s ->
-  let s = String.sub s 0 (String.length s - 2) in
-  f s
+  >>= fun s' ->
+  let p = !prev in
+  prev := None;
+  if p = Some s then
+    let s' = sub s' 0 (length s' - length s + 1) in
+    return @@ f s'
+  else
+    fail "end_string"
