@@ -51,3 +51,14 @@ let chainl1 e op =
   let rec go acc =
     (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
   e >>= fun init -> go init
+
+let double_chars c1 c2 f =
+  let prev = ref None in
+  take_while1 (fun c ->
+      let p = !prev in
+      prev := Some c;
+      if (c == c2 && p == Some c1) || is_eol c then false
+      else true)
+  >>| fun s ->
+  let s = String.sub s 0 (String.length s - 2) in
+  f s

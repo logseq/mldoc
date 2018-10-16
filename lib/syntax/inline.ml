@@ -2,14 +2,23 @@ open Angstrom
 open Parsers
 open Bigstringaf
 
-(* TODO: `many` and `choice` together may affect performance, benchmarks are needed *)
+(* TODO:
+   1. Performance:
+   `many` and `choice` together may affect performance, benchmarks are needed
+
+   2. Security:
+   unescape
+
+*)
 
 type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list
 
 and footnote_reference = {name: string; definition: t list option}
 
 and url = File of string | Search of string | Complex of complex
+
 and complex = {protocol: string; link: string}
+
 and link = {url: url; label: t list}
 
 (** {2 Cookies} *)
@@ -18,8 +27,9 @@ and link = {url: url; label: t list}
     They can be of two form : percentage or absolute value *)
 and stats_cookie =
   | Percent of int
-  | Absolute of int * int (** current, max *)
+  | Absolute of int * int  (** current, max *)
 
+and latex_fragment = Inline of string | Displayed of string
 
 and t =
   | Emphasis of emphasis
@@ -33,6 +43,7 @@ and t =
   | Superscript of string
   | Footnote_Reference of footnote_reference
   | Cookie of stats_cookie
+  | Latex_Fragment of latex_fragment
 
 (* emphasis *)
 let delims =
@@ -58,33 +69,29 @@ let emphasis_token c =
   if is_space x then fail "space before token"
   else
     take_while1 (function
-        | x when x = c -> (
-            match !prev with
-            | Some x ->
-              if x = ' ' then blank_before_delimiter := true;
-              false
-            | None -> false )
-        | '\r' | '\n' -> false
-        | x ->
+      | x when x = c -> (
+        match !prev with
+        | Some x ->
+            if x = ' ' then blank_before_delimiter := true ;
+            false
+        | None -> false )
+      | '\r' | '\n' -> false
+      | x ->
           prev := Some x ;
           true )
-    >>= (fun s ->
-        let blank_before = !blank_before_delimiter in
-        blank_before_delimiter := false;
-        if blank_before then fail "emphasis_token"
-        else return s)
+    >>= fun s ->
+    let blank_before = !blank_before_delimiter in
+    blank_before_delimiter := false ;
+    if blank_before then fail "emphasis_token" else return s
 
-let between c = between_char c c (emphasis_token c)
+let between c =
+  between_char c c (emphasis_token c)
   >>= fun s ->
   peek_char
-  >>= fun c ->
-  let _ = match c with None -> print_endline "" | Some c -> print_char c in
-  match c with
+  >>= function
   | None -> return s
-  | Some c ->
-    match c with
-    | '\n' | '\r' | ' ' | '\t' -> return s
-    | _ -> fail "between"
+  | Some c -> (
+    match c with '\n' | '\r' | ' ' | '\t' -> return s | _ -> fail "between" )
 
 let bold =
   between '*'
@@ -105,12 +112,9 @@ let strike_through =
 
 (* '=', '~' verbatim *)
 let verbatim =
-  between '='
-  >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
+  between '=' >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
 
-let code =
-  between '~'
-  >>= fun s -> return (Code s) <?> "Inline code"
+let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 let emphasis =
   choice [bold; underline; italic; strike_through] <?> "Inline emphasis"
@@ -123,134 +127,178 @@ let breaklines = eols >>= fun s -> return (Break_Lines (String.length s))
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
 let link =
-  let url_part = (string "[[" *>
-                  take_while (fun c -> c <> ']')
-                  <* optional (string "][")) in
-  let label_part = (take_while (fun c -> c <> ']')
-                    <* string "]]") in
-  lift2 (fun url label ->
-      let url = if label = "" then
-          Search url
-        else if url.[0] = '/' || url.[0] = '.' then
-          File url
+  let url_part =
+    string "[[" *> take_while (fun c -> c <> ']') <* optional (string "][")
+  in
+  let label_part = take_while (fun c -> c <> ']') <* string "]]" in
+  lift2
+    (fun url label ->
+      let url =
+        if label = "" then Search url
+        else if url.[0] = '/' || url.[0] = '.' then File url
         else
           try
             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
                 Complex {protocol; link} )
-          with _ -> Search url in
-      Link {label = [Plain label]; url}
-    )
+          with _ -> Search url
+      in
+      Link {label= [Plain label]; url} )
     url_part label_part
 
 (* complex link *)
 (* :// *)
 let link_inline =
-  let protocol_part = (take_while1 is_letter
-                       <* string "://") in
-  let link_part = (take_while1 (fun c ->
-      non_space c && (List.for_all (fun c' -> c <> c') link_delims))) in
-  lift2 (fun protocol link ->
+  let protocol_part = take_while1 is_letter <* string "://" in
+  let link_part =
+    take_while1 (fun c ->
+        non_space c && List.for_all (fun c' -> c <> c') link_delims )
+  in
+  lift2
+    (fun protocol link ->
       Link
         { label= [Plain (protocol ^ "://" ^ link)]
         ; url= Complex {protocol; link= "//" ^ link} } )
     protocol_part link_part
 
 let target =
-  between_string
-    "<<" ">>"
-    (take_while1 (function
-         | '>' | '\r' | '\n' -> false
-         | _ -> true)
-     >>=
-     (fun s ->
-        return @@ Target s))
+  between_string "<<" ">>"
+    ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
+    >>= fun s -> return @@ Target s )
 
-
-let plain =
-  take_while1 non_space_eol >>= (fun s -> return (Plain s))
+let plain = take_while1 non_space_eol >>= fun s -> return (Plain s)
 
 (* foo_{bar}, foo^{bar} *)
 let subscript, superscript =
   let gen s f =
-    string s *>
-    take_while1 (fun c ->
-        non_space c && c <> '}')
-    <* char '}'
-    >>| f
+    string s *> take_while1 (fun c -> non_space c && c <> '}')
+    <* char '}' >>| f
   in
-  (gen "_{" (fun x ->
-       print_endline x;
-       Subscript x), gen "^{" (fun x -> Superscript x))
+  ( gen "_{" (fun x -> print_endline x ; Subscript x)
+  , gen "^{" (fun x -> Superscript x) )
+
 (* 1. fn:name *)
 (* 2. fn::latex_inline_definition, ignore now *)
 (* 3. fn:name:description *)
 let id = ref 0
+
 let footnote_reference =
-  let name_part = (string "fn:" *>
-                   take_while (fun c -> c <> ':' && non_eol c)
-                   <* optional (char ':')) in
-  let definition_part = (take_while non_space) in
-  lift2 (fun name definition ->
-      let name = if name = "" then (
+  let name_part =
+    string "fn:" *> take_while (fun c -> c <> ':' && non_eol c)
+    <* optional (char ':')
+  in
+  let definition_part = take_while non_space in
+  lift2
+    (fun name definition ->
+      let name =
+        if name = "" then (
           incr id ;
           "_anon_" ^ string_of_int !id )
         else name
       in
-      if definition = "" then
-        Footnote_Reference {name; definition = None}
-      else
-        Footnote_Reference {name; definition = Some [Plain definition]}
-    )
+      if definition = "" then Footnote_Reference {name; definition= None}
+      else Footnote_Reference {name; definition= Some [Plain definition]} )
     name_part definition_part
 
 let statistics_cookie =
   between_char '[' ']'
     (take_while1 (fun c ->
-         if c = '/' || c = '%' || is_digit c then true else false))
-  >>= (fun s ->
-      let cookie =
-        try Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n'))
-        with _ -> Scanf.sscanf s "%d%%" (fun n -> Percent n)
-      in
-      return (Cookie cookie))
+         if c = '/' || c = '%' || is_digit c then true else false ))
+  >>= fun s ->
+  let cookie =
+    try Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) with _ ->
+      Scanf.sscanf s "%d%%" (fun n -> Percent n)
+  in
+  return (Cookie cookie)
+
+(*
+   1. $content$, TeX delimiters for inline math.
+   2. \( content \), LaTeX delimiters for inline math.
+   3. $$content$$, TeX delimiters for displayed math.
+   4. \[ content \], LaTeX delimiters for displayed math.
+
+   If $a^2=b$ and \( b=2 \), then the solution must be
+   either $$ a=+\sqrt{2} $$ or \[ a=-\sqrt{2} \].
+
+*)
+(*
+   latex block.
+
+   \begin{equation}
+   x=\sqrt{b}
+   \end{equation}
+
+*)
+let latex_fragment =
+  any_char
+  >>= function
+  | '$' ->
+      any_char
+      >>= fun c ->
+      if c == '$' then
+        (* displayed math *)
+        take_while1 (fun x -> x <> '$')
+        <* string "$$"
+        >>| fun s -> Latex_Fragment (Displayed s)
+      else
+        (* inline math *)
+        take_while1 (fun x -> x <> '$')
+        <* char '$'
+        >>| fun s -> Latex_Fragment (Inline s)
+  | '\\' -> (
+      any_char
+      >>= function
+      | '[' ->
+          (* displayed math *)
+          double_chars '\\' ']' (fun s -> Latex_Fragment (Displayed s))
+      | '(' ->
+          (* inline math *)
+          double_chars '\\' ')' (fun s -> Latex_Fragment (Inline s))
+      | _ -> fail "latex fragment \\" )
+  | _ -> fail "latex fragment"
+
+let macro () = failwith "unimplemented!"
 
 let timestamp () = failwith "unimplemented!"
-let macro () = failwith "unimplemented!"
-let latex_fragment () = failwith "unimplemented!"
-let inline_source_block () = failwith "unimplemented!"
-let radio_target () = failwith "unimplemented!"
-let export_snippet () = failwith "unimplemented!"
+
 let entity () = failwith "unimplemented!"
 
 (* TODO: configurable *)
 let inline_choices =
-  choice [statistics_cookie; footnote_reference; link; link_inline; target; verbatim; code; blanks; breaklines; emphasis; subscript; superscript; plain]
+  choice
+    [ latex_fragment
+    ; statistics_cookie
+    ; footnote_reference
+    ; link
+    ; link_inline
+    ; target
+    ; verbatim
+    ; code
+    ; blanks
+    ; breaklines
+    ; emphasis
+    ; subscript
+    ; superscript
+    ; plain ]
 
 let inline =
   fix (fun inline ->
       let nested_inline = function
-        | Emphasis (typ, [Plain s]) ->
-          (match parse_string inline s with
-             Ok result -> Emphasis (typ, result)
-           | Error error -> Emphasis (typ, [Plain s])
-          )
-        | Link {label = [Plain s]; url} ->
-          (match parse_string inline s with
-             Ok result -> Link {label = result; url}
-           | Error error -> Link {label = [Plain s]; url}
-          )
-        | Footnote_Reference {definition; name} as f ->
-          (match definition with
-             None -> f
-           | Some [Plain s] ->
-             (match parse_string inline s with
-                Ok result -> Footnote_Reference {definition = Some result; name}
-              | Error error -> f
-             )
-           | _ -> failwith "definition")
+        | Emphasis (typ, [Plain s]) -> (
+          match parse_string inline s with
+          | Ok result -> Emphasis (typ, result)
+          | Error error -> Emphasis (typ, [Plain s]) )
+        | Link {label= [Plain s]; url} -> (
+          match parse_string inline s with
+          | Ok result -> Link {label= result; url}
+          | Error error -> Link {label= [Plain s]; url} )
+        | Footnote_Reference {definition; name} as f -> (
+          match definition with
+          | None -> f
+          | Some [Plain s] -> (
+            match parse_string inline s with
+            | Ok result -> Footnote_Reference {definition= Some result; name}
+            | Error error -> f )
+          | _ -> failwith "definition" )
         | e -> e
       in
-      many inline_choices
-      >>= fun l ->
-      return @@ List.map nested_inline l
-    )
+      many inline_choices >>= fun l -> return @@ List.map nested_inline l )
