@@ -50,6 +50,7 @@ and t =
   | Cookie of stats_cookie
   | Latex_Fragment of latex_fragment
   | Macro of Macro.t
+  | Entity of Entity.t
 
 (* emphasis *)
 let delims =
@@ -277,14 +278,24 @@ let macro =
     (take_while1 (fun c -> c <> ')')
      <* string ")}}}")
 
+(* \alpha *)
+let entity =
+  char '\\' *>
+  take_while1 is_letter
+  >>| fun s ->
+  let entity = Entity.find s in
+  Entity entity
+
 let timestamp () = failwith "unimplemented!"
 
-let entity () = failwith "unimplemented!"
+
 
 (* TODO: configurable *)
 let inline_choices =
   choice
     [ latex_fragment
+    ; entity
+    ; macro
     ; statistics_cookie
     ; footnote_reference
     ; link
