@@ -33,6 +33,10 @@ let ws = take_while1 is_space
 
 let spaces = skip_while is_space
 
+let non_spaces = take_while1 non_space
+
+let letters = take_while1 is_letter
+
 let count_spaces = take_while is_space
 
 let lex p = p <* spaces
