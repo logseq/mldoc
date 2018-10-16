@@ -2,10 +2,6 @@ let (<<) f g x = f(g(x))
 
 let remove p = List.filter (fun x -> not (p x))
 
-let map_default f v = function
-  | None -> v
-  | Some v2 -> f v2
-
 let identity x = x
 
 let filter_map f l =
