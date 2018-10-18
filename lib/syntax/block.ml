@@ -1,6 +1,6 @@
 open Angstrom
 open Parsers
-open Util
+open Prelude
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`
@@ -9,7 +9,7 @@ open Util
    line 2
    #+END_x
 
-   2. Starts with `:`, it could be blanks before `:`.
+   2. Verbatim, each line starts with `:`.
 *)
 
 let clear_indents s =

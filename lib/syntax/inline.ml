@@ -9,6 +9,10 @@ open Bigstringaf
    2. Security:
    unescape
 
+   3. Export inline markup
+   @@latex:\paragraph{My paragraph}@@
+   @@html:<b>HTML doesn't have \paragraphs</b>@@
+
 *)
 
 module Macro = struct
@@ -393,7 +397,7 @@ let range =
 
 let timestamp =
   general_timestamp <|> range
-  
+
 (* TODO: configurable *)
 let inline_choices =
   choice

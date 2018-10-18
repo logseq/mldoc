@@ -1,12 +1,13 @@
 open Angstrom
-open Util
+open Prelude
 
 let is_space = function
-  | ' ' | '\010' | '\013' | '\009' | '\026' | '\012' -> true
+  | '\x20' | '\x0a' | '\x0d' | '\x09' -> true
   | _ -> false
 
 let non_space = not << is_space
 
+(* end of line *)
 let is_eol = function '\r' | '\n' -> true | _ -> false
 
 let non_eol = not << is_eol
@@ -29,6 +30,7 @@ let is_letter c =
 
 let eol = satisfy is_eol
 let eols = take_while1 is_eol
+let line = take_till is_eol
 
 let ws = take_while1 is_space
 

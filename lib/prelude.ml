@@ -1,10 +1,9 @@
 let (<<) f g x = f(g(x))
 
-let remove p = List.filter (fun x -> not (p x))
-
 let identity x = x
 
 (* list *)
+let remove p = List.filter (fun x -> not (p x))
 
 let take n l =
   let rec loop n acc = function
@@ -25,6 +24,8 @@ let filter_map f l =
         loop (x :: dst) t
   in
   loop [] l
+
+
 
 (* TODO: only used in dev profile. *)
 let time f =
