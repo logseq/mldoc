@@ -168,7 +168,12 @@ let content_parser list_parser items indent lines =
  hello world
  - item 1.1
  - item 1.2
+ + item 1.3
+  + item 1.3.1
+  - item 1.3.2
+   1.3.2 content
 - item 2
+ item 2 content
 *)
 let list items =
   fix (fun list ->
