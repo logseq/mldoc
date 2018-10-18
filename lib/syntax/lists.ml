@@ -152,12 +152,13 @@ let content_parser list_parser items indent lines =
           | None -> return (List.rev !lines)
           | Some c ->
             if is_space c then
-              line >>= fun content ->
+              peek_line >>= fun content ->
               (* check for nested list item *)
               if check_listitem content then (
                 terminator lines
               )
               else (
+                line >>= fun content ->
                 lines := content :: !lines;
                 content_parser)
             else
