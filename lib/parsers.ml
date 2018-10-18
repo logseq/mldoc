@@ -27,6 +27,7 @@ let is_lowercase c = 'a' <= c && c <= 'z'
 let is_letter c =
   is_uppercase c || is_lowercase c
 
+let eol = satisfy is_eol
 let eols = take_while1 is_eol
 
 let ws = take_while1 is_space
@@ -51,14 +52,17 @@ let between_char c1 c2 p = char c1 *> p <* char c2
 
 let between_string begin' end' p = string begin' *> p <* string end'
 
+let between_string_ci begin' end' p = string_ci begin' *> p <* string end'
+
 let chainl1 e op =
   let rec go acc =
     (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
   e >>= fun init -> go init
 
-let end_string s f =
+let end_string s ?ci:(ci=false) f =
   let open String in
   let prev = ref None in
+  let string_equal x y = if ci then lowercase_ascii x = lowercase_ascii y else x = y in
   take_while1 (fun c ->
       let p = (match !prev with
             None -> (make 1 c)
@@ -68,13 +72,16 @@ let end_string s f =
             else s'
         ) in
       prev := Some p;
-      if (p = s) then false
+      if (string_equal p s) then false
       else true)
   >>= fun s' ->
   let p = !prev in
   prev := None;
-  if p = Some s then
-    let s' = sub s' 0 (length s' - length s + 1) in
-    return @@ f s'
-  else
-    fail "end_string"
+  match p with
+  | None -> fail "end string"
+  | Some x ->
+    if string_equal x s then
+      let s' = sub s' 0 (length s' - length s + 1) in
+      return @@ f s'
+    else
+      fail "end_string"
