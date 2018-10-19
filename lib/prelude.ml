@@ -25,6 +25,23 @@ let filter_map f l =
   in
   loop [] l
 
+let print_list l =
+  List.iter print_endline l
+    
+(* string *)
+
+exception Found_int of int
+
+let get_indent line =
+  let len = String.length line in
+  try
+    for i = 0 to len - 1 do
+      if line.[i] <> ' ' then raise (Found_int i)
+    done;
+    0
+  with Found_int i ->
+    i
+
 
 
 (* TODO: only used in dev profile. *)

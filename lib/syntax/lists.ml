@@ -1,5 +1,6 @@
 open Angstrom
 open Parsers
+open Prelude
 
 (*
 Lists can take a lot of different forms in =org-mode=
@@ -75,54 +76,21 @@ gives
 1. First item
 1. Second item (note that the number before the dot is useless)
 #+END_QUOTE
-=mlorg= allow to customize the format of the number of the list by a
-directive of the form =[@format]=. =format= can be any string, in which:
-- =i= is replaced by the item number spelled in lowercase latin number
-- =I= is replaced by the item number spelled in uppercase latin number
-- =α= is replaced by the item number spelled in uppercase greek number
-- =Α= is replaced by the item number spelled in uppercase greek number (Note: this is a capital alpha!)
-- =1= is replaced by the item number spelled in arabic digit
 
-Of course, these strings represent all the same number (namely 1) in
-their respective representation, but you can choose any number you
-like. If so it will set up the number item to this number. (If they
-are several number, the first one is picked)
-#+BEGIN_EXAMPLE
-1. [@(i)] Lower case latin
-2. Two
-1. [@III.] Upper case latin
-1. Four
-1. [@{δ}] What's after δ ?
-1. ε !
-1. [@42.] Numbers
-1. [@1 ii III δ] Who will win ?
-1. Did you guess right ?
-#+END_EXAMPLE
-#+BEGIN_QUOTE
-1. [@(i)] Lower case latin
-2. Two
-1. [@III.] Upper case latin
-1. Four
-1. [@{δ}] What's after δ ?
-1. ε !
-1. [@42.] Numbers
-1. [@1 ii III δ] Who will win ?
-1. Did you guess right ?
-#+END_QUOTE
-
-See the module {{{doc(Numbering)}}} for more information.
 *)
 
 type t =
   {
-    children: t list option
-  ; content: string  (** The contents of the current item *)
+    title: string option              (* item title *)
+  ; content: string list option  (** The contents of the current item *)
+  ; items: t list option
   ; number: int option  (** Its number *)
-  ; format: string option (** Its format *)
   ; checkbox: bool option  (** Was it checked *)
   ; ordered: bool  (** Is the list ordered *)
-  ; indent: int (** Indentation of the current item. *)
+  ; indent: int option (** Indentation of the current item. *)
   }
+
+type 'a orglist = None | Some of (int * string list * 'a orglist) list
 
 let indent_parser = optional ws >>| (function
     | None -> 0
@@ -130,40 +98,56 @@ let indent_parser = optional ws >>| (function
 
 let two_newlines result = (count 2 eol >>= fun _ -> return result )
 
+let check_listitem line =
+  let indent = get_indent line in
+  if String.length line > 2 then
+    let prefix = String.sub line indent 2 in
+    (indent, prefix = "- " || prefix = "+ ")
+  else
+    (indent, false)
+
+let content_parser list_parser indent lines =
+  fix (fun content_parser ->
+      line >>= fun content ->
+      lines := content :: !lines;
+      two_newlines ((List.rev !lines), None)
+      <|>
+      (optional eol >>= function
+        | None ->
+          return (List.rev !lines, None)
+        | Some eol -> peek_char >>= function
+          | None -> return ((List.rev !lines), None)
+          | Some c ->
+            if is_space c then (
+              peek_line >>= fun content ->
+              let (indent', is_item) = check_listitem content in
+              if is_item then (
+                if indent' < indent then
+                  return @@ (List.rev !lines, None)
+                else if indent' = indent then
+                  return @@ (List.rev !lines, None)
+                else            (* list item child *)
+                  list_parser (ref []) indent' >>= fun items ->
+                  return @@ (List.rev !lines, Some items)
+              ) else (
+                line >>= fun content ->
+                lines := content :: !lines;
+                content_parser))
+            else (
+              return ((List.rev !lines), None))))
+
 let terminator items =
   if !items = [] then
     fail "list"
   else
-    return @@ List.rev !items
+    let result = ! items in
+    return @@ List.rev result
 
-let check_listitem line =
-  let prefix = String.sub (String.trim line) 0 2 in
-  prefix = "- " || prefix = "+ "
-
-let content_parser list_parser items indent lines =
-  fix (fun content_parser ->
-      line >>= fun content ->
-      lines := content :: !lines;
-      two_newlines (List.rev !lines)
-      <|>
-      (optional eol >>= function
-        | None -> return (List.rev !lines)
-        | Some eol -> peek_char >>= function
-          | None -> return (List.rev !lines)
-          | Some c ->
-            if is_space c then
-              peek_line >>= fun content ->
-              (* check for nested list item *)
-              if check_listitem content then (
-                terminator lines
-              )
-              else (
-                line >>= fun content ->
-                lines := content :: !lines;
-                content_parser)
-            else
-              return (List.rev !lines)))
 (*
+- item 1
+- item 2
+
+
 - item 1
  hello world
  - item 1.1
@@ -172,19 +156,32 @@ let content_parser list_parser items indent lines =
   + item 1.3.1
   - item 1.3.2
    1.3.2 content
+   This is beautiful
 - item 2
  item 2 content
 *)
-let list items =
+let rec list_parser items current_indent =
   fix (fun list ->
       (indent_parser >>= fun indent ->
+       if current_indent > indent then
+         terminator items
+       else
        (non_spaces <* spaces >>= function
-           (* TODO: ordered list, numbers, or other formats *)
+           (* TODO: numbers, ordered *)
          | "-" | "+" ->
-           content_parser list items indent (ref []) >>= fun lines ->
-           items := (indent, lines) :: !items;
+           content_parser list_parser indent (ref []) >>= fun (content, children) ->
+           items := (indent, content, children) :: !items;
            list
          | _ ->
            terminator items)
        <|>
        terminator items))
+
+let list =
+  let r = ref [] in
+  list_parser r 0 >>= fun result ->
+  r := [];
+  return result
+  <|>
+  let _ = r := [] in
+  fail "list"
