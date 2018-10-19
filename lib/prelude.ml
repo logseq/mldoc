@@ -27,8 +27,13 @@ let filter_map f l =
 
 let print_list l =
   List.iter print_endline l
-    
+
 (* string *)
+let is_ordered s =
+  Str.string_match (Str.regexp "[0-9]+\\.") s 0
+
+let get_ordered_number s =
+  try Scanf.sscanf s "%d. " (fun i -> Some i) with _ -> None
 
 exception Found_int of int
 
@@ -41,8 +46,6 @@ let get_indent line =
     0
   with Found_int i ->
     i
-
-
 
 (* TODO: only used in dev profile. *)
 let time f =

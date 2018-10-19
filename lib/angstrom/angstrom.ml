@@ -424,8 +424,6 @@ let take_while1 f = count_while1 ~f ~with_buffer:Bigstringaf.substring
 
 let take_till f = take_while (fun c -> not (f c))
 
-let peek_line = unsafe_lookahead @@ take_till (fun c -> c = '\r' || c = '\n')
-
 let choice ?(failure_msg = "no more choices") ps =
   List.fold_right ( <|> ) ps (fail failure_msg)
 

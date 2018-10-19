@@ -87,3 +87,7 @@ let end_string s ?ci:(ci=false) f =
       return @@ f s'
     else
       fail "end_string"
+
+let peek_line = unsafe_lookahead @@ take_till (fun c -> c = '\r' || c = '\n')
+
+let peek_spaces = unsafe_lookahead @@ ws

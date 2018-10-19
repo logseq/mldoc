@@ -1,4 +1,5 @@
 #use "topfind";;
+#require "str"
 #directory "_build";;
 open Org_parser;;
 open Inline;;

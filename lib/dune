@@ -3,5 +3,5 @@
 (library
  (name        org_parser)
  (public_name org_parser)
- (libraries bigstringaf)
+ (libraries bigstringaf str)
  (wrapped false))

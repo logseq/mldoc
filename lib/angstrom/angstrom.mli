@@ -71,7 +71,7 @@ val peek_string : int -> string t
 
     This parser does not advance the input. Use it for lookahead. *)
 
-val peek_line : string t
+val unsafe_lookahead : 'a t -> 'a t
 
 val char : char -> char t
 (** [char c] accepts [c] and returns it. *)
