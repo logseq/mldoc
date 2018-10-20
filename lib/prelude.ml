@@ -38,6 +38,10 @@ let filter_map f l =
 let print_list l =
   List.iter print_endline l
 
+let print_bool = function
+  | true -> print_string "true"
+  | _ -> print_string "false"
+
 (* string *)
 let is_ordered s =
   Str.string_match (Str.regexp "[0-9]+\\.") s 0

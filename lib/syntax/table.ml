@@ -11,6 +11,16 @@ open Prelude
 
 *)
 
+type t = header * group list
+
+and
+  group = row list
+
+and
+  row = string list
+
+and header = row
+
 (* A table can has multiple groups, and each group can has multiple rows. The first group is the table header.*)
 
 let separated_line =
@@ -20,10 +30,13 @@ let split_into_columns s =
   String.split_on_char '|' s
   |> List.map String.trim
 
-let row_line =
+let row_line separated =
   let open String in
   optional ws *> char '|' *>
-  (peek_char_fail >>| fun c -> c <> '-') (* ensure not begin with "|-" *)
+  (peek_char_fail >>| fun c ->
+   let sep = c = '-' in
+   separated := sep;
+   not sep)
   *> take_till is_eol
   >>= fun line ->
   let line = trim line in
@@ -36,21 +49,26 @@ let row_line =
 
 let group =
   let p rows =
+    let separated = ref false in
     fix (fun p ->
-        row_line >>= fun row ->
-        print_list row;
-        rows := row :: ! rows;
-        p
-        <|>
-        return !rows) in
+        row_line separated >>= fun row ->
+        if ! separated then
+          return @@ List.rev !rows
+        else
+          (rows := row :: ! rows;
+           p)
+          <|>
+          return @@ List.rev !rows
+      ) in
   clear_parser_resource p (ref []) "table group"
 
 let table =
-    let p groups =
+  let p groups =
     fix (fun p ->
         group >>= fun g ->
         groups := g :: ! groups;
         p
         <|>
-        return !groups) in
+        return @@ List.rev !groups) in
+  optional separated_line *>
   clear_parser_resource p (ref []) "table"
