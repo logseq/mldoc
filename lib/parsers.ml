@@ -91,3 +91,11 @@ let end_string s ?ci:(ci=false) f =
 let peek_line = unsafe_lookahead @@ take_till (fun c -> c = '\r' || c = '\n')
 
 let peek_spaces = unsafe_lookahead @@ ws
+
+let clear_parser_resource p r error =
+  p r >>= fun result ->
+  r := [];
+  return result
+  <|>
+  let _ = r := [] in
+  fail error

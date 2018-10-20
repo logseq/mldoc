@@ -14,6 +14,16 @@ let take n l =
   in
   loop n [] l
 
+let drop_last n l =
+  let len = List.length l in
+  let rec loop n acc = function
+    | h :: t when n > 0 ->
+      loop (n - 1) (h :: acc) t
+    | _ ->
+      List.rev acc
+  in
+  loop (len - n) [] l
+
 let filter_map f l =
   let rec loop dst = function
     | [] -> List.rev dst
