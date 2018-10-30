@@ -1,5 +1,5 @@
 type list_item =
-  { contents: t list  (** The item's contents *)
+  { content: t list  (** The item's contents *)
   ; number: string option  (** The optional number of the item *)
   ; checkbox: bool option
   (** Does it have a checkbox ([[ ]]) and is it checked ? *) }
@@ -19,7 +19,7 @@ and code_block =
 and t =
   | Paragraph of Inline.t list  (** A paragraph containing only inline text *)
   | Heading of Heading.t  (** A heading *)
-  | List of list_item list * bool  (** A list [item, ordered?] *)
+  | List of list_item list  (** A list [item] *)
   | Directive of string * string  (** A directive [name, value] *)
   | Math of string  (** Math, enclosed by $$ ... $$ *)
   | Quote of t list  (** Quoted text *)
