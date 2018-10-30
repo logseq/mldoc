@@ -61,6 +61,10 @@ let get_indent line =
   with Found_int i ->
     i
 
+let result_default default = function
+  | Ok result -> result
+  | Error e -> default
+
 (* TODO: only used in dev profile. *)
 let time f =
   let t = Sys.time () in

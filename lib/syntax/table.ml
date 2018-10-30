@@ -1,7 +1,9 @@
 open Angstrom
 open Parsers
 open Prelude
+
 (*
+|Foo                             | Bar                 |
 |--------------------------------+---------------------|
 | (1, 1)                         | (2, 1) and /inline/ |
 | Second line, first group       | =stuff=             |
@@ -11,17 +13,16 @@ open Prelude
 
 *)
 
-type t = header * group list
-
+type t = { header: row option
+         ; groups: group list}
 and
   group = row list
-
 and
-  row = string list
+  row = col list
+and
+  col = Inline.t list
 
-and header = row
-
-(* A table can has multiple groups, and each group can has multiple rows. The first group is the table header.*)
+(* A table can has multiple groups, and each group can has multiple rows. The first row is the table header.*)
 
 let separated_line =
   optional ws *> char '|' *> many1 (char '-' <|> char '+') *> char '|' *> optional eol
@@ -55,6 +56,8 @@ let group =
         if ! separated then
           return @@ List.rev !rows
         else
+          let row = List.map (fun col ->
+              result_default [Inline.Plain col] (parse_string Inline.parse col)) row in
           (rows := row :: ! rows;
            p)
           <|>
@@ -62,7 +65,7 @@ let group =
       ) in
   clear_parser_resource p (ref []) "table group"
 
-let table =
+let parse =
   let p groups =
     fix (fun p ->
         group >>= fun g ->
@@ -72,3 +75,14 @@ let table =
         return @@ List.rev !groups) in
   optional separated_line *>
   clear_parser_resource p (ref []) "table"
+  >>| function
+  | [] -> { header = None;
+            groups = []}
+  | [] :: t ->
+    { header = None;
+      groups = t }
+  | (h1 :: t1) :: t ->
+    let groups = if List.length t1 = 0 then t
+      else List.concat [[t1]; t] in
+    {header = Some h1;
+     groups}

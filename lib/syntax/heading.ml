@@ -3,11 +3,11 @@ open Parsers
 open Prelude
 
 type t =
-  { level: int
-  ; marker: string option
-  ; priority: char option
-  ; title: string
-  ; tags: string list }
+  { title: Inline.t list  (** The title as inline formatted content *)
+  ; tags: string list  (** The tags set by the user *)
+  ; marker: string option  (** TODO, DONE, and so on *)
+  ; level: int  (** The level (number of stars) -- starts at 1 *)
+  ; priority: char option  (** The optional priority *) }
 
 (* TODO, DOING, DONE *)
 let marker = string "TODO" <|> string "DOING" <|> string "DONE"
@@ -38,6 +38,9 @@ let parse =
     (fun level marker priority title tags ->
       let level = List.length level in
       let tags = remove is_blank tags in
+      let title = match (parse_string Inline.parse title) with
+        | Ok title -> title
+        | Error e -> [] in
       {level; marker; priority; title; tags} )
     (spaces *> level <* spaces <?> "Heading level")
     (optional (lex marker <?> "Heading marker"))

@@ -30,7 +30,7 @@ let verbatim lines =
          return !lines
       ))
 
-let block =
+let parse =
   spaces *> peek_char_fail
   >>= function
   | '#' ->

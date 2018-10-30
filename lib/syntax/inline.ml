@@ -13,6 +13,9 @@ open Bigstringaf
    @@latex:\paragraph{My paragraph}@@
    @@html:<b>HTML doesn't have \paragraphs</b>@@
 
+   4. Bugs:
+   "*second line*,"
+
 *)
 
 module Macro = struct
@@ -88,14 +91,14 @@ let emphasis_token c =
   if is_space x then fail "space before token"
   else
     take_while1 (function
-      | x when x = c -> (
-        match !prev with
-        | Some x ->
-            if x = ' ' then blank_before_delimiter := true ;
-            false
-        | None -> false )
-      | '\r' | '\n' -> false
-      | x ->
+        | x when x = c -> (
+            match !prev with
+            | Some x ->
+              if x = ' ' then blank_before_delimiter := true ;
+              false
+            | None -> false )
+        | '\r' | '\n' -> false
+        | x ->
           prev := Some x ;
           true )
     >>= fun s ->
@@ -110,7 +113,7 @@ let between c =
   >>= function
   | None -> return s
   | Some c -> (
-    match c with '\n' | '\r' | ' ' | '\t' -> return s | _ -> fail "between" )
+      match c with '\n' | '\r' | ' ' | '\t' -> return s | _ -> fail "between" )
 
 let bold =
   between '*'
@@ -152,16 +155,16 @@ let link =
   let label_part = take_while (fun c -> c <> ']') <* string "]]" in
   lift2
     (fun url label ->
-      let url =
-        if label = "" then Search url
-        else if url.[0] = '/' || url.[0] = '.' then File url
-        else
-          try
-            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                Complex {protocol; link} )
-          with _ -> Search url
-      in
-      Link {label= [Plain label]; url} )
+       let url =
+         if label = "" then Search url
+         else if url.[0] = '/' || url.[0] = '.' then File url
+         else
+           try
+             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                 Complex {protocol; link} )
+           with _ -> Search url
+       in
+       Link {label= [Plain label]; url} )
     url_part label_part
 
 (* complex link *)
@@ -174,15 +177,15 @@ let link_inline =
   in
   lift2
     (fun protocol link ->
-      Link
-        { label= [Plain (protocol ^ "://" ^ link)]
-        ; url= Complex {protocol; link= "//" ^ link} } )
+       Link
+         { label= [Plain (protocol ^ "://" ^ link)]
+         ; url= Complex {protocol; link= "//" ^ link} } )
     protocol_part link_part
 
 let target =
   between_string "<<" ">>"
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
-    >>= fun s -> return @@ Target s )
+      >>= fun s -> return @@ Target s )
 
 let plain = take_while1 non_space_eol >>= fun s -> return (Plain s)
 
@@ -208,14 +211,14 @@ let footnote_reference =
   let definition_part = take_while non_space in
   lift2
     (fun name definition ->
-      let name =
-        if name = "" then (
-          incr id ;
-          "_anon_" ^ string_of_int !id )
-        else name
-      in
-      if definition = "" then Footnote_Reference {name; definition= None}
-      else Footnote_Reference {name; definition= Some [Plain definition]} )
+       let name =
+         if name = "" then (
+           incr id ;
+           "_anon_" ^ string_of_int !id )
+         else name
+       in
+       if definition = "" then Footnote_Reference {name; definition= None}
+       else Footnote_Reference {name; definition= Some [Plain definition]} )
     name_part definition_part
 
 let statistics_cookie =
@@ -251,27 +254,27 @@ let latex_fragment =
   any_char
   >>= function
   | '$' ->
-      any_char
-      >>= fun c ->
-      if c == '$' then
-        (* displayed math *)
-        take_while1 (fun x -> x <> '$')
-        <* string "$$"
-        >>| fun s -> Latex_Fragment (Displayed s)
-      else
-        (* inline math *)
-        take_while1 (fun x -> x <> '$')
-        <* char '$'
-        >>| fun s -> Latex_Fragment (Inline s)
+    any_char
+    >>= fun c ->
+    if c == '$' then
+      (* displayed math *)
+      take_while1 (fun x -> x <> '$')
+      <* string "$$"
+      >>| fun s -> Latex_Fragment (Displayed s)
+    else
+      (* inline math *)
+      take_while1 (fun x -> x <> '$')
+      <* char '$'
+      >>| fun s -> Latex_Fragment (Inline s)
   | '\\' -> (
       any_char
       >>= function
       | '[' ->
-          (* displayed math *)
-          end_string "\\]" (fun s -> Latex_Fragment (Displayed s))
+        (* displayed math *)
+        end_string "\\]" (fun s -> Latex_Fragment (Displayed s))
       | '(' ->
-          (* inline math *)
-          end_string "\\)" (fun s -> Latex_Fragment (Inline s))
+        (* inline math *)
+        end_string "\\)" (fun s -> Latex_Fragment (Inline s))
       | _ -> fail "latex fragment \\" )
   | _ -> fail "latex fragment"
 
@@ -282,9 +285,9 @@ let latex_fragment =
 let macro =
   lift2
     (fun name arguments ->
-      let arguments = String.split_on_char ',' arguments in
-      let arguments = List.map String.trim arguments in
-      Macro {name; arguments} )
+       let arguments = String.split_on_char ',' arguments in
+       let arguments = List.map String.trim arguments in
+       Macro {name; arguments} )
     (string "{{{" *> take_while1 (fun c -> c <> '(') <* char '(')
     (take_while1 (fun c -> c <> ')') <* string ")}}}")
 
@@ -307,30 +310,30 @@ let date_time close_char ~active typ =
   let tr2_parser = optional (space *> non_spaces) in
   lift4
     (fun date _day_name time_or_repeat tr2 ->
-      let date = parse_date date in
-      let date, time, repetition =
-        match time_or_repeat with
-        | None -> (date, None, None)
-        | Some s -> (
-          match tr2 with
-          | None -> (
-            match s.[0] with
-            | ('+' | '.') as c -> (* repeat *)
-                                  repetition_parser s date None c
-            | _ ->
-                (* time *)
-                let time = parse_time s in
-                (date, time, None) )
-          | Some s' ->
-              let time = parse_time s in
-              repetition_parser s' date time s'.[0] )
-      in
-      match typ with
-      | "Scheduled" -> Timestamp (Scheduled {date; time; repetition; active})
-      | "Deadline" -> Timestamp (Deadline {date; time; repetition; active})
-      | "Closed" -> Timestamp (Closed {date; time; repetition; active})
-      | "Clock" -> Timestamp (Clock {date; time; repetition; active})
-      | _ -> Timestamp (Date {date; time; repetition; active}) )
+       let date = parse_date date in
+       let date, time, repetition =
+         match time_or_repeat with
+         | None -> (date, None, None)
+         | Some s -> (
+             match tr2 with
+             | None -> (
+                 match s.[0] with
+                 | ('+' | '.') as c -> (* repeat *)
+                   repetition_parser s date None c
+                 | _ ->
+                   (* time *)
+                   let time = parse_time s in
+                   (date, time, None) )
+             | Some s' ->
+               let time = parse_time s in
+               repetition_parser s' date time s'.[0] )
+       in
+       match typ with
+       | "Scheduled" -> Timestamp (Scheduled {date; time; repetition; active})
+       | "Deadline" -> Timestamp (Deadline {date; time; repetition; active})
+       | "Closed" -> Timestamp (Closed {date; time; repetition; active})
+       | "Clock" -> Timestamp (Clock {date; time; repetition; active})
+       | _ -> Timestamp (Date {date; time; repetition; active}) )
     date_parser day_name_parser tr1_parser tr2_parser
   <* char close_char
 
@@ -382,16 +385,16 @@ let range =
   let extract_time t =
     match t with
     | Timestamp t -> (
-      match t with
-      | Date t | Scheduled t | Deadline t | Closed t -> t
-      | _ -> failwith "illegal timestamp" )
+        match t with
+        | Date t | Scheduled t | Deadline t | Closed t -> t
+        | _ -> failwith "illegal timestamp" )
     | _ -> failwith "illegal timestamp"
   in
   lift2
     (fun t1 t2 ->
-      let t1 = extract_time t1 in
-      let t2 = extract_time t2 in
-      Timestamp (Range {start= t1; stop= t2}) )
+       let t1 = extract_time t1 in
+       let t2 = extract_time t2 in
+       Timestamp (Range {start= t1; stop= t2}) )
     (general_timestamp <* string "--")
     general_timestamp
 
@@ -419,25 +422,25 @@ let inline_choices =
     ; superscript
     ; plain ]
 
-let inline =
+let parse =
   fix (fun inline ->
       let nested_inline = function
         | Emphasis (typ, [Plain s]) -> (
-          match parse_string inline s with
-          | Ok result -> Emphasis (typ, result)
-          | Error error -> Emphasis (typ, [Plain s]) )
-        | Link {label= [Plain s]; url} -> (
-          match parse_string inline s with
-          | Ok result -> Link {label= result; url}
-          | Error error -> Link {label= [Plain s]; url} )
-        | Footnote_Reference {definition; name} as f -> (
-          match definition with
-          | None -> f
-          | Some [Plain s] -> (
             match parse_string inline s with
-            | Ok result -> Footnote_Reference {definition= Some result; name}
-            | Error error -> f )
-          | _ -> failwith "definition" )
+            | Ok result -> Emphasis (typ, result)
+            | Error error -> Emphasis (typ, [Plain s]) )
+        | Link {label= [Plain s]; url} -> (
+            match parse_string inline s with
+            | Ok result -> Link {label= result; url}
+            | Error error -> Link {label= [Plain s]; url} )
+        | Footnote_Reference {definition; name} as f -> (
+            match definition with
+            | None -> f
+            | Some [Plain s] -> (
+                match parse_string inline s with
+                | Ok result -> Footnote_Reference {definition= Some result; name}
+                | Error error -> f )
+            | _ -> failwith "definition" )
         | e -> e
       in
       many inline_choices >>= fun l -> return @@ List.map nested_inline l )
