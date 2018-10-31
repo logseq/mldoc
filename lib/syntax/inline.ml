@@ -14,7 +14,7 @@ open Bigstringaf
    @@html:<b>HTML doesn't have \paragraphs</b>@@
 
    4. Bugs:
-   "*second line*,"
+   "*second line*," punctuations
 
 *)
 
@@ -113,7 +113,10 @@ let between c =
   >>= function
   | None -> return s
   | Some c -> (
-      match c with '\n' | '\r' | ' ' | '\t' -> return s | _ -> fail "between" )
+      match c with
+      | '\n' | '\r' | ' ' | '\t' | '.' | ',' | '!' | '?' | '"' | '\'' | ')' | '-' | ':' | ';' | '[' | '}'
+        -> return s
+      | _ -> fail "between" )
 
 let bold =
   between '*'
@@ -210,7 +213,7 @@ let subscript, superscript =
     string s *> take_while1 (fun c -> non_space c && c <> '}')
     <* char '}' >>| f
   in
-  ( gen "_{" (fun x -> print_endline x ; Subscript x)
+  ( gen "_{" (fun x -> Subscript x)
   , gen "^{" (fun x -> Superscript x) )
 
 (* 1. fn:name *)
