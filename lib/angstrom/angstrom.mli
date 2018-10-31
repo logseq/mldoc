@@ -181,6 +181,18 @@ val scan_string : 'state -> ('state -> char -> 'state option) -> string t
 (** [scan_string init f] Like [scan] but discards the final state and returns
     the accumulated string *)
 
+val scan1 : 'state -> ('state -> char -> 'state option) -> (string * 'state) t
+(** [scan init f] consumes until [f] returns [None]. Returns the final state
+    before [None] and the accumulated string *)
+
+val scan_state1 : 'state -> ('state -> char -> 'state option) -> 'state t
+(** [scan_state init f] Like [scan] but only returns the final state before
+    [None]. Much more efficient than [scan]*)
+
+val scan_string1 : 'state -> ('state -> char -> 'state option) -> string t
+(** [scan_string init f] Like [scan] but discards the final state and returns
+    the accumulated string *)
+
 val any_uint8 : int t
 (** [any_uint8] accepts any byte and returns it as an unsigned int8. *)
 

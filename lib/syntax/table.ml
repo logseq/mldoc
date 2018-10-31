@@ -17,7 +17,7 @@ open Org
 (* A table can has multiple groups, and each group can has multiple rows. The first row is the table header.*)
 
 let separated_line =
-  optional ws *> char '|' *> many1 (char '-' <|> char '+') *> char '|' *> optional eol
+  optional ws *> char '|' *> take_while1 (fun c -> c = '-' || c = '+') *> char '|' *> optional eol
 
 let split_into_columns s =
   String.split_on_char '|' s

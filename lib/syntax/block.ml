@@ -28,8 +28,7 @@ let verbatim lines =
       (if !lines = [] then
          fail "verbatim"
        else
-         return !lines
-      ))
+         return !lines))
 
 let parse =
   spaces *> peek_char_fail

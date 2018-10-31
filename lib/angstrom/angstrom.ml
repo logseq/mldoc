@@ -493,6 +493,31 @@ let scan_state state f =
 
 let scan_string state f = scan state f >>| fst
 
+let scan1_ state f ~with_buffer =
+  { run=
+      (fun input pos more fail succ ->
+        let state = ref state in
+        let parser =
+          count_while1
+            ~f:(fun c ->
+              match f !state c with
+              | None -> false
+              | Some state' ->
+                  state := state' ;
+                  true )
+            ~with_buffer
+          >>| fun x -> (x, !state)
+        in
+        parser.run input pos more fail succ ) }
+
+let scan1 state f = scan1_ state f ~with_buffer:Bigstringaf.substring
+
+let scan_state1 state f =
+  scan1_ state f ~with_buffer:(fun _ ~off:_ ~len:_ -> ())
+  >>| fun ((), state) -> state
+
+let scan_string1 state f = scan1 state f >>| fst
+
 module BE = struct
   (* XXX(seliopou): The pattern in both this module and [LE] are a compromise
    * between efficiency and code reuse. By inlining [ensure] you can recover

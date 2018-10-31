@@ -6,7 +6,7 @@ open Org
 (* TODO, DOING, DONE *)
 let marker = string "TODO" <|> string "DOING" <|> string "DONE"
 
-let level = many1 @@ char '*'
+let level = take_while1 (fun c -> c = '*')
 
 let priority = string "[#" *> any_char <* char ']'
 
@@ -30,7 +30,7 @@ let is_blank s =
 let parse =
   lift5
     (fun level marker priority title tags ->
-      let level = List.length level in
+      let level = String.length level in
       let tags = remove is_blank tags in
       let title = match (parse_string Inline.parse title) with
         | Ok title -> title

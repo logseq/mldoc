@@ -13,9 +13,6 @@ open Bigstringaf
    @@latex:\paragraph{My paragraph}@@
    @@html:<b>HTML doesn't have \paragraphs</b>@@
 
-   4. Bugs:
-   "*second line*," punctuations
-
 *)
 
 module Macro = struct
@@ -196,16 +193,25 @@ let target =
       >>= fun s -> return @@ Target s )
 
 let plain =
-  let offset = ref 0 in
-  take_while1 (fun c ->
-      offset := !offset + 1;
-      (non_space c && non_eol c && c <> '_' && c <> '^') || (!offset = 1 && (c = '_' || c <> '^'))
-    ) >>= fun s ->
-  offset := 0;
-  return (Plain s)
-  <|>
-  let _ = offset := 0 in
-  fail "plain"
+  scan1 false (fun state c ->
+      if (not state && (c = '_' || c <> '^')) then
+        Some true
+      else if (non_space c && non_eol c && c <> '_' && c <> '^') then
+        Some true
+      else
+        None)
+    >>= fun (s, _state) -> return (Plain s)
+
+(* let offset = ref 0 in
+ * take_while1 (fun c ->
+ *     offset := !offset + 1;
+ *     (non_space c && non_eol c && c <> '_' && c <> '^') || (!offset = 1 && (c = '_' || c <> '^'))
+ *   ) >>= fun s ->
+ * offset := 0;
+ * return (Plain s)
+ * <|>
+ * let _ = offset := 0 in
+ * fail "plain" *)
 
 (* foo_{bar}, foo^{bar} *)
 let subscript, superscript =
@@ -323,40 +329,42 @@ let date_time close_char ~active typ =
   let open Timestamp in
   let space = satisfy is_space in
   let non_spaces = take_while1 (fun c -> non_space c && c <> close_char) in
-  let date_parser = non_spaces <* space in
+  let date_parser = non_spaces <* space >>| fun s -> parse_date s in
   let day_name_parser = letters in
   (* time_or_repeat_1 *)
   let tr1_parser = optional (space *> non_spaces) in
   (* time_or_repeat_2 *)
   let tr2_parser = optional (space *> non_spaces) in
-  lift4
-    (fun date _day_name time_or_repeat tr2 ->
-       let date = parse_date date in
-       let date, time, repetition =
-         match time_or_repeat with
-         | None -> (date, None, None)
-         | Some s -> (
-             match tr2 with
-             | None -> (
-                 match s.[0] with
-                 | ('+' | '.') as c -> (* repeat *)
-                   repetition_parser s date None c
-                 | _ ->
-                   (* time *)
-                   let time = parse_time s in
-                   (date, time, None) )
-             | Some s' ->
-               let time = parse_time s in
-               repetition_parser s' date time s'.[0] )
-       in
-       match typ with
-       | "Scheduled" -> Timestamp (Scheduled {date; time; repetition; active})
-       | "Deadline" -> Timestamp (Deadline {date; time; repetition; active})
-       | "Closed" -> Timestamp (Closed {date; time; repetition; active})
-       | "Clock" -> Timestamp (Clock {date; time; repetition; active})
-       | _ -> Timestamp (Date {date; time; repetition; active}) )
-    date_parser day_name_parser tr1_parser tr2_parser
-  <* char close_char
+  date_parser >>= function
+  | None -> fail "date parser"
+  | Some date ->
+    lift3
+      (fun _day_name time_or_repeat tr2 ->
+         let date, time, repetition =
+           match time_or_repeat with
+           | None -> (date, None, None)
+           | Some s -> (
+               match tr2 with
+               | None -> (
+                   match s.[0] with
+                   | ('+' | '.') as c -> (* repeat *)
+                     repetition_parser s date None c
+                   | _ ->
+                     (* time *)
+                     let time = parse_time s in
+                     (date, time, None) )
+               | Some s' ->
+                 let time = parse_time s in
+                 repetition_parser s' date time s'.[0] )
+         in
+         match typ with
+         | "Scheduled" -> Timestamp (Scheduled {date; time; repetition; active})
+         | "Deadline" -> Timestamp (Deadline {date; time; repetition; active})
+         | "Closed" -> Timestamp (Closed {date; time; repetition; active})
+         | "Clock" -> Timestamp (Clock {date; time; repetition; active})
+         | _ -> Timestamp (Date {date; time; repetition; active}) )
+      day_name_parser tr1_parser tr2_parser
+    <* char close_char
 
 (* DEADLINE: <2018-10-16 Tue>
    DEADLINE: <2008-02-10 Sun +1w>
