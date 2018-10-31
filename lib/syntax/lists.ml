@@ -1,15 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-
-type t =
-  { content: string list  (** The contents of the current item *)
-  ; items: t list
-  ; number: int option  (** Its number *)
-  ; checkbox: bool option  (** Was it checked *)
-  ; indent: int (** Indentation of the current item. *)
-  ; ordered: bool
-  }
+open Org
 
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
@@ -130,7 +122,7 @@ let parse =
   let r = ref [] in
   list_parser r 0 >>= fun result ->
   r := [];
-  return result
+  return (List result)
   <|>
   let _ = r := [] in
   fail "list"

@@ -139,7 +139,12 @@ let verbatim =
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 let emphasis =
-  choice [bold; underline; italic; strike_through] <?> "Inline emphasis"
+  peek_char_fail >>= function
+  | '*' -> bold
+  | '_' -> underline
+  | '/' -> italic
+  | '+' -> strike_through
+  | _ -> fail "Inline emphasis"
 
 let blanks = ws >>= fun s -> return (Plain s)
 
@@ -150,9 +155,9 @@ let breaklines = eols >>= fun s -> return (Break_Lines (String.length s))
 (* 2. [[search]] *)
 let link =
   let url_part =
-    string "[[" *> take_while (fun c -> c <> ']') <* optional (string "][")
+    string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
   in
-  let label_part = take_while (fun c -> c <> ']') <* string "]]" in
+  let label_part = take_while1 (fun c -> c <> ']') <* string "]]" in
   lift2
     (fun url label ->
        let url =
@@ -187,7 +192,17 @@ let target =
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
       >>= fun s -> return @@ Target s )
 
-let plain = take_while1 non_space_eol >>= fun s -> return (Plain s)
+let plain =
+  let offset = ref 0 in
+  take_while1 (fun c ->
+      offset := !offset + 1;
+      (non_space c && non_eol c && c <> '_' && c <> '^') || (!offset = 1 && (c = '_' || c <> '^'))
+    ) >>= fun s ->
+  offset := 0;
+  return (Plain s)
+  <|>
+  let _ = offset := 0 in
+  fail "plain"
 
 (* foo_{bar}, foo^{bar} *)
 let subscript, superscript =
@@ -205,10 +220,10 @@ let id = ref 0
 
 let footnote_reference =
   let name_part =
-    string "fn:" *> take_while (fun c -> c <> ':' && non_eol c)
+    string "fn:" *> take_while1 (fun c -> c <> ':' && non_eol c)
     <* optional (char ':')
   in
-  let definition_part = take_while non_space in
+  let definition_part = take_while1 non_space in
   lift2
     (fun name definition ->
        let name =
@@ -295,8 +310,11 @@ let macro =
 let entity =
   char '\\' *> take_while1 is_letter
   >>| fun s ->
-  let entity = Entity.find s in
-  Entity entity
+  try
+    let entity = Entity.find s in
+    Entity entity
+  with Not_found ->
+    Plain s
 
 let date_time close_char ~active typ =
   let open Timestamp in
@@ -404,43 +422,49 @@ let timestamp =
 (* TODO: configurable *)
 let inline_choices =
   choice
-    [ latex_fragment
-    ; timestamp
-    ; entity
-    ; macro
-    ; statistics_cookie
-    ; footnote_reference
-    ; link
-    ; link_inline
-    ; target
-    ; verbatim
-    ; code
-    ; blanks
-    ; breaklines
+    [ latex_fragment            (* '$' '\' *)
+    ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
+    ; entity                    (* '\' *)
+    ; macro                     (* '{' *)
+    ; statistics_cookie         (* '[' *)
+    ; footnote_reference        (* 'f', fn *)
+    ; link                      (* '[' [[]] *)
+    ; link_inline               (*  *)
+    ; target                    (* "<<" *)
+    ; verbatim                  (*  *)
+    ; code                      (* '=' *)
+    ; blanks                    (* ' ' *)
+    ; breaklines                (* '\n' *)
     ; emphasis
-    ; subscript
-    ; superscript
+    ; subscript                 (* '_' "_{" *)
+    ; superscript               (* '^' "^{" *)
     ; plain ]
 
 let parse =
   fix (fun inline ->
       let nested_inline = function
         | Emphasis (typ, [Plain s]) -> (
-            match parse_string inline s with
+            let parser = (many1 (choice [emphasis; plain; blanks])) in
+            match parse_string parser s with
             | Ok result -> Emphasis (typ, result)
-            | Error error -> Emphasis (typ, [Plain s]) )
+            | Error error -> Emphasis (typ, [Plain s])
+          )
         | Link {label= [Plain s]; url} -> (
-            match parse_string inline s with
+            let parser = (many1 (choice [emphasis; latex_fragment; entity; code; subscript; superscript; plain; blanks])) in
+            match parse_string parser s with
             | Ok result -> Link {label= result; url}
             | Error error -> Link {label= [Plain s]; url} )
         | Footnote_Reference {definition; name} as f -> (
+            let parser = (many1 (choice [link; link_inline; target; emphasis; latex_fragment; entity; code; subscript; superscript; plain; blanks])) in
             match definition with
             | None -> f
             | Some [Plain s] -> (
-                match parse_string inline s with
+                match parse_string parser s with
                 | Ok result -> Footnote_Reference {definition= Some result; name}
                 | Error error -> f )
-            | _ -> failwith "definition" )
+            | _ -> failwith "definition"
+          )
         | e -> e
       in
-      many inline_choices >>= fun l -> return @@ List.map nested_inline l )
+      many1 inline_choices >>= fun l ->
+      return (List.map nested_inline l) )

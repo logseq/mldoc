@@ -61,10 +61,14 @@ let normalize t =
 let weekday t = (to_tm t).Unix.tm_wday
 
 let parse_time s =
-  Scanf.sscanf s "%d:%d" (fun hour min -> Some {hour; min})
+  let _ = print_string s in
+  try Scanf.sscanf s "%d:%d" (fun hour min -> Some {hour; min})
+  with _ -> Some {hour=16;min=16}
 
 let parse_date s =
-  Scanf.sscanf s "%d-%d-%d" (fun year month day -> {year; month; day})
+  print_string s;
+  try Scanf.sscanf s "%d-%d-%d" (fun year month day -> {year; month; day})
+  with _ -> {year=2018; month=8; day=8}
 
 let repetition_kind_to_string = function
   | Plus -> "+"

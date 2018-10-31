@@ -1,6 +1,8 @@
 #use "topfind";;
 #require "str"
 #directory "_build";;
-open Org_parser;;
+open Prelude;;
+open Parsers;;
 open Inline;;
+open Org_parser;;
 let _ = Printexc.record_backtrace true;;

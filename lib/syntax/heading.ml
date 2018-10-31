@@ -1,13 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-
-type t =
-  { title: Inline.t list  (** The title as inline formatted content *)
-  ; tags: string list  (** The tags set by the user *)
-  ; marker: string option  (** TODO, DONE, and so on *)
-  ; level: int  (** The level (number of stars) -- starts at 1 *)
-  ; priority: char option  (** The optional priority *) }
+open Org
 
 (* TODO, DOING, DONE *)
 let marker = string "TODO" <|> string "DOING" <|> string "DONE"
@@ -16,12 +10,12 @@ let level = many1 @@ char '*'
 
 let priority = string "[#" *> any_char <* char ']'
 
-let seperated_tags = sep_by (char ':') (take_while (fun x -> x <> ':'))
+let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':'))
 
 let tags = char ':' *> seperated_tags
 
 (* not priority, tags, marker *)
-let title = take_while (function ':' | '[' | '\r' | '\n' -> false | _ -> true)
+let title = take_while1 (function ':' | '[' | '\r' | '\n' -> false | _ -> true)
 
 let is_blank s =
   let n = String.length s in
@@ -41,8 +35,8 @@ let parse =
       let title = match (parse_string Inline.parse title) with
         | Ok title -> title
         | Error e -> [] in
-      {level; marker; priority; title; tags} )
-    (spaces *> level <* spaces <?> "Heading level")
+      Heading {level; marker; priority; title; tags} )
+    (level <* ws <?> "Heading level")
     (optional (lex marker <?> "Heading marker"))
     (optional (lex priority <?> "Heading priority"))
     (lex title <?> "Heading title")

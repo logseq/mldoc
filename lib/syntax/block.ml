@@ -1,6 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
+open Org
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`
@@ -37,6 +38,7 @@ let parse =
     string_ci "#+begin_" *>
     non_spaces <* eol     (* name *)
     >>= fun name ->
+    (* TODO: example, src, custom *)
     end_string ("#+end_" ^ name) ~ci:true (fun s -> (String.lowercase_ascii name, clear_indents s))
   | ':' ->                      (* verbatim block *)
     verbatim (ref []) >>|

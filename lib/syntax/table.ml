@@ -1,6 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
+open Org
 
 (*
 |Foo                             | Bar                 |
@@ -12,15 +13,6 @@ open Prelude
 |--------------------------------+---------------------|
 
 *)
-
-type t = { header: row option
-         ; groups: group list}
-and
-  group = row list
-and
-  row = col list
-and
-  col = Inline.t list
 
 (* A table can has multiple groups, and each group can has multiple rows. The first row is the table header.*)
 
@@ -76,13 +68,13 @@ let parse =
   optional separated_line *>
   clear_parser_resource p (ref []) "table"
   >>| function
-  | [] -> { header = None;
-            groups = []}
+  | [] -> Table { header = None;
+                  groups = []}
   | [] :: t ->
-    { header = None;
-      groups = t }
+    Table { header = None;
+            groups = t }
   | (h1 :: t1) :: t ->
     let groups = if List.length t1 = 0 then t
       else List.concat [[t1]; t] in
-    {header = Some h1;
-     groups}
+    Table {header = Some h1;
+           groups}
