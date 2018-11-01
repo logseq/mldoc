@@ -2,7 +2,7 @@ open Angstrom
 open Prelude
 
 let is_space = function
-  | '\x20' | '\x0a' | '\x0d' | '\x09' -> true
+  | ' ' | '\009' | '\026' | '\012' -> true
   | _ -> false
 
 let non_space = not << is_space
@@ -30,6 +30,8 @@ let is_letter c =
 
 let eol = satisfy is_eol
 let eols = take_while1 is_eol
+let two_eols result = eol *> eol *> return result
+
 let line = take_till is_eol
 
 let ws = take_while1 is_space

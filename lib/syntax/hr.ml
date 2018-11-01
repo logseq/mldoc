@@ -1,5 +1,6 @@
 open Angstrom
+open Parsers
 open Org
 
-let parse = count 5 (char '-')
+let parse = optional eols *> optional ws *> count 5 (char '-')
     >>= fun _ -> return Horizontal_Rule

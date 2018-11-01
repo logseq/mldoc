@@ -65,6 +65,7 @@ let parse =
         p
         <|>
         return @@ List.rev !groups) in
+  optional eols *>
   optional separated_line *>
   clear_parser_resource p (ref []) "table"
   >>| function

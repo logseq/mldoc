@@ -49,7 +49,7 @@ and timestamp =
 
 and t =
   | Emphasis of emphasis
-  | Break_Lines of int
+  | Break_Line
   | Verbatim of string
   | Code of string
   | Plain of string
@@ -148,7 +148,12 @@ let emphasis =
 
 let blanks = ws >>= fun s -> return (Plain s)
 
-let breaklines = eols >>= fun s -> return (Break_Lines (String.length s))
+exception Double_newlines
+
+let breakline = eol >>= fun _ ->
+  peek_char_fail >>= fun c ->
+  if is_eol c then fail "double breaklines inline" (* todo, interrupt *)
+  else return Break_Line
 
 (* link *)
 (* 1. [[url][label]] *)
@@ -194,13 +199,14 @@ let target =
 
 let plain =
   scan1 false (fun state c ->
-      if (not state && (c = '_' || c <> '^')) then
+      if (not state && (c = '_' || c = '^')) then
         Some true
       else if (non_space c && non_eol c && c <> '_' && c <> '^') then
         Some true
       else
         None)
-    >>= fun (s, _state) -> return (Plain s)
+  >>= fun (s, state) ->
+  return (Plain s)
 
 (* let offset = ref 0 in
  * take_while1 (fun c ->
@@ -445,7 +451,7 @@ let inline_choices =
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
     ; blanks                    (* ' ' *)
-    ; breaklines                (* '\n' *)
+    ; breakline                (* '\n' *)
     ; emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)
@@ -477,5 +483,5 @@ let parse =
           )
         | e -> e
       in
-      many1 inline_choices >>= fun l ->
+      many1 inline_choices <* optional eols >>= fun l ->
       return (List.map nested_inline l) )

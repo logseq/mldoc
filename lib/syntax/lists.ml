@@ -5,8 +5,6 @@ open Org
 
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
-let two_newlines result = (count 2 eol >>= fun _ -> return result )
-
 let check_listitem line =
   let indent = get_indent line in
   let number =
@@ -27,7 +25,7 @@ let content_parser list_parser indent lines =
   fix (fun content_parser ->
       line >>= fun content ->
       lines := content :: !lines;
-      two_newlines ((List.rev !lines), [])
+      two_eols (List.rev !lines, [])
       <|>
       (optional eol >>= function
         | None ->
@@ -120,7 +118,7 @@ let rec list_parser items last_indent =
 
 let parse =
   let r = ref [] in
-  list_parser r 0 >>= fun result ->
+  optional eols *> list_parser r 0 >>= fun result ->
   r := [];
   return (List result)
   <|>

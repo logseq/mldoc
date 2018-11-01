@@ -10,9 +10,9 @@ let level = take_while1 (fun c -> c = '*')
 
 let priority = string "[#" *> any_char <* char ']'
 
-let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':'))
+let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':' && non_eol x))
 
-let tags = char ':' *> seperated_tags
+let tags = char ':' *> seperated_tags <* char ':'
 
 (* not priority, tags, marker *)
 let title = take_while1 (function ':' | '[' | '\r' | '\n' -> false | _ -> true)
@@ -36,7 +36,7 @@ let parse =
         | Ok title -> title
         | Error e -> [] in
       Heading {level; marker; priority; title; tags} )
-    (level <* ws <?> "Heading level")
+    (optional eols *> level <* ws <?> "Heading level")
     (optional (lex marker <?> "Heading marker"))
     (optional (lex priority <?> "Heading priority"))
     (lex title <?> "Heading title")

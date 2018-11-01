@@ -1,9 +1,10 @@
 open Angstrom
-
+open Org
 (* TODO: interrupt
    1. List
    2. Paragraph
 *)
+
 let parsers =
   let choices = choice
       [
@@ -32,3 +33,9 @@ let load_file f =
   really_input ic s 0 n;
   close_in ic;
   Bytes.to_string s
+
+(*
+let text = load_file "/tmp/test.org";;
+
+time @@ fun _ -> parse text;;
+*)
