@@ -3,34 +3,35 @@ open Parsers
 open Prelude
 open Org
 
+(* TODO: support column groups *)
+
 (*
-|Foo                             | Bar                 |
+| Foo                            | Bar                 |
 |--------------------------------+---------------------|
 | (1, 1)                         | (2, 1) and /inline/ |
 | Second line, first group       | =stuff=             |
 |--------------------------------+---------------------|
 | First line of the second group | *bold*              |
 |--------------------------------+---------------------|
+#+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
 
 *)
 
 (* A table can has multiple groups, and each group can has multiple rows. The first row is the table header.*)
 
+let boundaries_spec =
+  optional ws *> string "#+TBLFM:" *> line
+
 let separated_line =
-  optional ws *> char '|' *> take_while1 (fun c -> c = '-' || c = '+') *> char '|' *> optional eol
+  optional ws *> char '|' *> take_while1 (fun c -> c = '-' || c = '+') *> char '|' *> optional ws *> optional eol
 
 let split_into_columns s =
   String.split_on_char '|' s
   |> List.map String.trim
 
-let row_line separated =
+let row_line =
   let open String in
-  optional ws *> char '|' *>
-  (peek_char_fail >>| fun c ->
-   let sep = c = '-' in
-   separated := sep;
-   not sep)
-  *> take_till is_eol
+  optional ws *> char '|' *> take_till is_eol <* optional eol
   >>= fun line ->
   let line = trim line in
   let len = (length line - 1) in
@@ -42,17 +43,15 @@ let row_line separated =
 
 let group =
   let p rows =
-    let separated = ref false in
     fix (fun p ->
-        row_line separated >>= fun row ->
-        if ! separated then
-          return @@ List.rev !rows
-        else
+        optional separated_line >>= function
+        | None ->               (* new row *)
+          row_line >>= fun row ->
           let row = List.map (fun col ->
               result_default [Inline.Plain col] (parse_string Inline.parse col)) row in
-          (rows := row :: ! rows;
-           p)
-          <|>
+          rows := row :: !rows;
+          p <|> return @@ List.rev !rows
+        | Some _ ->             (* separated *)
           return @@ List.rev !rows
       ) in
   clear_parser_resource p (ref []) "table group"
@@ -66,8 +65,8 @@ let parse =
         <|>
         return @@ List.rev !groups) in
   optional eols *>
-  optional separated_line *>
   clear_parser_resource p (ref []) "table"
+  <* optional boundaries_spec
   >>| function
   | [] -> Table { header = None;
                   groups = []}

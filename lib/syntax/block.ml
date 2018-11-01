@@ -20,7 +20,7 @@ let clear_indents s =
 
 let verbatim lines =
   fix (fun verbatim ->
-      spaces *> char ':' *> ws *> take_till is_eol
+      spaces *> char ':' *> ws *> take_till is_eol <* optional eol
       >>= fun line ->
       lines := line :: !lines;
       verbatim
