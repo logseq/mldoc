@@ -59,7 +59,7 @@ and t =
       bar
       \end{foo} v}
   *)
-  | Drawer of string * t list  (** A drawer *)
+  | Drawer of string * string list  (** A drawer *)
   | Property_Drawer of (string * string) list  (** A property drawer *)
   | Footnote_Definition of string * Inline.t list
   (** The definition of a footnote : name and contents *)

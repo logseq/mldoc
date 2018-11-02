@@ -94,6 +94,8 @@ let peek_line = unsafe_lookahead @@ take_till (fun c -> c = '\r' || c = '\n')
 
 let peek_spaces = unsafe_lookahead @@ ws
 
+let take_till1 f = take_while1 (fun c -> not (f c))
+
 let clear_parser_resource p r error =
   p r >>= fun result ->
   r := [];

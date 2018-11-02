@@ -5,6 +5,7 @@ open Org
    2. Paragraph
 *)
 
+(* Order cares *)
 let rec interrupt_parsers =
   [
     Heading.parse             (* 100 *)
@@ -12,7 +13,7 @@ let rec interrupt_parsers =
   ; Lists.parse               (* 10 *)
   (* ; Block.parse               (\* 10 *\) *)
   ; Directive.parse           (* 10 *)
-  (* ; Drawer.parse              (\* 10 *\) *)
+  ; Drawer.parse              (* 10 *)
   (* ; Latex_env.parse           (\* 10 *\) *)
   (* ; Math.parse                (\* 2 *\) *)
   ; Hr.parse                  (* 1 *)
@@ -39,7 +40,7 @@ let load_file f =
   Bytes.to_string s
 
 (*
-let text = load_file "/tmp/test.org";;
+let text = load_file "/tmp/syntax.org";;
 
 time @@ fun _ -> parse text;;
 *)
