@@ -32,15 +32,15 @@ let parse =
     (fun level marker priority title tags ->
       let level = String.length level in
       let tags = remove is_blank tags in
-      let title = match (parse_string Inline.parse title) with
+      let title = match (parse_string Inline.parse (String.trim title)) with
         | Ok title -> title
         | Error e -> [] in
-      Heading {level; marker; priority; title; tags} )
+      [Heading {level; marker; priority; title; tags}] )
     (optional eols *> level <* ws <?> "Heading level")
     (optional (lex marker <?> "Heading marker"))
     (optional (lex priority <?> "Heading priority"))
     (lex title <?> "Heading title")
-    (optional_list (lex tags <?> "Heading tags"))
+    (optional_list (lex tags <?> "Heading tags")) <* optional eol
 
 (*
 

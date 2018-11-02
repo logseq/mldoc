@@ -5,25 +5,29 @@ open Org
    2. Paragraph
 *)
 
+let rec interrupt_parsers =
+  [
+    Heading.parse             (* 100 *)
+  ; Table.parse               (* 12 *)
+  ; Lists.parse               (* 10 *)
+  (* ; Block.parse               (\* 10 *\) *)
+  ; Directive.parse           (* 10 *)
+  (* ; Drawer.parse              (\* 10 *\) *)
+  (* ; Latex_env.parse           (\* 10 *\) *)
+  (* ; Math.parse                (\* 2 *\) *)
+  ; Hr.parse                  (* 1 *)
+  ; Comment.parse
+  ]
+
 let parsers =
-  let choices = choice
-      [
-        Heading.parse             (* 100 *)
-      ; Table.parse               (* 12 *)
-      ; Lists.parse               (* 10 *)
-      (* ; Block.parse               (\* 10 *\) *)
-      (* ; Directive.parse           (\* 10 *\) *)
-      (* ; Drawer.parse              (\* 10 *\) *)
-      (* ; Latex_env.parse           (\* 10 *\) *)
-      (* ; Math.parse                (\* 2 *\) *)
-      ; Hr.parse                  (* 1 *)
-      ; Paragraph.parse           (* 0 *)
-      ] in
+  let parsers = List.append interrupt_parsers [Paragraph.parse interrupt_parsers] in
+  let choices = choice parsers
+  in
   many1 choices
 
 let parse input =
   match parse_string parsers input with
-  | Ok result -> result
+  | Ok result -> List.concat result
   | Error err -> failwith err
 
 let load_file f =

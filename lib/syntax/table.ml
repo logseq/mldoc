@@ -68,13 +68,14 @@ let parse =
   clear_parser_resource p (ref []) "table"
   <* optional boundaries_spec
   >>| function
-  | [] -> Table { header = None;
-                  groups = []}
+  | [] ->
+    [Table { header = None;
+             groups = []}]
   | [] :: t ->
-    Table { header = None;
-            groups = t }
+    [Table { header = None;
+             groups = t }]
   | (h1 :: t1) :: t ->
     let groups = if List.length t1 = 0 then t
       else List.concat [[t1]; t] in
-    Table {header = Some h1;
-           groups}
+    [Table {header = Some h1;
+            groups}]

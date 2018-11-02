@@ -150,10 +150,7 @@ let blanks = ws >>= fun s -> return (Plain s)
 
 exception Double_newlines
 
-let breakline = eol >>= fun _ ->
-  peek_char_fail >>= fun c ->
-  if is_eol c then fail "double breaklines inline" (* todo, interrupt *)
-  else return Break_Line
+let breakline = eol >>= fun _ -> fail "breakline"
 
 (* link *)
 (* 1. [[url][label]] *)
@@ -483,5 +480,6 @@ let parse =
           )
         | e -> e
       in
-      many1 inline_choices <* optional eols >>= fun l ->
+      many1 inline_choices >>= fun l ->
+      (* TODO: append not tail recursive *)
       return (List.map nested_inline l) )

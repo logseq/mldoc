@@ -5,6 +5,15 @@ let identity x = x
 (* list *)
 let remove p = List.filter (fun x -> not (p x))
 
+let join separator l =
+  let rec aux acc = function
+    | [] -> acc
+    | h :: [] ->
+      h :: acc
+    | h :: t ->
+      h :: (separator :: aux acc t) in
+  aux [] l
+
 let take n l =
   let rec loop n acc = function
     | h :: t when n > 0 ->

@@ -120,7 +120,7 @@ let parse =
   let r = ref [] in
   optional eols *> list_parser r 0 >>= fun result ->
   r := [];
-  return (List result)
+  return [List result]
   <|>
   let _ = r := [] in
   fail "list"

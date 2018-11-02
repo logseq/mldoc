@@ -65,5 +65,6 @@ and t =
   (** The definition of a footnote : name and contents *)
   | Horizontal_Rule  (** Horizontal rule *)
   | Table of table  (** A block *)
+  | Comment of string           (** Comment *)
 
 and blocks = t list
