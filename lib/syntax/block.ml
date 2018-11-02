@@ -23,22 +23,34 @@ let verbatim lines =
       (if !lines = [] then
          fail "verbatim"
        else
-         return !lines))
+         return (List.rev !lines)))
+
+let block_name_options_parser =
+  lift2 (fun name options ->
+      match options with
+      | None | Some "" -> (name, None)
+      | _ -> (name, options))
+    (string_ci "#+begin_" *> non_spaces)
+    (optional ws *> optional line)
+  <* (optional eol)
 
 let parse =
-  spaces *> peek_char_fail
+  ws *> peek_char_fail
   >>= function
   | '#' ->
-    string_ci "#+begin_" *>
-    non_spaces <* eol     (* name *)
-    >>= fun name ->
-    (* TODO: example, src, custom *)
+    block_name_options_parser
+    >>= fun (name, options) ->
     between_lines (fun line ->
-        let prefix = "#+end_" ^ name in
+        let prefix = "#+END_" ^ name in
         starts_with line prefix) "block"
-    >>= fun lines ->
-    return (String.lowercase_ascii name, lines)
+    >>| fun lines ->
+    let name = String.lowercase_ascii name in
+    (match name with
+     | "src" -> [Src {lines; language = options}]
+     | "quote" -> [Quote lines]
+     | "example" -> [Example lines]
+     | _ -> [Custom (name, options, lines)])
   | ':' ->                      (* verbatim block *)
     verbatim (ref []) >>|
-    fun lines -> ("", List.rev lines)
+    fun lines -> [Example lines]
   | _ -> fail "block"

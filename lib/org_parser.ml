@@ -11,7 +11,7 @@ let rec interrupt_parsers =
     Heading.parse
   ; Table.parse
   ; Lists.parse
-  (* ; Block.parse *)
+  ; Block.parse
   ; Directive.parse
   ; Drawer.parse
   ; Latex_env.parse
