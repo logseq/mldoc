@@ -52,6 +52,16 @@ let print_bool = function
   | _ -> print_string "false"
 
 (* string *)
+let starts_with s check =
+  let open String in
+  if length s >= length check then
+    if sub s 0 (length check) = check then
+      true
+    else
+      false
+  else
+    false
+
 let is_ordered s =
   Str.string_match (Str.regexp "[0-9]+\\.") s 0
 
@@ -73,6 +83,10 @@ let get_indent line =
 let result_default default = function
   | Ok result -> result
   | Error e -> default
+
+let clear_indents s =
+  let lines = String.split_on_char '\n' s in
+  List.map String.trim lines
 
 (* TODO: only used in dev profile. *)
 let time f =

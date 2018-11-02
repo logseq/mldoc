@@ -13,11 +13,6 @@ open Org
    2. Verbatim, each line starts with `:`.
 *)
 
-let clear_indents s =
-  let lines = String.split_on_char '\n' s in
-  let lines = List.map String.trim lines in
-  take (List.length lines - 1) lines
-
 let verbatim lines =
   fix (fun verbatim ->
       spaces *> char ':' *> ws *> take_till is_eol <* optional eol
@@ -38,7 +33,11 @@ let parse =
     non_spaces <* eol     (* name *)
     >>= fun name ->
     (* TODO: example, src, custom *)
-    end_string ("#+end_" ^ name) ~ci:true (fun s -> (String.lowercase_ascii name, clear_indents s))
+    between_lines (fun line ->
+        let prefix = "#+end_" ^ name in
+        starts_with line prefix) "block"
+    >>= fun lines ->
+    return (String.lowercase_ascii name, lines)
   | ':' ->                      (* verbatim block *)
     verbatim (ref []) >>|
     fun lines -> ("", List.rev lines)

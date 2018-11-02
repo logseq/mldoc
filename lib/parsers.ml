@@ -103,3 +103,15 @@ let clear_parser_resource p r error =
   <|>
   let _ = r := [] in
   fail error
+
+let between_lines end_check error =
+  let p lines =
+    fix (fun body_parser ->
+        optional eols *> take_till1 is_eol <* optional eols >>= fun line ->
+        let line = String.trim line in
+        if end_check line then
+          return (List.rev !lines)
+        else
+          let _ = lines := line :: !lines in
+          body_parser) in
+  clear_parser_resource p (ref []) error

@@ -53,7 +53,8 @@ and t =
       #+begin_name opts
       DATA
       #+end *)
-  | Latex_Environment of string * string * string list
+  | Latex_Fragment of Inline.latex_fragment
+  | Latex_Environment of string * string option * string list
   (** Latex environment. Of the form
       {v \begin{foo}
       bar
