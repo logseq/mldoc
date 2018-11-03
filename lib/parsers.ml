@@ -32,8 +32,6 @@ let eol = satisfy is_eol
 let eols = take_while1 is_eol
 let two_eols result = eol *> eol *> return result
 
-let line = take_till is_eol
-
 let ws = take_while1 is_space
 
 let spaces = skip_while is_space
@@ -95,6 +93,8 @@ let peek_line = unsafe_lookahead @@ take_till (fun c -> c = '\r' || c = '\n')
 let peek_spaces = unsafe_lookahead @@ ws
 
 let take_till1 f = take_while1 (fun c -> not (f c))
+
+let line = take_till1 is_eol
 
 let clear_parser_resource p r error =
   p r >>= fun result ->

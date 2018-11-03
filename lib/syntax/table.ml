@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-open Org
+open Types
 
 (* TODO: support column groups *)
 

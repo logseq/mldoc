@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-open Org
+open Types
 
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 

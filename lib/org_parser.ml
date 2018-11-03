@@ -1,5 +1,5 @@
 open Angstrom
-open Org
+open Types
 (* TODO: interrupt
    1. [ ] List
    2. [X] Paragraph

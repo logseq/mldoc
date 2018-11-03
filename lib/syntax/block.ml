@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-open Org
+open Types
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`
@@ -11,6 +11,10 @@ open Org
    #+END_x
 
    2. Verbatim, each line starts with `:`.
+*)
+
+(* TODO:
+   1. Code block supports reference (name attribute).
 *)
 
 let verbatim lines =

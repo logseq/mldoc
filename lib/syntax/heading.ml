@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-open Org
+open Types
 
 (* TODO, DOING, DONE *)
 let marker = string "TODO" <|> string "DOING" <|> string "DONE"

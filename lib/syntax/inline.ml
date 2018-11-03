@@ -79,6 +79,8 @@ let delims =
 
 let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
 
+let plain_delims = ['*'; '_'; '/'; '+'; '~'; '='; '['; '<'; '{'; '$']
+
 let prev = ref None
 
 let emphasis_token c =
@@ -194,16 +196,36 @@ let target =
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
       >>= fun s -> return @@ Target s )
 
+let in_plain_delims c =
+  List.exists (fun d -> c = d) plain_delims
+
 let plain =
-  scan1 false (fun state c ->
-      if (not state && (c = '_' || c = '^')) then
-        Some true
-      else if (non_space c && non_eol c && c <> '_' && c <> '^') then
-        Some true
-      else
-        None)
-  >>= fun (s, state) ->
-  return (Plain s)
+  (scan1 false (fun state c ->
+       if (not state && (c = '_' || c = '^')) then
+         Some true
+       else if (non_eol c && not (in_plain_delims c) ) then
+         Some true
+       else
+         None)
+   >>= fun (s, state) ->
+   return (Plain s))
+  <|>
+  (line >>= fun s -> return (Plain s))
+
+(* TODO: without reverse *)
+let concat_plains inlines =
+  let l = List.fold_left (fun acc inline ->
+      match inline with
+      | Plain s ->
+        (match acc with
+         | [] -> [Plain s]
+         | (Plain s') :: tl ->
+           (Plain (s' ^ s)) :: tl
+         | _ ->
+           Plain s :: acc)
+      | other -> other :: acc
+    ) [] inlines in
+  List.rev l
 
 (* let offset = ref 0 in
  * take_while1 (fun c ->
@@ -253,11 +275,13 @@ let statistics_cookie =
     (take_while1 (fun c ->
          if c = '/' || c = '%' || is_digit c then true else false ))
   >>= fun s ->
-  let cookie =
-    try Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) with _ ->
-      Scanf.sscanf s "%d%%" (fun n -> Percent n)
-  in
-  return (Cookie cookie)
+  try let cookie = Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) in
+    return (Cookie cookie)
+  with _ ->
+  try let cookie = Scanf.sscanf s "%d%%" (fun n -> Percent n) in
+    return (Cookie cookie)
+  with _ ->
+    fail "statistics_cookie"
 
 (*
    1. $content$, TeX delimiters for inline math.
@@ -447,12 +471,13 @@ let inline_choices =
     ; target                    (* "<<" *)
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
-    ; blanks                    (* ' ' *)
+    (* ; blanks                    (\* ' ' *\) *)
     ; breakline                (* '\n' *)
     ; emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)
     ; plain ]
+
 
 let parse =
   fix (fun inline ->
@@ -481,5 +506,4 @@ let parse =
         | e -> e
       in
       many1 inline_choices >>= fun l ->
-      (* TODO: append not tail recursive *)
       return (List.map nested_inline l) )
