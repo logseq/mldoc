@@ -2047,4 +2047,5 @@ The source code to generate that is (+ a replacement on t/nil)
 : (mapcar (lambda (x) (if (not (stringp x)) (insert (format "{ name = %S; latex = %S; latex_mathp = %S; html = %S; ascii = %S; unicode = %S };\n" (car x) (cadr x) (caddr x) (cadddr x) (cadddr (cdr x)) (cadddr (cdddr x)))))) org-entities)
 *)
 
+(* TODO: Performance *)
 let find name = List.find (fun x -> x.name = name) data

@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-open Types
+open Org
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`

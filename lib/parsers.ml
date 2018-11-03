@@ -19,8 +19,6 @@ let is_hex = function
   | '0' .. '9' | 'a' .. 'f' | 'A' .. 'F' -> true
   | _ -> false
 
-let is_digit = function '0' .. '9' -> true | _ -> false
-
 let digits = take_while1 is_digit
 
 let is_uppercase c = 'A' <= c && c <= 'Z'

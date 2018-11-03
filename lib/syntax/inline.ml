@@ -273,7 +273,7 @@ let footnote_reference =
 let statistics_cookie =
   between_char '[' ']'
     (take_while1 (fun c ->
-         if c = '/' || c = '%' || is_digit c then true else false ))
+         if c = '/' || c = '%' || Prelude.is_digit c then true else false ))
   >>= fun s ->
   try let cookie = Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) in
     return (Cookie cookie)

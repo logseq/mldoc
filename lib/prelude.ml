@@ -62,8 +62,17 @@ let starts_with s check =
   else
     false
 
+let is_digit = function '0' .. '9' -> true | _ -> false
+
+let explode s =
+  let rec exp i l =
+    if i < 0 then l else exp (i - 1) (s.[i] :: l) in
+  exp (String.length s - 1) []
+
 let is_ordered s =
-  Str.string_match (Str.regexp "[0-9]+\\.") s 0
+  let chars = explode s in
+  is_digit(String.get s 0) &&
+  List.for_all (fun c -> is_digit c || c = '.') chars
 
 let get_ordered_number s =
   try Scanf.sscanf s "%d. " (fun i -> Some i) with _ -> None

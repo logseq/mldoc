@@ -1,6 +1,6 @@
 open Angstrom
 open Parsers
-open Types
+open Org
 
 let parse =
   optional eols *>
