@@ -35,17 +35,19 @@ let block_name_options_parser =
       | None | Some "" -> (name, None)
       | _ -> (name, options))
     (string_ci "#+begin_" *> non_spaces)
-    (optional ws *> optional line)
+    (spaces *> optional line)
   <* (optional eol)
 
+(* TODO: abstract, sidebar *)
 let parse =
-  ws *> peek_char_fail
+  spaces *> peek_char_fail
   >>= function
   | '#' ->
     block_name_options_parser
     >>= fun (name, options) ->
+    print_endline name;
     between_lines (fun line ->
-        let prefix = "#+END_" ^ name in
+        let prefix = "#+end_" ^ name in
         starts_with line prefix) "block"
     >>| fun lines ->
     let name = String.lowercase_ascii name in

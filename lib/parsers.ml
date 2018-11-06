@@ -86,9 +86,10 @@ let end_string s ?ci:(ci=false) f =
     else
       fail "end_string"
 
-let peek_line = unsafe_lookahead @@ take_till (fun c -> c = '\r' || c = '\n')
+let peek_line = take_till (fun c -> c = '\r' || c = '\n')
+                |> unsafe_lookahead
 
-let peek_spaces = unsafe_lookahead @@ ws
+let peek_spaces = ws |> unsafe_lookahead
 
 let take_till1 f = take_while1 (fun c -> not (f c))
 

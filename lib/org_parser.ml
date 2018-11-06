@@ -1,16 +1,30 @@
 open Angstrom
 open Org
-(* TODO: interrupt
-   1. [ ] List
-   2. [X] Paragraph
-*)
+
+let list_content_parsers =
+  many1 (choice [
+      Table.parse
+    ; Block.parse
+    ; Directive.parse
+    ; Drawer.parse
+    ; Latex_env.parse
+    ; Hr.parse
+    ; Comment.parse
+    ; Paragraph.parse [Table.parse
+                      ; Block.parse
+                      ; Directive.parse
+                      ; Drawer.parse
+                      ; Latex_env.parse
+                      ; Hr.parse
+                      ; Comment.parse]
+    ])
 
 (* Orders care *)
-let rec interrupt_parsers =
+let interrupt_parsers =
   [
     Heading.parse
   ; Table.parse
-  ; Lists.parse
+  ; Lists.parse list_content_parsers
   ; Block.parse
   ; Directive.parse
   ; Drawer.parse

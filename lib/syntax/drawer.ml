@@ -24,7 +24,7 @@ let end_mark = ":END:"
 
 let parse =
   let drawer_name =
-    optional ws *>
+    spaces *>
     between_char ':' ':' (take_while1 (fun c -> c <> ':')) <* eol in
   let drawer_body =
     between_lines (fun line -> line = end_mark) "drawer body" in

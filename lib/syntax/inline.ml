@@ -421,7 +421,7 @@ let general_timestamp =
   let closed_parser typ = date_time ']' ~active:false typ in
   let parse rest typ =
     (* scheduled *)
-    string rest *> optional ws *> any_char
+    string rest *> spaces *> any_char
     >>= function
     | '<' -> active_parser typ
     | '[' -> closed_parser typ

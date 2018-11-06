@@ -17,5 +17,5 @@ open Org
 let parse =
   optional eols *>
   lift2 (fun name value -> [Directive (name, value)])
-    (between_string "#+" ":" (take_while1 (fun c -> c <> ':')))
-    (optional ws *> line)
+    (between_string "#+" ":" (take_while1 (fun c -> c <> ':' && non_eol c)))
+    (spaces *> line)

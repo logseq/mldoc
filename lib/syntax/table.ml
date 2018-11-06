@@ -20,10 +20,10 @@ open Org
 (* A table can has multiple groups, and each group can has multiple rows. The first row is the table header.*)
 
 let boundaries_spec =
-  optional ws *> string "#+TBLFM:" *> line
+  spaces *> string "#+TBLFM:" *> line
 
 let separated_line =
-  optional ws *> char '|' *> take_while1 (fun c -> c = '-' || c = '+') *> char '|' *> optional ws *> optional eol
+  spaces *> char '|' *> take_while1 (fun c -> c = '-' || c = '+') *> char '|' *> spaces *> optional eol
 
 let split_into_columns s =
   String.split_on_char '|' s
@@ -31,7 +31,7 @@ let split_into_columns s =
 
 let row_line =
   let open String in
-  optional ws *> char '|' *> take_till is_eol <* optional eol
+  spaces *> char '|' *> take_till is_eol <* optional eol
   >>= fun line ->
   let line = trim line in
   let len = (length line - 1) in

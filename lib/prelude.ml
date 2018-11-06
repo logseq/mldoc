@@ -55,7 +55,7 @@ let print_bool = function
 let starts_with s check =
   let open String in
   if length s >= length check then
-    if sub s 0 (length check) = check then
+    if String.lowercase_ascii (sub s 0 (length check)) = String.lowercase_ascii check then
       true
     else
       false

@@ -41,7 +41,7 @@ let env_name_options_parser =
   <* eol
 
 let parse =
-  optional eols *> optional ws *>
+  optional eols *> spaces *>
   peek_char_fail >>= function
   | '\b' ->                      (* block *)
     env_name_options_parser >>= fun (name, options) ->

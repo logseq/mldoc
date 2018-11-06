@@ -21,35 +21,36 @@ let check_listitem line =
     else
       (indent, false, None)
 
-let content_parser list_parser indent lines =
+let content_parser list_parser content_parsers indent lines =
   fix (fun content_parser ->
-      line >>= fun content ->
+      take_till is_eol <* optional eol
+      >>= fun content ->
       lines := content :: !lines;
-      two_eols (List.rev !lines, [])
+      two_eols (List.rev !lines, []) (* two newlines end this list *)
       <|>
-      (optional eol >>= function
+      (peek_char >>= function
         | None ->
           return (List.rev !lines, [])
-        | Some eol -> peek_char >>= function
-          | None -> return ((List.rev !lines), [])
-          | Some c ->
-            if is_space c then (
-              peek_line >>= fun content ->
-              let (indent', is_item, number) = check_listitem content in
-              if is_item then (
-                if indent' < indent then
-                  return @@ (List.rev !lines, [])
-                else if indent' = indent then
-                  return @@ (List.rev !lines, [])
-                else            (* list item child *)
-                  list_parser (ref []) indent' >>= fun items ->
-                  return @@ (List.rev !lines, items)
-              ) else (
-                line >>= fun content ->
-                lines := content :: !lines;
-                content_parser))
-            else (
-              return ((List.rev !lines), []))))
+        | Some c ->
+          if is_eol c then (
+            lines := "\n" :: !lines;
+            eol *> content_parser
+          )
+          else if is_space c then (
+            peek_line >>= fun content ->
+            let (indent', is_item, number) = check_listitem content in
+            if is_item then (
+              if indent' <= indent then (* breakout, another item or a new list. *)
+                return @@ (List.rev !lines, [])
+              else                      (* list item child *)
+                list_parser content_parsers (ref []) indent' >>= fun items ->
+                return @@ (List.rev !lines, items)
+            ) else (                    (* content of current item *)
+              skip_while (fun c -> is_eol c) *> optional eol *> content_parser))
+          else (
+            return (List.rev !lines, [])))
+      <|>
+      return (List.rev !lines, []))
 
 let terminator items =
   if !items = [] then
@@ -82,20 +83,26 @@ let checkbox_parser =
   <|>
   return None
 
-let rec list_parser items last_indent =
+let rec list_parser content_parsers items last_indent =
   fix (fun list ->
       (indent_parser >>= fun indent ->
        if last_indent > indent then
-         terminator items
+         terminator items       (* breakout *)
        else
          let format_checkbox_parser = lift2 (fun format checkbox ->
              (format, checkbox))
              (non_spaces <* spaces)
              (checkbox_parser <* spaces) in
          let content_parser number checkbox =
-           content_parser list_parser indent (ref []) >>= fun (content, children) ->
+           content_parser list_parser content_parsers indent (ref []) >>= fun (content, children) ->
            let ordered =
              match number with Some _ -> true | None -> false
+           in
+           let content = List.map String.trim content in
+           let content = String.concat "\n" content in
+           let content = match parse_string content_parsers content with
+             | Ok result -> List.concat result
+             | Error _e -> []
            in
            let item = {content; items=children; number; checkbox; indent; ordered} in
            items := item :: !items;
@@ -112,13 +119,13 @@ let rec list_parser items last_indent =
              | None ->
                content_parser (Some 0) checkbox)
           | _ ->
-            terminator items)
+            terminator items)   (* TODO: support other ordered formats *)
          <|>
          terminator items))
 
-let parse =
+let parse content_parsers =
   let r = ref [] in
-  optional eols *> list_parser r 0 >>= fun result ->
+  optional eols *> list_parser content_parsers r 0 >>= fun result ->
   r := [];
   return [List result]
   <|>
@@ -201,9 +208,3 @@ gives
 #+END_QUOTE
 
 *)
-
-(* not works *)
-(* parse_string parse "1. [ ] Not done item
- * 2. [X] Done item
- *   - great"
- * ;; *)

@@ -6,8 +6,8 @@ type heading =
   ; priority: char option  (** The optional priority *) }
 
 and list_item =
-  { content: string list  (** The contents of the current item *)
-  (* ; items: t list *)
+  { content: t list  (** The contents of the current item *)
+  (* ; content: t list *)
   ; items: list_item list
   ; number: int option  (** Its number *)
   ; checkbox: bool option  (** Was it checked *)
