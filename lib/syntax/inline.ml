@@ -140,6 +140,22 @@ let verbatim =
 
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
+let in_plain_delims c =
+  List.exists (fun d -> c = d) plain_delims
+
+let plain =
+  (scan1 false (fun state c ->
+       if (not state && (c = '_' || c = '^')) then
+         Some true
+       else if (non_eol c && not (in_plain_delims c) ) then
+         Some true
+       else
+         None)
+   >>= fun (s, state) ->
+   return (Plain s))
+  <|>
+  (line >>= fun s -> return (Plain s))
+
 let emphasis =
   peek_char_fail >>= function
   | '*' -> bold
@@ -148,9 +164,21 @@ let emphasis =
   | '+' -> strike_through
   | _ -> fail "Inline emphasis"
 
-let blanks = ws >>= fun s -> return (Plain s)
-
-exception Double_newlines
+let nested_emphasis =
+  let rec aux_nested_emphasis = function
+    | Plain s ->
+      Plain s
+    | Emphasis (typ, [Plain s]) as e ->
+      let parser = (many1 (choice [emphasis; plain])) in
+      (match parse_string parser s with
+       | Ok [Plain _] -> e
+       | Ok result -> Emphasis (typ,
+                                List.map aux_nested_emphasis result)
+       | Error error -> e)
+    | _ ->
+      failwith "nested_emphasis" in
+  emphasis >>= fun e ->
+  return (aux_nested_emphasis e)
 
 let breakline = eol >>= fun _ -> fail "breakline"
 
@@ -195,22 +223,6 @@ let target =
   between_string "<<" ">>"
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
       >>= fun s -> return @@ Target s )
-
-let in_plain_delims c =
-  List.exists (fun d -> c = d) plain_delims
-
-let plain =
-  (scan1 false (fun state c ->
-       if (not state && (c = '_' || c = '^')) then
-         Some true
-       else if (non_eol c && not (in_plain_delims c) ) then
-         Some true
-       else
-         None)
-   >>= fun (s, state) ->
-   return (Plain s))
-  <|>
-  (line >>= fun s -> return (Plain s))
 
 (* TODO: without reverse *)
 let concat_plains inlines =
@@ -471,30 +483,22 @@ let inline_choices =
     ; target                    (* "<<" *)
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
-    (* ; blanks                    (\* ' ' *\) *)
     ; breakline                (* '\n' *)
-    ; emphasis
+    ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)
     ; plain ]
 
-
 let parse =
   fix (fun inline ->
       let nested_inline = function
-        | Emphasis (typ, [Plain s]) -> (
-            let parser = (many1 (choice [emphasis; plain; blanks])) in
-            match parse_string parser s with
-            | Ok result -> Emphasis (typ, result)
-            | Error error -> Emphasis (typ, [Plain s])
-          )
         | Link {label= [Plain s]; url} -> (
-            let parser = (many1 (choice [emphasis; latex_fragment; entity; code; subscript; superscript; plain; blanks])) in
+            let parser = (many1 (choice [nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
             match parse_string parser s with
             | Ok result -> Link {label= result; url}
             | Error error -> Link {label= [Plain s]; url} )
         | Footnote_Reference {definition; name} as f -> (
-            let parser = (many1 (choice [link; link_inline; target; emphasis; latex_fragment; entity; code; subscript; superscript; plain; blanks])) in
+            let parser = (many1 (choice [link; link_inline; target; nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
             match definition with
             | None -> f
             | Some [Plain s] -> (
