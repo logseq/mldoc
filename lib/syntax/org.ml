@@ -3,20 +3,19 @@ type heading =
   ; tags: string list  (** The tags set by the user *)
   ; marker: string option  (** TODO, DONE, and so on *)
   ; level: int  (** The level (number of stars) -- starts at 1 *)
-  ; priority: char option  (** The optional priority *) }
+  ; priority: char option  (** The optional priority *) } [@@deriving yojson]
 
 and list_item =
-  { content: t list  (** The contents of the current item *)
-  (* ; content: t list *)
-  ; items: list_item list
-  ; number: int option  (** Its number *)
-  ; checkbox: bool option  (** Was it checked *)
-  ; indent: int (** Indentation of the current item. *)
-  ; ordered: bool
-  }
+    { content: t list  (** The contents of the current item *)
+    (* ; content: t list *)
+    ; items: list_item list
+    ; number: int option  (** Its number *)
+    ; checkbox: bool option  (** Was it checked *)
+    ; indent: int (** Indentation of the current item. *)
+    ; ordered: bool} [@@deriving yojson]
 
 and table = { header: row option
-            ; groups: group list}
+            ; groups: group list} [@@deriving yojson]
 and
   group = row list
 and
@@ -26,13 +25,13 @@ and
 
 (** {2 Code blocks} *)
 and code_block =
-  { lines: string list
-  ; language: string option (** The language the code is written in *)
-  }
+    { lines: string list
+    ; language: string option (** The language the code is written in *)
+    } [@@deriving yojson]
 (** Code blocks *)
 
 and t =
-  | Paragraph of Inline.t list  (** A paragraph containing only inline text *)
+    | Paragraph of Inline.t list  (** A paragraph containing only inline text *)
   | Heading of heading  (** A heading *)
   | List of list_item list  (** A list [item] *)
   | Directive of string * string  (** A directive [name, value] *)
@@ -63,5 +62,6 @@ and t =
   | Horizontal_Rule  (** Horizontal rule *)
   | Table of table  (** A block *)
   | Comment of string           (** Comment *)
+[@@deriving yojson]
 
-and blocks = t list
+and blocks = t list [@@deriving yojson]

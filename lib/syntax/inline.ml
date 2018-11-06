@@ -16,39 +16,41 @@ open Bigstringaf
 *)
 
 module Macro = struct
-  type t = {name: string; arguments: string list}
+  type t = {name: string; arguments: string list} [@@deriving yojson]
 end
 
-type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list
+type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list [@@deriving yojson]
 
-and footnote_reference = {name: string; definition: t list option}
+and footnote_reference = {name: string; definition: t list option} [@@deriving yojson]
 
-and url = File of string | Search of string | Complex of complex
+and url = File of string | Search of string | Complex of complex [@@deriving yojson]
 
-and complex = {protocol: string; link: string}
+and complex = {protocol: string; link: string} [@@deriving yojson]
 
-and link = {url: url; label: t list}
+and link = {url: url; label: t list} [@@deriving yojson]
 
 (** {2 Cookies} *)
 
 (** Cookies are a way to indicate the progress of a task.
     They can be of two form : percentage or absolute value *)
 and stats_cookie =
-  | Percent of int
+    Percent of int
   | Absolute of int * int  (** current, max *)
+[@@deriving yojson]
 
-and latex_fragment = Inline of string | Displayed of string
+and latex_fragment = Inline of string | Displayed of string [@@deriving yojson]
 
 and timestamp =
-  | Scheduled of Timestamp.t
+    Scheduled of Timestamp.t
   | Deadline of Timestamp.t
   | Date of Timestamp.t
   | Closed of Timestamp.t
   | Clock of Timestamp.t
   | Range of Timestamp.range
+[@@deriving yojson]
 
 and t =
-  | Emphasis of emphasis
+    Emphasis of emphasis
   | Break_Line
   | Verbatim of string
   | Code of string
@@ -63,6 +65,7 @@ and t =
   | Macro of Macro.t
   | Entity of Entity.t
   | Timestamp of timestamp
+[@@deriving yojson]
 
 (* emphasis *)
 let delims =

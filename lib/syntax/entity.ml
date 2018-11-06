@@ -5,6 +5,7 @@ type t =
   ; html: string
   ; ascii: string
   ; unicode: string }
+[@@deriving yojson]
 
 let data =
   [ { name= "Agrave"

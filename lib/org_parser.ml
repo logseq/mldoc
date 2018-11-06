@@ -43,6 +43,9 @@ let parse input =
   | Ok result -> List.concat result
   | Error err -> failwith err
 
+let ast_to_json ast =
+  Org.blocks_to_yojson ast |> Yojson.Safe.to_string
+
 let load_file f =
   let ic = open_in f in
   let n = in_channel_length ic in

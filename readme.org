@@ -18,7 +18,7 @@
       make
     #+END_SRC
 
-** TODOS [8/12]
+** Parsing todos [8/12]
 *** TODO Heading [5/6]
     1. [X] level
     2. [X] marker
@@ -72,3 +72,7 @@
 
 *** TODO Quoting
 *** TODO TOC
+
+** Export [1/2]
+   1. [X] json
+   2. [ ] html

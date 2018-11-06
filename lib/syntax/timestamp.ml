@@ -1,14 +1,14 @@
 open Prelude
 
-type date = {year: int; month: int; day: int}
+type date = {year: int; month: int; day: int} [@@deriving yojson]
 
-type time = {hour: int; min: int}
+type time = {hour: int; min: int} [@@deriving yojson]
 
-type repetition_kind = Plus | DoublePlus | Dotted
+type repetition_kind = Plus | DoublePlus | Dotted [@@deriving yojson]
 
-type t = {date: date; time: time option; repetition: (repetition_kind * date) option; active: bool}
+type t = {date: date; time: time option; repetition: (repetition_kind * date) option; active: bool} [@@deriving yojson]
 
-type range = {start: t; stop: t}
+type range = {start: t; stop: t} [@@deriving yojson]
 
 let year t = t.date.year
 

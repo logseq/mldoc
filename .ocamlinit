@@ -1,5 +1,6 @@
 #use "topfind";;
-#require "str"
+#require "str";;
+#require "ppx_deriving_yojson";;
 #directory "_build";;
 open Angstrom;;
 open Prelude;;
