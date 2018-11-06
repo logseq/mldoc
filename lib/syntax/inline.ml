@@ -483,7 +483,7 @@ let inline_choices =
     ; target                    (* "<<" *)
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
-    ; breakline                (* '\n' *)
+    ; breakline                 (* '\n' *)
     ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)

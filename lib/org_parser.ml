@@ -10,7 +10,7 @@ let list_content_parsers =
     ; Latex_env.parse
     ; Hr.parse
     ; Comment.parse
-    ; Paragraph.parse [Table.parse
+    ; Paragraph.parse [ Table.parse
                       ; Block.parse
                       ; Directive.parse
                       ; Drawer.parse
@@ -21,8 +21,7 @@ let list_content_parsers =
 
 (* Orders care *)
 let interrupt_parsers =
-  [
-    Heading.parse
+  [ Heading.parse
   ; Table.parse
   ; Lists.parse list_content_parsers
   ; Block.parse

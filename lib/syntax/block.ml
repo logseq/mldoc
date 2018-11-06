@@ -38,14 +38,13 @@ let block_name_options_parser =
     (spaces *> optional line)
   <* (optional eol)
 
-(* TODO: abstract, sidebar *)
+(* TODO: abstract, sidebar, note, tip, left, right, center *)
 let parse =
   spaces *> peek_char_fail
   >>= function
   | '#' ->
     block_name_options_parser
     >>= fun (name, options) ->
-    print_endline name;
     between_lines (fun line ->
         let prefix = "#+end_" ^ name in
         starts_with line prefix) "block"

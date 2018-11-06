@@ -2042,10 +2042,14 @@ let data =
     ; ascii= "[lozenge]"
     ; unicode= "◊" } ]
 
+let data_tbl =
+  let tbl = Hashtbl.create 1000 in
+  let _ = List.iter (fun entity -> Hashtbl.add tbl entity.name entity) data in
+  tbl
+
 (*
 The source code to generate that is (+ a replacement on t/nil)
 : (mapcar (lambda (x) (if (not (stringp x)) (insert (format "{ name = %S; latex = %S; latex_mathp = %S; html = %S; ascii = %S; unicode = %S };\n" (car x) (cadr x) (caddr x) (cadddr x) (cadddr (cdr x)) (cadddr (cdddr x)))))) org-entities)
 *)
 
-(* TODO: Performance *)
-let find name = List.find (fun x -> x.name = name) data
+let find name = Hashtbl.find data_tbl name

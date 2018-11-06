@@ -1,0 +1,7 @@
+(executable
+ (name        bench)
+ (libraries angstrom org_parser core core_bench))
+
+(alias
+  (name bench)
+  (deps bench.exe))

@@ -1,7 +1,7 @@
 DUNE ?= dune
 
 all:
-	$(DUNE) build @install @JS
+	$(DUNE) build @install @JS @bench
 
 check: tests
 

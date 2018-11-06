@@ -18,9 +18,8 @@
       make
     #+END_SRC
 
-** TODOS
-
-*** Heading [5/6]
+** TODOS [8/12]
+*** TODO Heading [5/6]
     1. [X] level
     2. [X] marker
     3. [X] priority
@@ -28,7 +27,7 @@
     5. [X] tags
     6. [ ] statistics cookie
 
-*** Markup (Inline) [14/14]
+*** DONE Markup (Inline) [14/14]
     1. [X] Latex fragment
     2. [X] timestamp
     3. [X] entity
@@ -48,7 +47,7 @@
     13. [X] subscript
     14. [X] superscript
 
-*** Table [1/2]
+*** TODO Table [1/2]
     1. [X] preliminary support
     2. [ ] column groups
 
@@ -72,3 +71,4 @@
 *** DONE Latex environment
 
 *** TODO Quoting
+*** TODO TOC
