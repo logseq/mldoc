@@ -38,24 +38,67 @@ let block_name_options_parser =
     (spaces *> optional line)
   <* (optional eol)
 
-(* TODO: abstract, sidebar, note, tip, left, right, center *)
-let parse =
-  spaces *> peek_char_fail
-  >>= function
-  | '#' ->
-    block_name_options_parser
-    >>= fun (name, options) ->
-    between_lines (fun line ->
-        let prefix = "#+end_" ^ name in
-        starts_with line prefix) "block"
-    >>| fun lines ->
-    let name = String.lowercase_ascii name in
-    (match name with
-     | "src" -> [Src {lines; language = options}]
-     | "quote" -> [Quote lines]
-     | "example" -> [Example lines]
-     | _ -> [Custom (name, options, lines)])
-  | ':' ->                      (* verbatim block *)
-    verbatim (ref []) >>|
-    fun lines -> [Example lines]
-  | _ -> fail "block"
+let list_content_parsers block_parse =
+  many1 (choice [
+      Table.parse
+    ; block_parse
+    ; Directive.parse
+    ; Drawer.parse
+    ; Latex_env.parse
+    ; Hr.parse
+    ; Comment.parse
+    ; Paragraph.parse [ Table.parse
+                      ; block_parse
+                      ; Directive.parse
+                      ; Drawer.parse
+                      ; Latex_env.parse
+                      ; Hr.parse
+                      ; Comment.parse]
+    ])
+
+let block_content_parsers block_parse =
+  many1 (choice [
+      Table.parse
+    ; Lists.parse (list_content_parsers block_parse)
+    ; block_parse
+    ; Directive.parse
+    ; Drawer.parse
+    ; Latex_env.parse
+    ; Hr.parse
+    ; Comment.parse
+    ; Paragraph.parse [ Table.parse
+                      ; Lists.parse (list_content_parsers block_parse)
+                      ; block_parse
+                      ; Directive.parse
+                      ; Drawer.parse
+                      ; Latex_env.parse
+                      ; Hr.parse
+                      ; Comment.parse]
+    ])
+
+let rec parse = fix (fun parse ->
+    spaces *> peek_char_fail
+    >>= function
+    | '#' ->
+      block_name_options_parser
+      >>= fun (name, options) ->
+      between_lines (fun line ->
+          let prefix = "#+end_" ^ name in
+          starts_with line prefix) "block"
+      >>| fun lines ->
+      let name = String.lowercase_ascii name in
+      (match name with
+       | "src" -> [Src {lines; language = options}]
+       | "quote" -> [Quote lines]
+       | "example" -> [Example lines]
+       | _ ->
+         let content = String.concat "\n" lines in
+         let result = match parse_string (block_content_parsers parse) content with
+           | Ok result -> result
+           | Error e -> [] in
+         [Custom (name, options, List.concat result)]
+      )
+    | ':' ->                      (* verbatim block *)
+      verbatim (ref []) >>|
+      fun lines -> [Example lines]
+    | _ -> fail "block")

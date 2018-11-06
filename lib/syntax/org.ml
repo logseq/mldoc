@@ -31,19 +31,20 @@ and code_block =
 (** Code blocks *)
 
 and t =
-    | Paragraph of Inline.t list  (** A paragraph containing only inline text *)
+    Paragraph of Inline.t list  (** A paragraph containing only inline text *)
   | Heading of heading  (** A heading *)
   | List of list_item list  (** A list [item] *)
   | Directive of string * string  (** A directive [name, value] *)
   | Math of string  (** Math, enclosed by $$ ... $$ *)
-  (* | Quote of t list  (\** Quoted text *\) *)
-  | Quote of string list  (** Quoted text *)
   | With_Keywords of (string * string) list * t  (** Keywords for a block *)
+  (* blocks *)
   | Example of string list
   (** [Examples] used to typeset random code snippets. The integer is the line number in the source file. *)
   | Src of code_block
   (** [Src] is used to typeset code snippets. The integer is the line number in the source file. *)
-  | Custom of string * string option * string list
+  (* | Quote of t list  (\** Quoted text *\) *)
+  | Quote of string list  (** Quoted text *)
+  | Custom of string * string option * t list
   (** Custom block of the form
       #+begin_name opts
       DATA

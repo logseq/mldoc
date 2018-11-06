@@ -55,11 +55,12 @@
 
 *** DONE Directive
 
-*** DONE Block [4/4]
+*** DONE Block [5/5]
     1. [X] src
     2. [X] quote
     3. [X] example
     4. [X] custom
+    5. [X] block nested in block
 
 *** DONE Comment
 
@@ -73,6 +74,9 @@
 *** TODO Quoting
 *** TODO TOC
 
-** Export [1/2]
+** TODO Export [1/2]
    1. [X] json
    2. [ ] html
+
+** TODO Presentation
+   revealjs?
