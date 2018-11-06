@@ -71,8 +71,9 @@ let explode s =
 
 let is_ordered s =
   let chars = explode s in
-  is_digit(String.get s 0) &&
-  List.for_all (fun c -> is_digit c || c = '.') chars
+  List.for_all (fun c -> is_digit c) (drop_last 1 chars)
+  &&
+  String.get s (String.length s - 1) = '.'
 
 let get_ordered_number s =
   try Scanf.sscanf s "%d. " (fun i -> Some i) with _ -> None
