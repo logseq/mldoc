@@ -40,12 +40,14 @@ and stats_cookie =
 
 and latex_fragment = Inline of string | Displayed of string [@@deriving yojson]
 
+and clock_item = Started of Timestamp.t | Stopped of Timestamp.range
+
 and timestamp =
     Scheduled of Timestamp.t
   | Deadline of Timestamp.t
   | Date of Timestamp.t
   | Closed of Timestamp.t
-  | Clock of Timestamp.t
+  | Clock of clock_item
   | Range of Timestamp.range
 [@@deriving yojson]
 
@@ -403,7 +405,7 @@ let date_time close_char ~active typ =
          | "Scheduled" -> Timestamp (Scheduled {date; time; repetition; active})
          | "Deadline" -> Timestamp (Deadline {date; time; repetition; active})
          | "Closed" -> Timestamp (Closed {date; time; repetition; active})
-         | "Clock" -> Timestamp (Clock {date; time; repetition; active})
+         | "Clock" -> Timestamp (Clock (Started {date; time; repetition; active}))
          | _ -> Timestamp (Date {date; time; repetition; active}) )
       day_name_parser tr1_parser tr2_parser
     <* char close_char
@@ -430,7 +432,7 @@ let general_timestamp =
     | '[' -> closed_parser typ
     | _ -> fail "general_timestamp"
   in
-  any_char
+  spaces *> any_char
   >>= function
   | '<' -> active_parser "Date"
   | '[' -> closed_parser "Date"
@@ -461,16 +463,20 @@ let range =
         | _ -> failwith "illegal timestamp" )
     | _ -> failwith "illegal timestamp"
   in
-  lift2
-    (fun t1 t2 ->
+  lift3
+    (fun clock t1 t2 ->
        let t1 = extract_time t1 in
        let t2 = extract_time t2 in
-       Timestamp (Range {start= t1; stop= t2}) )
+       if clock = "CLOCK:" then
+         Timestamp (Clock (Stopped {start= t1; stop= t2}))
+       else
+         Timestamp (Range {start= t1; stop= t2}))
+    (spaces *> string "CLOCK:" <* spaces)
     (general_timestamp <* string "--")
     general_timestamp
 
 let timestamp =
-  general_timestamp <|> range
+  range <|> general_timestamp
 
 (* TODO: configurable *)
 let inline_choices =
