@@ -84,8 +84,6 @@ let delims =
 
 let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
 
-let plain_delims = ['*'; '_'; '/'; '+'; '~'; '='; '['; '<'; '{'; '$']
-
 let prev = ref None
 
 let emphasis_token c =
@@ -145,21 +143,22 @@ let verbatim =
 
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
-let in_plain_delims c =
-  List.exists (fun d -> c = d) plain_delims
-
 let plain =
-  (scan1 false (fun state c ->
-       if (not state && (c = '_' || c = '^')) then
-         Some true
-       else if (non_eol c && not (in_plain_delims c) ) then
-         Some true
-       else
-         None)
-   >>= fun (s, state) ->
-   return (Plain s))
+  let offset = ref 0 in
+  let token = take_while1 (fun c ->
+      offset := !offset + 1;
+      (non_space c && non_eol c && c <> '_' && c <> '^') || (!offset = 1 && (c = '_' || c <> '^'))
+    ) in
+  lift2 (fun token spaces ->
+      offset := 0;
+      let spaces = match spaces with
+          None -> ""
+        | Some spaces -> spaces in
+      Plain (token ^ spaces))
+    token (optional ws)
   <|>
-  (line >>= fun s -> return (Plain s))
+  let _ = offset := 0 in
+  fail "plain"
 
 let emphasis =
   peek_char_fail >>= function
@@ -229,7 +228,6 @@ let target =
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
       >>= fun s -> return @@ Target s )
 
-(* TODO: without reverse *)
 let concat_plains inlines =
   let l = List.fold_left (fun acc inline ->
       match inline with
@@ -519,4 +517,4 @@ let parse =
         | e -> e
       in
       many1 inline_choices >>= fun l ->
-      return (List.map nested_inline l) )
+      return (concat_plains (List.map nested_inline l)))
