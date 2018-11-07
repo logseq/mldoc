@@ -3,7 +3,7 @@ open Parsers
 open Org
 
 let parse =
-  optional eols *>
-  string "# " *> line
+  let p = string "# " *> line
   >>= fun line ->
   return [Comment line]
+  in between_eols_or_spaces p

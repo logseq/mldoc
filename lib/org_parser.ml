@@ -5,15 +5,11 @@ let list_content_parsers =
   many1 (choice [
       Table.parse
     ; Block.parse
-    ; Directive.parse
-    ; Drawer.parse
     ; Latex_env.parse
     ; Hr.parse
     ; Comment.parse
     ; Paragraph.parse [ Table.parse
                       ; Block.parse
-                      ; Directive.parse
-                      ; Drawer.parse
                       ; Latex_env.parse
                       ; Hr.parse
                       ; Comment.parse]
@@ -53,6 +49,12 @@ let load_file f =
   really_input ic s 0 n;
   close_in ic;
   Bytes.to_string s
+
+let write_file input =
+  let oc = open_out "/tmp/syntax.json" in
+  let result = parse input |> ast_to_json in
+  output_string oc result;
+  close_out oc;
 
 (*
 let text = load_file "/tmp/syntax.org";;

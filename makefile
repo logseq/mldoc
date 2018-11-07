@@ -14,4 +14,8 @@ clean:
 run:
 	$(DUNE) exec ./org_parser.exe
 
+benchmark: 
+	$(DUNE) exec ./bench/bench.exe
+	
+
 .PHONY: test all clean check

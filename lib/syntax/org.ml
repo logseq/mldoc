@@ -27,6 +27,7 @@ and
 and code_block =
     { lines: string list
     ; language: string option (** The language the code is written in *)
+    ; options: string list option
     } [@@deriving yojson]
 (** Code blocks *)
 

@@ -143,22 +143,23 @@ let verbatim =
 
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
+(* TODO: optimization *)
+let plain_delims = ['*'; '_'; '/'; '+'; '~'; '='; '['; '<'; '{'; '$']
+let in_plain_delims c =
+  List.exists (fun d -> c = d) plain_delims
+
 let plain =
-  let offset = ref 0 in
-  let token = take_while1 (fun c ->
-      offset := !offset + 1;
-      (non_space c && non_eol c && c <> '_' && c <> '^') || (!offset = 1 && (c = '_' || c <> '^'))
-    ) in
-  lift2 (fun token spaces ->
-      offset := 0;
-      let spaces = match spaces with
-          None -> ""
-        | Some spaces -> spaces in
-      Plain (token ^ spaces))
-    token (optional ws)
+  (scan1 false (fun state c ->
+       if (not state && (c = '_' || c = '^')) then
+         Some true
+       else if (non_eol c && not (in_plain_delims c) ) then
+         Some true
+       else
+         None)
+   >>= fun (s, state) ->
+   return (Plain s))
   <|>
-  let _ = offset := 0 in
-  fail "plain"
+  (line >>= fun s -> return (Plain s))
 
 let emphasis =
   peek_char_fail >>= function
@@ -185,43 +186,6 @@ let nested_emphasis =
   return (aux_nested_emphasis e)
 
 let breakline = eol >>= fun _ -> fail "breakline"
-
-(* link *)
-(* 1. [[url][label]] *)
-(* 2. [[search]] *)
-let link =
-  let url_part =
-    string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
-  in
-  let label_part = take_while1 (fun c -> c <> ']') <* string "]]" in
-  lift2
-    (fun url label ->
-       let url =
-         if label = "" then Search url
-         else if url.[0] = '/' || url.[0] = '.' then File url
-         else
-           try
-             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                 Complex {protocol; link} )
-           with _ -> Search url
-       in
-       Link {label= [Plain label]; url} )
-    url_part label_part
-
-(* complex link *)
-(* :// *)
-let link_inline =
-  let protocol_part = take_while1 is_letter <* string "://" in
-  let link_part =
-    take_while1 (fun c ->
-        non_space c && List.for_all (fun c' -> c <> c') link_delims )
-  in
-  lift2
-    (fun protocol link ->
-       Link
-         { label= [Plain (protocol ^ "://" ^ link)]
-         ; url= Complex {protocol; link= "//" ^ link} } )
-    protocol_part link_part
 
 let target =
   between_string "<<" ">>"
@@ -261,29 +225,6 @@ let subscript, superscript =
   in
   ( gen "_{" (fun x -> Subscript x)
   , gen "^{" (fun x -> Superscript x) )
-
-(* 1. fn:name *)
-(* 2. fn::latex_inline_definition, ignore now *)
-(* 3. fn:name:description *)
-let id = ref 0
-
-let footnote_reference =
-  let name_part =
-    string "fn:" *> take_while1 (fun c -> c <> ':' && non_eol c)
-    <* optional (char ':')
-  in
-  let definition_part = take_while1 non_space in
-  lift2
-    (fun name definition ->
-       let name =
-         if name = "" then (
-           incr id ;
-           "_anon_" ^ string_of_int !id )
-         else name
-       in
-       if definition = "" then Footnote_Reference {name; definition= None}
-       else Footnote_Reference {name; definition= Some [Plain definition]} )
-    name_part definition_part
 
 let statistics_cookie =
   between_char '[' ']'
@@ -476,6 +417,82 @@ let range =
 let timestamp =
   range <|> general_timestamp
 
+(* link *)
+(* 1. [[url][label]] *)
+(* 2. [[search]] *)
+let link =
+  let url_part =
+    string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
+  in
+  let label_part = take_while (fun c -> c <> ']') <* string "]]" in
+  lift2
+    (fun url label ->
+       let url =
+         if label = "" then Search url
+         else if url.[0] = '/' || url.[0] = '.' then File url
+         else
+           try
+             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                 Complex {protocol; link} )
+           with _ -> Search url
+       in
+       let parser = (many1 (choice [nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
+       let label = match parse_string parser label with
+           Ok result -> concat_plains result
+         | Error e -> [Plain label] in
+       Link {label; url} )
+    url_part label_part
+
+(* complex link *)
+(* :// *)
+let link_inline =
+  let protocol_part = take_while1 is_letter <* string "://" in
+  let link_part =
+    take_while1 (fun c ->
+        non_space c && List.for_all (fun c' -> c <> c') link_delims )
+  in
+  lift2
+    (fun protocol link ->
+       Link
+         { label= [Plain (protocol ^ "://" ^ link)]
+         ; url= Complex {protocol; link= "//" ^ link} } )
+    protocol_part link_part
+
+let id = ref 0
+
+let footnote_inline_definition definition =
+  let parser = (many1 (choice [link; link_inline; target; nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
+  match parse_string parser definition with
+  | Ok result ->
+    let result = concat_plains result in
+    result
+  | Error error ->
+    [Plain definition]
+
+let latex_footnote =
+  string "[fn::" *> take_while1 (fun c -> c <> ']' && non_eol c)
+  <* char ']' >>| fun definition ->
+  Footnote_Reference {name = ""; definition= Some (footnote_inline_definition definition)}
+
+let footnote_reference =
+  latex_footnote
+  <|>
+  let name_part =
+    string "[fn:" *> take_while1 (fun c -> c <> ':' && c <> ']' && non_eol c)
+    <* optional (char ':') in
+  let definition_part = take_while (fun c -> c <> ']' && non_eol c) <* char ']' in
+  lift2
+    (fun name definition ->
+       let name =
+         if name = "" then (
+           incr id ;
+           "_anon_" ^ string_of_int !id )
+         else name
+       in
+       if definition = "" then Footnote_Reference {name; definition= None}
+       else Footnote_Reference {name; definition= Some (footnote_inline_definition definition)} )
+    name_part definition_part
+
 (* TODO: configurable *)
 let inline_choices =
   choice
@@ -498,23 +515,5 @@ let inline_choices =
 
 let parse =
   fix (fun inline ->
-      let nested_inline = function
-        | Link {label= [Plain s]; url} -> (
-            let parser = (many1 (choice [nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
-            match parse_string parser s with
-            | Ok result -> Link {label= result; url}
-            | Error error -> Link {label= [Plain s]; url} )
-        | Footnote_Reference {definition; name} as f -> (
-            let parser = (many1 (choice [link; link_inline; target; nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
-            match definition with
-            | None -> f
-            | Some [Plain s] -> (
-                match parse_string parser s with
-                | Ok result -> Footnote_Reference {definition= Some result; name}
-                | Error error -> f )
-            | _ -> failwith "definition"
-          )
-        | e -> e
-      in
-      many1 inline_choices >>= fun l ->
-      return (concat_plains (List.map nested_inline l)))
+      many1 inline_choices >>| fun l ->
+      concat_plains l)

@@ -76,29 +76,40 @@ let block_content_parsers block_parse =
                       ; Comment.parse]
     ])
 
+let source_code_language_options = function
+  | None -> (None, None)
+  | Some s ->
+    match String.split_on_char ' ' s with
+    | [] -> (None, None)
+    | language :: [] -> (Some language, None)
+    | language :: options -> (Some language, Some options)
+
 let rec parse = fix (fun parse ->
-    spaces *> peek_char_fail
-    >>= function
-    | '#' ->
-      block_name_options_parser
-      >>= fun (name, options) ->
-      between_lines (fun line ->
-          let prefix = "#+end_" ^ name in
-          starts_with line prefix) "block"
-      >>| fun lines ->
-      let name = String.lowercase_ascii name in
-      (match name with
-       | "src" -> [Src {lines; language = options}]
-       | "quote" -> [Quote lines]
-       | "example" -> [Example lines]
-       | _ ->
-         let content = String.concat "\n" lines in
-         let result = match parse_string (block_content_parsers parse) content with
-           | Ok result -> result
-           | Error e -> [] in
-         [Custom (name, options, List.concat result)]
-      )
-    | ':' ->                      (* verbatim block *)
-      verbatim (ref []) >>|
-      fun lines -> [Example lines]
-    | _ -> fail "block")
+    let p = peek_char_fail
+      >>= function
+      | '#' ->
+        block_name_options_parser
+        >>= fun (name, options) ->
+        between_lines (fun line ->
+            let prefix = "#+end_" ^ name in
+            starts_with line prefix) "block"
+        >>| fun lines ->
+        let name = String.lowercase_ascii name in
+        (match name with
+         | "src" ->
+           let (language, options) = source_code_language_options options in
+           [Src {language; options; lines}]
+         | "quote" -> [Quote lines]
+         | "example" -> [Example lines]
+         | _ ->
+           let content = String.concat "\n" lines in
+           let result = match parse_string (block_content_parsers parse) content with
+             | Ok result -> result
+             | Error e -> [] in
+           [Custom (name, options, List.concat result)]
+        )
+      | ':' ->                      (* verbatim block *)
+        verbatim (ref []) >>|
+        fun lines -> [Example lines]
+      | _ -> fail "block" in
+    between_eols_or_spaces p)

@@ -28,19 +28,20 @@ let is_blank s =
   aut_is_blank 0
 
 let parse =
-  lift5
-    (fun level marker priority title tags ->
-      let level = String.length level in
-      let tags = remove is_blank tags in
-      let title = match (parse_string Inline.parse (String.trim title)) with
-        | Ok title -> title
-        | Error e -> [] in
-      [Heading {level; marker; priority; title; tags}] )
-    (optional eols *> level <* ws <?> "Heading level")
-    (optional (lex marker <?> "Heading marker"))
-    (optional (lex priority <?> "Heading priority"))
-    (lex title <?> "Heading title")
-    (optional_list (lex tags <?> "Heading tags")) <* optional eol
+  let p = lift5
+      (fun level marker priority title tags ->
+         let level = String.length level in
+         let tags = remove is_blank tags in
+         let title = match (parse_string Inline.parse (String.trim title)) with
+           | Ok title -> title
+           | Error e -> [] in
+         [Heading {level; marker; priority; title; tags}] )
+      (level <* ws <?> "Heading level")
+      (optional (lex marker <?> "Heading marker"))
+      (optional (lex priority <?> "Heading priority"))
+      (lex title <?> "Heading title")
+      (optional_list (lex tags <?> "Heading tags")) in
+  between_eols_or_spaces p
 
 (*
 

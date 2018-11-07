@@ -41,18 +41,19 @@ let env_name_options_parser =
   <* eol
 
 let parse =
-  optional eols *> spaces *>
-  peek_char_fail >>= function
-  | '\b' ->                      (* block *)
-    env_name_options_parser >>= fun (name, options) ->
-    between_lines (fun line ->
-        let prefix = "\\end{" ^ name ^ "}" in
-        starts_with line prefix) "Latex_environment body"
-    >>= (fun lines ->
-        return [Org.Latex_Environment (String.lowercase_ascii name, options, lines)])
-  | _ ->
-    Inline.latex_fragment >>= function
-    | Inline.Latex_Fragment x ->
-      return [Org.Latex_Fragment x]
+  let p =
+    peek_char_fail >>= function
+    | '\b' ->                      (* block *)
+      env_name_options_parser >>= fun (name, options) ->
+      between_lines (fun line ->
+          let prefix = "\\end{" ^ name ^ "}" in
+          starts_with line prefix) "Latex_environment body"
+      >>= (fun lines ->
+          return [Org.Latex_Environment (String.lowercase_ascii name, options, lines)])
     | _ ->
-      fail "Latex_env latex_fragment"
+      Inline.latex_fragment >>= function
+      | Inline.Latex_Fragment x ->
+        return [Org.Latex_Fragment x]
+      | _ ->
+        fail "Latex_env latex_fragment" in
+  between_eols_or_spaces p

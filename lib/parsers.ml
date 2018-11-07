@@ -33,6 +33,7 @@ let two_eols result = eol *> eol *> return result
 let ws = take_while1 is_space
 
 let spaces = skip_while is_space
+let spaces_or_eols = skip_while (fun c -> is_eol c || is_space c)
 
 let non_spaces = take_while1 non_space_eol
 
@@ -114,3 +115,9 @@ let between_lines end_check error =
           let _ = lines := line :: !lines in
           body_parser) in
   clear_parser_resource p (ref []) error
+
+let between_eols_or_spaces p =
+  spaces_or_eols *> p <* spaces_or_eols
+
+let between_eols p =
+  optional eols *> p <* optional eols
