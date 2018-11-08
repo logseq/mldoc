@@ -1,6 +1,6 @@
 open Org
 
-type toc = toc_item list
+type toc = toc_item list [@@deriving yojson]
 and toc_item =
   { title: Inline.t list
   ; level: int
@@ -21,7 +21,7 @@ type t =
   ; title: string option  (** The document's title *)
   ; author: string option  (** The document's author *)
   ; toc: toc               (** Table of content *)
-  }
+  } [@@deriving yojson]
 
 exception Non_timestamp
 let get_timestamps inlines =
