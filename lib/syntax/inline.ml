@@ -67,6 +67,8 @@ and t =
   | Macro of Macro.t
   | Entity of Entity.t
   | Timestamp of timestamp
+  | Radio_Target of string
+  | Export_Snippet of string
 [@@deriving yojson]
 
 (* emphasis *)
@@ -206,17 +208,7 @@ let concat_plains inlines =
     ) [] inlines in
   List.rev l
 
-(* let offset = ref 0 in
- * take_while1 (fun c ->
- *     offset := !offset + 1;
- *     (non_space c && non_eol c && c <> '_' && c <> '^') || (!offset = 1 && (c = '_' || c <> '^'))
- *   ) >>= fun s ->
- * offset := 0;
- * return (Plain s)
- * <|>
- * let _ = offset := 0 in
- * fail "plain" *)
-
+(* TODO: whether to support nested inline *)
 (* foo_{bar}, foo^{bar} *)
 let subscript, superscript =
   let gen s f =
@@ -517,3 +509,14 @@ let parse =
   fix (fun inline ->
       many1 inline_choices >>| fun l ->
       concat_plains l)
+
+let rec ascii = function
+  | Footnote_Reference ref -> Option.map_default asciis "" ref.definition
+  | Link l -> asciis l.label
+  | Emphasis (_, t) -> asciis t
+  | Latex_Fragment (Inline s) | Plain s | Subscript s | Superscript s | Verbatim s -> s
+  | Entity e -> e.Entity.unicode
+  | _ -> ""
+
+
+and asciis l = String.concat "" (List.map ascii l)

@@ -3,7 +3,13 @@ type heading =
   ; tags: string list  (** The tags set by the user *)
   ; marker: string option  (** TODO, DONE, and so on *)
   ; level: int  (** The level (number of stars) -- starts at 1 *)
-  ; priority: char option  (** The optional priority *) } [@@deriving yojson]
+  ; priority: char option  (** The optional priority *)
+  ; anchor: string
+  ; meta: meta
+  } [@@deriving yojson]
+and meta =
+    { timestamps: Inline.timestamp list
+    ; properties: (string * string) list  (** The properties of the heading *)} [@@deriving yojson]
 
 and list_item =
     { content: t list  (** The contents of the current item *)

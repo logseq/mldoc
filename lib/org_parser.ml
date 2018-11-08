@@ -59,5 +59,5 @@ let write_file input =
 (*
 let text = load_file "/tmp/syntax.org";;
 
-time @@ fun _ -> parse text;;
+let ast = parse text;;
 *)

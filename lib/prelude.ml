@@ -3,6 +3,10 @@ let (<<) f g x = f(g(x))
 let identity x = x
 
 (* list *)
+let hd_opt = function
+  | h :: [] -> Some h
+  | _ -> None
+
 let remove p = List.filter (fun x -> not (p x))
 
 let join separator l =
@@ -97,10 +101,3 @@ let result_default default = function
 let clear_indents s =
   let lines = String.split_on_char '\n' s in
   List.map String.trim lines
-
-(* TODO: only used in dev profile. *)
-let time f =
-  let t = Sys.time () in
-  let result = f () in
-  Printf.printf "Execution time: %fs\n" (Sys.time () -. t) ;
-  result
