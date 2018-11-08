@@ -18,14 +18,13 @@
       make
     #+END_SRC
 
-** Parsing todos [8/12]
-*** TODO Heading [5/6]
+** Parsing todos [10/12]
+*** DONE Heading [5/5]
     1. [X] level
     2. [X] marker
     3. [X] priority
     4. [X] title
     5. [X] tags
-    6. [ ] statistics cookie
 
 *** DONE Markup (Inline) [14/14]
     1. [X] Latex fragment
@@ -72,7 +71,8 @@
 *** DONE Latex environment
 
 *** TODO Quoting
-*** TODO TOC
+*** DONE TOC
+    CLOSED: [2018-11-08 Thu 18:04]
 
 ** TODO Export [1/2]
    1. [X] json
