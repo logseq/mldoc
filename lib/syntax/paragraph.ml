@@ -1,6 +1,6 @@
 open Angstrom
 open Parsers
-open Org
+open Type
 
 (* inline and footnotes *)
 
@@ -29,7 +29,7 @@ let footnote_reference =
   lift2
     (fun name definition ->
        let definition = Inline.footnote_inline_definition definition in
-       Org.Footnote_Definition (name, definition))
+       Footnote_Definition (name, definition))
     name_part definition_part
 
 let parse interrupt_parsers =

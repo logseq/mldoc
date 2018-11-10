@@ -1,6 +1,6 @@
 open Angstrom
 open Parsers
-open Org
+open Type
 
 let parse =
   let p = count 5 (char '-')

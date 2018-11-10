@@ -1,6 +1,6 @@
 (executable
  (name        bench)
- (libraries angstrom org_parser core core_bench))
+ (libraries angstrom org core core_bench))
 
 (alias
   (name bench)

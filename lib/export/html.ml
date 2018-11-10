@@ -1,8 +1,7 @@
 open Prelude
-open Org
+open Type
 open Inline
 open Document
-open Exporter
 
 let concatmap f l = List.concat (List.map f l)
 
@@ -83,7 +82,7 @@ let heading {title; tags; marker; level; priority; anchor; meta} =
   in
   Xml.block (Printf.sprintf "h%d" level)
     ~attr:["id", anchor]
-    (map_inline title @ [marker; priority; tags])
+    (marker :: priority :: map_inline title @ [tags])
 
 let rec listitem x =
   let content =
@@ -167,10 +166,12 @@ module HtmlExporter = struct
 
   let export doc output =
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
+    let title = match doc.title with
+      | None -> Xml.empty
+      | Some s -> Xml.block "h1" ~attr:["class", "title"]
+                    [(Xml.data s)] in
     let body = [Xml.block "div" ~attr:["id", "content"]
-                  (List.map block doc.blocks)
+                  (title :: (List.map block doc.blocks))
                ] in
     Xml.output_xhtml output body
 end
-
-let _ = Exporters.add (module HtmlExporter : Exporter)

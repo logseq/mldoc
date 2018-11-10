@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-open Org
+open Type
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`
@@ -90,10 +90,15 @@ let rec parse = fix (fun parse ->
       | '#' ->
         block_name_options_parser
         >>= fun (name, options) ->
-        between_lines (fun line ->
+        between_lines ~trim:false (fun line ->
             let prefix = "#+end_" ^ name in
-            starts_with line prefix) "block"
+            starts_with (String.trim line) prefix) "block"
         >>| fun lines ->
+        (* clear indents *)
+        let indent = get_indent (List.hd lines) in
+        let lines = if indent = 0 then lines else
+            List.map (fun line ->
+                String.sub line indent (String.length line - indent)) lines in
         let name = String.lowercase_ascii name in
         (match name with
          | "src" ->

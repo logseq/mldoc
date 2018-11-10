@@ -1,4 +1,5 @@
-open Org_parser
+open Org
+open Org.Parser
 
 open Core
 open Core_bench.Std

@@ -1,0 +1,8 @@
+(executable
+ (name        main)
+ (public_name org)
+ (libraries angstrom org cmdliner))
+
+(alias
+ (name main)
+ (deps main.exe))

@@ -17,7 +17,7 @@ filter on them. (Exporters don't use them as of today)
 
 open Angstrom
 open Parsers
-open Org
+open Type
 
 let end_mark = ":END:"
 

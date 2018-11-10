@@ -21,11 +21,6 @@ let is_hex = function
 
 let digits = take_while1 is_digit
 
-let is_uppercase c = 'A' <= c && c <= 'Z'
-let is_lowercase c = 'a' <= c && c <= 'z'
-let is_letter c =
-  is_uppercase c || is_lowercase c
-
 let eol = satisfy is_eol
 let eols = take_while1 is_eol
 let two_eols result = eol *> eol *> return result
@@ -104,11 +99,11 @@ let clear_parser_resource p r error =
   let _ = r := [] in
   fail error
 
-let between_lines end_check error =
+let between_lines ?trim:(trim=true) end_check error =
   let p lines =
     fix (fun body_parser ->
         optional eols *> take_till1 is_eol <* optional eols >>= fun line ->
-        let line = String.trim line in
+        let line = if trim then String.trim line else line in
         if end_check line then
           return (List.rev !lines)
         else

@@ -1,4 +1,4 @@
-open Org
+open Type
 
 type toc = toc_item list [@@deriving yojson]
 and toc_item =
@@ -88,11 +88,3 @@ let build_doc filename ast =
   ; author = find_directive directives "AUTHOR"
   ; toc
   }
-
-(*
-let text = load_file "/tmp/syntax.org";;
-
-let ast = parse text;;
-
-let document = build_doc None ast;;
-*)

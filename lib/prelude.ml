@@ -71,6 +71,17 @@ let starts_with s check =
   else
     false
 
+let splitr p str =
+  let len = String.length str in
+  let i = ref len in
+  while !i > 0 && p str.[!i - 1] do decr i; done;
+  String.sub str 0 !i, String.sub str !i (len - !i)
+
+let is_uppercase c = 'A' <= c && c <= 'Z'
+let is_lowercase c = 'a' <= c && c <= 'z'
+let is_letter c =
+  is_uppercase c || is_lowercase c
+
 let is_digit = function '0' .. '9' -> true | _ -> false
 
 let explode s =

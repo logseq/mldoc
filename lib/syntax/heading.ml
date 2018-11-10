@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
-open Org
+open Type
 
 (* TODO, DOING, DONE *)
 let marker = string "TODO" <|> string "DOING" <|> string "DONE"
@@ -45,11 +45,19 @@ let parse =
          let last_inline = List.nth title (List.length title - 1) in
          let (title, tags) = match last_inline with
            | Inline.Plain s ->
-             (match parse_string tags (String.trim s) with
-              | Ok tags ->
-                (drop_last 1 title, remove is_blank tags)
-              | _ ->
-                (title, []))
+             let s = String.trim s in
+             if s.[String.length s - 1] = ':' then
+               let (prefix, maybe_tags) = (splitr (fun c -> c <> ' ') s) in
+               (match parse_string tags maybe_tags with
+                | Ok tags ->
+                  let title = if prefix = "" then (drop_last 1 title) else
+                      (drop_last 1 title) @ [Inline.Plain prefix] in
+                  (title, remove is_blank tags)
+                | _ ->
+                  (title, []))
+             else
+               (title, [])
+
            | _ -> (title, []) in
          let anchor = anchor_link (Inline.asciis title) in
          let meta = { timestamps = []; properties = []} in

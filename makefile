@@ -1,7 +1,7 @@
 DUNE ?= dune
 
 all:
-	$(DUNE) build @install @JS @bench
+	$(DUNE) build @install @JS @bench @main
 
 check: tests
 
@@ -12,10 +12,9 @@ clean:
 	rm -rf _build
 
 run:
-	$(DUNE) exec ./org_parser.exe
+	$(DUNE) exec ./bin/main.exe
 
-benchmark: 
+bench:
 	$(DUNE) exec ./bench/bench.exe
-	
 
-.PHONY: test all clean check
+.PHONY: test all clean check bench

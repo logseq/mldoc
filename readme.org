@@ -1,4 +1,4 @@
-* ml-org-parser
+* Org
   Another Org-mode parser implemented using OCaml and [[https://github.com/inhabitedtype/angstrom][Angstrom]].
   Don't use it right now, it's just a hobby project.
 
@@ -74,9 +74,9 @@
 *** DONE TOC
     CLOSED: [2018-11-08 Thu 18:04]
 
-** TODO Export [1/2]
+** DONE Export [2/2]
    1. [X] json
-   2. [ ] html
+   2. [X] html
 
 ** TODO Presentation
    revealjs?

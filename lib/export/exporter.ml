@@ -19,7 +19,7 @@ module Exporters = struct
   include ExtList.Make (struct
       type t = exporter
 
-      let base = []
+      let base = [(module Html.HtmlExporter : Exporter)]
     end)
 
   let run exporter doc output =
@@ -30,9 +30,3 @@ module Exporters = struct
 
   let add = push
 end
-
-(* comment part *)
-
-let generate backend doc output =
-  let export = Exporters.find backend in
-  Exporters.run export doc output

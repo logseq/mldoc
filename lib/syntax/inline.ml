@@ -1,6 +1,7 @@
 open Angstrom
 open Parsers
 open Bigstringaf
+open Prelude
 
 (* TODO:
    1. Performance:
@@ -235,7 +236,7 @@ let subscript, superscript =
 let statistics_cookie =
   between_char '[' ']'
     (take_while1 (fun c ->
-         if c = '/' || c = '%' || Prelude.is_digit c then true else false ))
+         if c = '/' || c = '%' || is_digit c then true else false ))
   >>= fun s ->
   try let cookie = Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) in
     return (Cookie cookie)
@@ -373,7 +374,7 @@ let general_timestamp =
   | '[' -> closed_parser "Date"
   | 'S' -> parse "CHEDULED:" "Scheduled"
   | 'C' -> (
-      take 3
+      Angstrom.take 3
       >>= function
       | "LOS" -> parse "ED:" "Closed"
       | "LOC" -> parse "K:" "Clock"

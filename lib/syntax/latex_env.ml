@@ -26,7 +26,7 @@ HTML, they are exported as div that you can style or script).
 *)
 open Angstrom
 open Parsers
-open Org
+open Type
 open Prelude
 
 let env_name_options_parser =
@@ -49,11 +49,11 @@ let parse =
           let prefix = "\\end{" ^ name ^ "}" in
           starts_with line prefix) "Latex_environment body"
       >>= (fun lines ->
-          return [Org.Latex_Environment (String.lowercase_ascii name, options, lines)])
+          return [Latex_Environment (String.lowercase_ascii name, options, lines)])
     | _ ->
       Inline.latex_fragment >>= function
       | Inline.Latex_Fragment x ->
-        return [Org.Latex_Fragment x]
+        return [Latex_Fragment x]
       | _ ->
         fail "Latex_env latex_fragment" in
   between_eols_or_spaces p
