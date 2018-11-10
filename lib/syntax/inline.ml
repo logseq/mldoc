@@ -51,6 +51,11 @@ and timestamp =
   | Range of Timestamp.range
 [@@deriving yojson]
 
+and inline_source_block = {
+    language: string; (** The language of the code block *)
+    options: string; (** The options *)
+    code: string; (** The code *)
+  }
 and t =
     Emphasis of emphasis
   | Break_Line
@@ -69,6 +74,7 @@ and t =
   | Timestamp of timestamp
   | Radio_Target of string
   | Export_Snippet of string * string
+  | Inline_Source_Block of inline_source_block
 [@@deriving yojson]
 
 (* emphasis *)
@@ -189,8 +195,13 @@ let nested_emphasis =
 
 let breakline = eol >>= fun _ -> fail "breakline"
 
+let radio_target =
+  between_string "<<<" ">>>"
+    ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
+      >>= fun s -> return @@ Radio_Target s )
+
 let target =
-  between_string "<<" ">>"
+  between_char '<' '>'
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
       >>= fun s -> return @@ Target s )
 
@@ -431,7 +442,7 @@ let concat_plains inlines =
              | Error e ->
                (Plain (s' ^ s)) :: tl
            else
-           (Plain (s' ^ s)) :: tl
+             (Plain (s' ^ s)) :: tl
          | _ ->
            Plain s :: acc)
       | other -> other :: acc
@@ -464,10 +475,32 @@ let link =
        Link {label; url} )
     url_part label_part
 
+let export_snippet =
+  let name = take_while1 (fun c -> non_space_eol c && c <> ':') <* char ':' in
+  let content = take_while1 (function
+      | '@' -> false
+      | '\r' | '\n' -> false
+      | _ -> true
+    ) in
+  between_string "@@" "@@"
+    (lift2 (fun name content ->
+         Export_Snippet (name, content))
+        name content)
+
+(* src_LANG[headers]{your code} *)
+let inline_source_code =
+  let language = take_while1 (fun c -> is_letter c || is_digit c) in
+  let options = between_char '[' ']' (take_while1 (fun c -> non_eol c && c <> ']')) in
+  let code = between_char '{' '}' (take_while1 (fun c -> non_eol c && c <> '}')) in
+  string "src_" *>
+  lift3 (fun language options code ->
+      Inline_Source_Block { language; options; code })
+    language options code
+
 let id = ref 0
 
 let footnote_inline_definition definition =
-  let parser = (many1 (choice [link; link_inline; target; nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
+  let parser = (many1 (choice [link; link_inline; radio_target; target; nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
   match parse_string parser definition with
   | Ok result ->
     let result = concat_plains result in
@@ -510,7 +543,9 @@ let inline_choices =
     ; footnote_reference        (* 'f', fn *)
     ; link                      (* '[' [[]] *)
     ; link_inline               (*  *)
-    ; target                    (* "<<" *)
+    ; export_snippet
+    ; radio_target              (* "<<<" *)
+    ; target                    (* "<" *)
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
     ; breakline                 (* '\n' *)

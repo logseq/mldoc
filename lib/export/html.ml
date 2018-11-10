@@ -2,6 +2,7 @@ open Prelude
 open Type
 open Inline
 open Document
+open Timestamp
 
 let concatmap f l = List.concat (List.map f l)
 
@@ -28,6 +29,39 @@ let handle_image_link url href label =
         ~attr:[("src", href); ("title", Inline.asciis label)]
         [] ]
 
+let rec range {start; stop} stopped =
+  Xml.block "div"
+    ~attr:
+      [("class", "timestamp-range"); ("stopped", string_of_bool stopped)]
+    [timestamp start "Start"; timestamp stop "Stop"]
+
+and timestamp ({active; date; time; repetition} as t) kind =
+  let prefix =
+    match kind with
+    | "Scheduled" ->
+      Xml.raw
+        "<i class=\"fa fa-calendar\" style=\"margin-right:6px;\"></i>"
+    | "Deadline" ->
+      Xml.raw
+        "<i class=\"fa fa-calendar-times-o\" \
+         style=\"margin-right:6px;\"></i>"
+    | "Date" -> Xml.empty
+    | "Closed" -> Xml.empty
+    | "Started" ->
+      Xml.raw
+        "<i class=\"fa fa-clock-o\" style=\"margin-right:6px;\"></i>"
+    | "Start" -> Xml.data "From: "
+    | "Stop" -> Xml.data "To: "
+    | _ -> Xml.empty
+  in
+  Xml.block "span"
+    ~attr:
+      [ ( "class"
+        , "timestamp " ^ if kind = "Closed" then "line-through" else ""
+        )
+      ; ("active", if active then "true" else "false") ]
+    [prefix; Xml.data (to_string t)]
+
 let rec map_inline l = concatmap inline l
 
 (* TODO: footnote *)
@@ -42,8 +76,11 @@ and inline t =
     [Xml.block (assoc kind l) (map_inline data)]
   | Entity e ->
     [Xml.raw e.html]
+  | Latex_Fragment (Displayed s) ->
+    [Xml.data ("\\["^s^"\\]")]
   | Latex_Fragment (Inline s) ->
     [Xml.data ("\\("^s^"\\)")]
+  | Target s -> [Xml.block "a" ~attr:[("id", s)] []]
   | Link {url; label} ->
     let href = Inline.string_of_url url in
     (* If it is an image *)
@@ -58,16 +95,23 @@ and inline t =
       in
       [Xml.block "a" ~attr: ["href", href]
          (map_inline label)]
-  | Verbatim s ->
+  | Verbatim s | Code s ->
     [Xml.block "code" [Xml.data s]]
-  (* | Inline_Source_Block x ->
-   *   Xml.block "code" [Xml.data x.code] *)
-  (* | Export_Snippet ("html", s) ->
-   *   Xml.raw s *)
+  | Inline_Source_Block x ->
+    [Xml.block "code" [Xml.data x.code]]
+  | Export_Snippet ("html", s) ->
+    [Xml.raw s]
   | Break_Line ->
     [Xml.block "br" []]
-  | Target s ->
-    [Xml.block "a" ~attr:["id", s] []]
+  | Timestamp (Scheduled t) -> [timestamp t "Scheduled"]
+  | Timestamp (Deadline t) -> [timestamp t "Deadline"]
+  | Timestamp (Date t) -> [timestamp t "Date"]
+  | Timestamp (Range t) -> [range t false]
+  | Timestamp (Closed t) -> [timestamp t "Closed"]
+  | Timestamp (Clock (Stopped t)) -> [range t true]
+  | Timestamp (Clock (Started t)) -> [timestamp t "Started"]
+  | Cookie c -> [Xml.empty]
+  | Footnote_Reference f -> [Xml.empty]
   | _ ->
     [Xml.empty]
 
