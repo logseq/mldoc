@@ -524,6 +524,11 @@ let parse =
       many1 inline_choices >>| fun l ->
       concat_plains l)
 
+let string_of_url = function
+  | File s | Search s -> s
+  | Complex {link; protocol= "file"} -> link
+  | Complex {link; protocol} -> protocol ^ ":" ^ link
+
 let rec ascii = function
   | Footnote_Reference ref -> Option.map_default asciis "" ref.definition
   | Link l -> asciis l.label

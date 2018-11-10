@@ -71,6 +71,18 @@ let starts_with s check =
   else
     false
 
+let ends_with s check =
+  let open String in
+  let len = length s in
+  let len_c = length check in
+  if len >= len_c then
+    if String.lowercase_ascii (sub s (len - len_c) len_c) = String.lowercase_ascii check then
+      true
+    else
+      false
+  else
+    false
+
 let splitl p str =
   let len = String.length str in
   let i = ref 0 in

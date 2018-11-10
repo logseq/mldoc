@@ -9,6 +9,25 @@ let list_element = function
   | [] -> "ul"
   | { ordered } :: tl -> if ordered then "ol" else "ul"
 
+let handle_image_link url href label =
+  match url with
+  | Complex {protocol; link} ->
+    (* slight hack here to handle math2png annotations *)
+    let opts, href =
+      try
+        Scanf.sscanf protocol "depth-%d" (fun n ->
+            ( [("style", Printf.sprintf "vertical-align: -%dpx" n)]
+            , link ) )
+      with _ -> ([], href)
+    in
+    [ Xml.block "img"
+        ~attr:(opts @ [("src", href); ("title", Inline.asciis label)])
+        [] ]
+  | Search s | File s ->
+    [ Xml.block "img"
+        ~attr:[("src", href); ("title", Inline.asciis label)]
+        [] ]
+
 let rec map_inline l = concatmap inline l
 
 (* TODO: footnote *)
@@ -25,19 +44,20 @@ and inline t =
     [Xml.raw e.html]
   | Latex_Fragment (Inline s) ->
     [Xml.data ("\\("^s^"\\)")]
-  (* | Link {url; label} ->
-   *   let href = Inline.string_of_url url in
-   *   (\* If it is an image *\)
-   *   if List.exists (String.ends_with href)
-   *       (Config.get config image_extensions) then
-   *     self#handle_image_link url href label
-   *   else
-   *     let href = match url with
-   *       | Search x -> "#" ^ Toc.link x
-   *       | _ -> href
-   *     in
-   *     [Xml.block "a" ~attr: ["href", href]
-   *        (self#inlines label)] *)
+  | Link {url; label} ->
+    let href = Inline.string_of_url url in
+    (* If it is an image *)
+    (* TODO: config *)
+    if List.exists (ends_with href)
+        [".png"; ".jpg"; ".jpeg"; ".gif"; ".bmp"] then
+      handle_image_link url href label
+    else
+      let href = match url with
+        | Search x -> "#" ^ Heading.anchor_link x
+        | _ -> href
+      in
+      [Xml.block "a" ~attr: ["href", href]
+         (map_inline label)]
   | Verbatim s ->
     [Xml.block "code" [Xml.data s]]
   (* | Inline_Source_Block x ->
