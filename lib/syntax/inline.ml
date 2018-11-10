@@ -21,7 +21,7 @@ end
 
 type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list [@@deriving yojson]
 
-and footnote_reference = {name: string; definition: t list option} [@@deriving yojson]
+and footnote_reference = {id: int; name: string; definition: t list option} [@@deriving yojson]
 
 and url = File of string | Search of string | Complex of complex [@@deriving yojson]
 
@@ -35,7 +35,7 @@ and link = {url: url; label: t list} [@@deriving yojson]
     They can be of two form : percentage or absolute value *)
 and stats_cookie =
     Percent of int
-  | Absolute of int * int  (** current, max *)
+  | Absolute of int * int  (** current, total *)
 [@@deriving yojson]
 
 and latex_fragment = Inline of string | Displayed of string [@@deriving yojson]
@@ -499,6 +499,10 @@ let inline_source_code =
 
 let id = ref 0
 
+let incr_id id =
+  incr id;
+  !id
+
 let footnote_inline_definition definition =
   let parser = (many1 (choice [link; link_inline; radio_target; target; nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
   match parse_string parser definition with
@@ -511,7 +515,7 @@ let footnote_inline_definition definition =
 let latex_footnote =
   string "[fn::" *> take_while1 (fun c -> c <> ']' && non_eol c)
   <* char ']' >>| fun definition ->
-  Footnote_Reference {name = ""; definition= Some (footnote_inline_definition definition)}
+  Footnote_Reference {id = incr_id id; name = ""; definition= Some (footnote_inline_definition definition)}
 
 let footnote_reference =
   latex_footnote
@@ -528,8 +532,8 @@ let footnote_reference =
            "_anon_" ^ string_of_int !id )
          else name
        in
-       if definition = "" then Footnote_Reference {name; definition= None}
-       else Footnote_Reference {name; definition= Some (footnote_inline_definition definition)} )
+       if definition = "" then Footnote_Reference {id = incr_id id; name; definition= None}
+       else Footnote_Reference {id = incr_id id; name; definition= Some (footnote_inline_definition definition)} )
     name_part definition_part
 
 (* TODO: configurable *)
@@ -572,6 +576,5 @@ let rec ascii = function
   | Latex_Fragment (Inline s) | Plain s | Verbatim s -> s
   | Entity e -> e.Entity.unicode
   | _ -> ""
-
 
 and asciis l = String.concat "" (List.map ascii l)

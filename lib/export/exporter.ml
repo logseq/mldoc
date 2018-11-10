@@ -1,3 +1,5 @@
+(* taken from mlorg *)
+
 module type Exporter = sig
   val name : string
   (* val config : Config.t *)

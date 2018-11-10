@@ -4,6 +4,8 @@ open Inline
 open Document
 open Timestamp
 
+(* taken from mlorg *)
+
 let concatmap f l = List.concat (List.map f l)
 
 let list_element = function
@@ -64,7 +66,6 @@ and timestamp ({active; date; time; repetition} as t) kind =
 
 let rec map_inline l = concatmap inline l
 
-(* TODO: footnote *)
 and inline t =
   let open List in
   match t with
@@ -110,30 +111,41 @@ and inline t =
   | Timestamp (Closed t) -> [timestamp t "Closed"]
   | Timestamp (Clock (Stopped t)) -> [range t true]
   | Timestamp (Clock (Started t)) -> [timestamp t "Started"]
-  | Cookie c -> [Xml.empty]
-  | Footnote_Reference f -> [Xml.empty]
+  | Cookie (Percent n) ->
+    [ Xml.block "span"
+        ~attr:[("class", "cookie-percent")]
+        [Xml.data ("[" ^ string_of_int n ^ "%" ^ "]")]]
+  | Cookie (Absolute (current, total)) ->
+    [ Xml.block "span"
+        ~attr:[("class", "cookie-absolute")]
+        [Xml.data ("[" ^ (string_of_int current) ^ "/" ^ (string_of_int total) ^ "]")]]
+  | Footnote_Reference { id; name } ->
+    [ Xml.block "sup"
+        [ Xml.block "a"
+            ~attr:[("id", "fnr." ^ (string_of_int id));
+                   ("class", "footref");
+                   ("href", "#fn." ^ name)]
+            [Xml.data name]]]
   | _ ->
     [Xml.empty]
 
 let heading {title; tags; marker; level; priority; anchor; meta} =
   let marker =
     match marker with
-    | Some v -> (
-        match v with
-        | "TODO" | "todo" ->
-          Xml.raw "<span class=\"task-status todo\">TODO</span>"
-        | "DONE" | "done" ->
-          Xml.raw "<span class=\"task-status done\">DONE</span>"
-        | v ->
-          Xml.raw
-            (Printf.sprintf "<span class=\"task-status %s\">%s</span>"
-               (String.lowercase_ascii v) (String.uppercase_ascii v)) )
+    | Some v ->
+      Xml.block "span"
+        ~attr:[("class", "task-status " ^ String.lowercase_ascii v);
+               ("style", "margin-right:6px")]
+        [Xml.data (String.uppercase_ascii v)]
     | None -> Xml.empty
   in
   let priority =
     match priority with
     | Some v ->
-      Xml.raw (Printf.sprintf "<span class=\"priority\">%c</span>" v)
+      Xml.block "span"
+        ~attr:[("class", "priority");
+               ("style", "margin-right:6px")]
+        [Xml.data ("#" ^ String.make 1 v)]
     | None -> Xml.empty
   in
   let tags =
@@ -144,9 +156,9 @@ let heading {title; tags; marker; level; priority; anchor; meta} =
         ~attr:[("class", "heading-tags")]
         (List.map
            (fun tag ->
-              Xml.raw
-                (Printf.sprintf "<span class=\"heading-tag\">%s</span>"
-                   tag) )
+              Xml.block "span"
+                ~attr:[("class", "headding-tag"); ("style", "padding-left:6px")]
+                [Xml.data tag])
            tags)
   in
   Xml.block (Printf.sprintf "h%d" level)
@@ -232,6 +244,18 @@ and block t =
   | Custom (name, options, l) ->
     Xml.block "div" ~attr:["class", name]
       (blocks l)
+  | Latex_Fragment l -> Xml.empty
+  | Latex_Environment (name, option, content) -> Xml.empty
+  | Footnote_Definition (name, definition) ->
+    Xml.block "div" ~attr:["class", "footdef"]
+      [(Xml.block "sup"
+          [(Xml.block "a"
+              ~attr:[("id", "fn." ^ name);
+                     ("class", "footnum");
+                     ("href", "#fnr.1")]
+              [Xml.data name])]);
+       (Xml.block "div" ~attr:["class", "footpara"]
+          [block (Paragraph definition)])]
   | _ -> Xml.empty
 
 module HtmlExporter = struct
