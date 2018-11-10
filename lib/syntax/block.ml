@@ -122,4 +122,4 @@ let rec parse = fix (fun parse ->
         verbatim (ref []) >>|
         fun lines -> [Example lines]
       | _ -> fail "block" in
-    between_eols_or_spaces p)
+    between_eols p)

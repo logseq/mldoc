@@ -71,6 +71,12 @@ let starts_with s check =
   else
     false
 
+let splitl p str =
+  let len = String.length str in
+  let i = ref 0 in
+  while !i < len && p str.[!i] do incr i; done;
+  String.sub str 0 !i, String.sub str !i (len - !i)
+
 let splitr p str =
   let len = String.length str in
   let i = ref len in

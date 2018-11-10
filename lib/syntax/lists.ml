@@ -111,7 +111,7 @@ let rec list_parser content_parsers items last_indent =
 let parse content_parsers =
   let r = ref [] in
   let p = list_parser content_parsers r 0 in
-  between_eols p >>= fun result ->
+  optional eols *> p >>= fun result ->
   r := [];
   return [List result]
   <|>

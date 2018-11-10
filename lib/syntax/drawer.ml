@@ -52,4 +52,4 @@ let parse =
             Property_Drawer (List.rev properties)
           | _ -> Drawer (name, body) in
         [drawer]) drawer_name drawer_body in
-  between_eols_or_spaces p
+  between_eols p

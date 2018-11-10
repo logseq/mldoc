@@ -111,8 +111,5 @@ let between_lines ?trim:(trim=true) end_check error =
           body_parser) in
   clear_parser_resource p (ref []) error
 
-let between_eols_or_spaces p =
-  spaces_or_eols *> p <* spaces_or_eols
-
 let between_eols p =
-  optional eols *> p <* optional eols
+  optional eols *> optional spaces *> p <* optional eols

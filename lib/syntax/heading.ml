@@ -66,7 +66,7 @@ let parse =
       (optional (lex marker <?> "Heading marker"))
       (optional (lex priority <?> "Heading priority"))
       (lex title <?> "Heading title") in
-  between_eols_or_spaces p
+  between_eols p
 
 (*
 

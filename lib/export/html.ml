@@ -5,8 +5,13 @@ open Document
 
 let concatmap f l = List.concat (List.map f l)
 
+let list_element = function
+  | [] -> "ul"
+  | { ordered } :: tl -> if ordered then "ol" else "ul"
+
 let rec map_inline l = concatmap inline l
 
+(* TODO: footnote *)
 and inline t =
   let open List in
   match t with
@@ -84,7 +89,7 @@ let heading {title; tags; marker; level; priority; anchor; meta} =
     ~attr:["id", anchor]
     (marker :: priority :: map_inline title @ [tags])
 
-let rec listitem x =
+let rec list_item x =
   let content =
     match x.content with
     | Paragraph i :: rest -> map_inline i @ blocks rest
@@ -104,12 +109,15 @@ let rec listitem x =
              style=\"margin-right:6px;\"></i>" )
     | _ -> (false, Xml.empty)
   in
+  let items = if List.length x.items = 0 then Xml.empty
+    else Xml.block (list_element x.items) (concatmap list_item x.items) in
   match x.number with
   | None ->
     [ Xml.block
         ~attr:[("checked", string_of_bool checked)]
         "li"
-        [Xml.block "p" (checked_html :: content)] ]
+        [Xml.block "p" (checked_html :: content);
+         items] ]
   | Some number ->
     [ Xml.block
         ~attr:
@@ -117,7 +125,10 @@ let rec listitem x =
           ; ("checked", string_of_bool checked) ]
         "li"
         [ Xml.block "p"
-            (Xml.data (string_of_int number ^ " ") :: checked_html :: content) ] ]
+            (Xml.data (string_of_int number ^ ". ")
+             :: checked_html
+             :: content);
+          items] ]
 
 and table { header; groups} =
   let tr cols =
@@ -145,7 +156,7 @@ and block t =
   | Horizontal_Rule -> Xml.block "hr" []
   | Heading h ->
     heading h
-  | List l -> Xml.block "ul" (concatmap listitem l)
+  | List l -> Xml.block (list_element l) (concatmap list_item l)
   | Table t -> table t
   | Math s ->
     Xml.block "div" ~attr:["class", "mathblock"]

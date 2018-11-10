@@ -13,7 +13,6 @@ open Prelude
    3. Export inline markup
    @@latex:\paragraph{My paragraph}@@
    @@html:<b>HTML doesn't have \paragraphs</b>@@
-
 *)
 
 module Macro = struct
@@ -147,7 +146,7 @@ let verbatim =
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = ['*'; '_'; '/'; '+'; '~'; '='; '['; '<'; '{'; '$']
+let plain_delims = ['*'; '_'; '/'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^';]
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
 
@@ -194,21 +193,6 @@ let target =
   between_string "<<" ">>"
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
       >>= fun s -> return @@ Target s )
-
-let concat_plains inlines =
-  let l = List.fold_left (fun acc inline ->
-      match inline with
-      | Plain s ->
-        (match acc with
-         | [] -> [Plain s]
-         | (Plain s') :: tl ->
-           (Plain (s' ^ s)) :: tl
-         | _ ->
-           Plain s :: acc)
-      | other -> other :: acc
-    ) [] inlines in
-  List.rev l
-
 
 (* \alpha *)
 let entity =
@@ -414,6 +398,46 @@ let range =
 let timestamp =
   range <|> general_timestamp
 
+(* complex link *)
+(* :// *)
+let link_inline =
+  let protocol_part = take_while1 is_letter <* string "://" in
+  let link_part =
+    take_while1 (fun c ->
+        non_space c && List.for_all (fun c' -> c <> c') link_delims )
+  in
+  lift2
+    (fun protocol link ->
+       Link
+         { label= [Plain (protocol ^ "://" ^ link)]
+         ; url= Complex {protocol; link= "//" ^ link} } )
+    protocol_part link_part
+
+(* Build direct links *)
+let concat_plains inlines =
+  let l = List.fold_left (fun acc inline ->
+      match inline with
+      | Plain s ->
+        (match acc with
+         | [] -> [Plain s]
+         | (Plain s') :: tl ->
+           if starts_with s "//" then (* might be a direct link *)
+             let (l, r) = splitr non_space s' in
+             let (l', r') = splitl non_space s in
+             let link = r ^ l' in
+             match parse_string link_inline link with
+             | Ok result ->
+               (Plain r') :: result :: (Plain l) :: tl
+             | Error e ->
+               (Plain (s' ^ s)) :: tl
+           else
+           (Plain (s' ^ s)) :: tl
+         | _ ->
+           Plain s :: acc)
+      | other -> other :: acc
+    ) [] inlines in
+  List.rev l
+
 (* link *)
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
@@ -439,21 +463,6 @@ let link =
          | Error e -> [Plain label] in
        Link {label; url} )
     url_part label_part
-
-(* complex link *)
-(* :// *)
-let link_inline =
-  let protocol_part = take_while1 is_letter <* string "://" in
-  let link_part =
-    take_while1 (fun c ->
-        non_space c && List.for_all (fun c' -> c <> c') link_delims )
-  in
-  lift2
-    (fun protocol link ->
-       Link
-         { label= [Plain (protocol ^ "://" ^ link)]
-         ; url= Complex {protocol; link= "//" ^ link} } )
-    protocol_part link_part
 
 let id = ref 0
 

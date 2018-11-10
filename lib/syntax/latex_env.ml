@@ -56,4 +56,4 @@ let parse =
         return [Latex_Fragment x]
       | _ ->
         fail "Latex_env latex_fragment" in
-  between_eols_or_spaces p
+  between_eols p
