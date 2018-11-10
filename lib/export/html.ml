@@ -244,8 +244,12 @@ and block t =
   | Custom (name, options, l) ->
     Xml.block "div" ~attr:["class", name]
       (blocks l)
-  | Latex_Fragment l -> Xml.empty
-  | Latex_Environment (name, option, content) -> Xml.empty
+  | Latex_Fragment l ->
+    Xml.block "p" ~attr:["class", "latex-fragment"]
+      (inline (Inline.Latex_Fragment l))
+  (* | Latex_Environment (name, option, content) ->
+   *   Xml.block "div" ~attr:["class", "latex-environment"]
+   *     (inline (Inline.Latex_Fragment content)) *)
   | Footnote_Definition (name, definition) ->
     Xml.block "div" ~attr:["class", "footdef"]
       [(Xml.block "sup"
