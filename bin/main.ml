@@ -1,5 +1,5 @@
-open Org
-open Org.Parser
+open Mldoc_org
+open Mldoc_org.Parser
 
 let generate backend doc output =
   let export = Exporters.find backend in

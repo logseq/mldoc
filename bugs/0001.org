@@ -1,2 +1,0 @@
-*You will learn to:*
-- write your docs in Org mode

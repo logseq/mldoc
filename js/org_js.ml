@@ -1,5 +1,5 @@
-open Org
-open Org.Parser
+open Mldoc_org
+open Mldoc_org.Parser
 
 let ast_to_json ast =
   Type.blocks_to_yojson ast |> Yojson.Safe.to_string

@@ -1,7 +1,5 @@
-* Org
+* mldoc_org
   Another Org-mode parser implemented using OCaml and [[https://github.com/inhabitedtype/angstrom][Angstrom]].
-  Don't use it right now, it's just a hobby project.
-
   It's based on [[http://iso.mor.phis.me/projects/mlorg/][mlorg]] which is a high quality Org-mode parser written by [[https://github.com/asmanur?tab=repositories][Simon Castellan]].
 
 ** Usage

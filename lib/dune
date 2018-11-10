@@ -1,8 +1,8 @@
 (include_subdirs unqualified)
 
 (library
- (name        org)
- (public_name org)
+ (name        mldoc_org)
+ (public_name mldoc_org)
  (preprocess (pps ppx_deriving_yojson))
  (libraries bigstringaf yojson ppx_deriving_yojson.runtime)
  (wrapped false))

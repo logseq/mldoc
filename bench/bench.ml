@@ -1,5 +1,5 @@
-open Org
-open Org.Parser
+open Mldoc_org
+open Mldoc_org.Parser
 
 open Core
 open Core_bench.Std
