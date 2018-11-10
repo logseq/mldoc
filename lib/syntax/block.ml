@@ -99,8 +99,13 @@ let rec parse = fix (fun parse ->
          | "src" ->
            let (language, options) = source_code_language_options options in
            [Src {language; options; lines}]
-         | "quote" -> [Quote lines]
          | "example" -> [Example lines]
+         | "quote" ->
+           let content = String.concat "\n" lines in
+           let result = match parse_string (block_content_parsers parse) content with
+             | Ok result -> result
+             | Error e -> [] in
+           [Quote (List.concat result)]
          | _ ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers parse) content with

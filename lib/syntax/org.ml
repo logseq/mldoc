@@ -13,7 +13,6 @@ and meta =
 
 and list_item =
     { content: t list  (** The contents of the current item *)
-    (* ; content: t list *)
     ; items: list_item list
     ; number: int option  (** Its number *)
     ; checkbox: bool option  (** Was it checked *)
@@ -49,8 +48,7 @@ and t =
   (** [Examples] used to typeset random code snippets. The integer is the line number in the source file. *)
   | Src of code_block
   (** [Src] is used to typeset code snippets. The integer is the line number in the source file. *)
-  (* | Quote of t list  (\** Quoted text *\) *)
-  | Quote of string list  (** Quoted text *)
+  | Quote of t list  (** Quoted text *)
   | Custom of string * string option * t list
   (** Custom block of the form
       #+begin_name opts

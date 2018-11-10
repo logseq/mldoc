@@ -7,6 +7,11 @@ let hd_opt = function
   | h :: [] -> Some h
   | _ -> None
 
+let rec last_opt = function
+  | [] -> None
+  | h :: [] -> Some h
+  | h :: tl -> last_opt tl
+
 let remove p = List.filter (fun x -> not (p x))
 
 let join separator l =
@@ -98,6 +103,11 @@ let result_default default = function
   | Ok result -> result
   | Error e -> default
 
+let lines s = String.split_on_char '\n' s
+
 let clear_indents s =
-  let lines = String.split_on_char '\n' s in
-  List.map String.trim lines
+  List.map String.trim (lines s)
+
+let change_ext ext file =
+  if file = "-" then file
+  else Filename.chop_extension file ^ "." ^ ext

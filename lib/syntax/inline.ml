@@ -59,8 +59,8 @@ and t =
   | Plain of string
   | Link of link
   | Target of string
-  | Subscript of string
-  | Superscript of string
+  | Subscript of t list
+  | Superscript of t list
   | Footnote_Reference of footnote_reference
   | Cookie of stats_cookie
   | Latex_Fragment of latex_fragment
@@ -68,7 +68,7 @@ and t =
   | Entity of Entity.t
   | Timestamp of timestamp
   | Radio_Target of string
-  | Export_Snippet of string
+  | Export_Snippet of string * string
 [@@deriving yojson]
 
 (* emphasis *)
@@ -208,12 +208,26 @@ let concat_plains inlines =
     ) [] inlines in
   List.rev l
 
-(* TODO: whether to support nested inline *)
+
+(* \alpha *)
+let entity =
+  char '\\' *> take_while1 is_letter
+  >>| fun s ->
+  try
+    let entity = Entity.find s in
+    Entity entity
+  with Not_found ->
+    Plain s
+
 (* foo_{bar}, foo^{bar} *)
 let subscript, superscript =
+  let p = many1 (choice [nested_emphasis; plain; entity]) in
   let gen s f =
     string s *> take_while1 (fun c -> non_space c && c <> '}')
-    <* char '}' >>| f
+    <* char '}' >>| fun s ->
+    match parse_string p s with
+    | Ok result -> f result
+    | Error e -> f [Plain s]
   in
   ( gen "_{" (fun x -> Subscript x)
   , gen "^{" (fun x -> Superscript x) )
@@ -289,16 +303,6 @@ let macro =
        Macro {name; arguments} )
     (string "{{{" *> take_while1 (fun c -> c <> '(') <* char '(')
     (take_while1 (fun c -> c <> ')') <* string ")}}}")
-
-(* \alpha *)
-let entity =
-  char '\\' *> take_while1 is_letter
-  >>| fun s ->
-  try
-    let entity = Entity.find s in
-    Entity entity
-  with Not_found ->
-    Plain s
 
 let date_time close_char ~active typ =
   let open Timestamp in
@@ -514,7 +518,8 @@ let rec ascii = function
   | Footnote_Reference ref -> Option.map_default asciis "" ref.definition
   | Link l -> asciis l.label
   | Emphasis (_, t) -> asciis t
-  | Latex_Fragment (Inline s) | Plain s | Subscript s | Superscript s | Verbatim s -> s
+  | Subscript l | Superscript l -> asciis l
+  | Latex_Fragment (Inline s) | Plain s | Verbatim s -> s
   | Entity e -> e.Entity.unicode
   | _ -> ""
 
