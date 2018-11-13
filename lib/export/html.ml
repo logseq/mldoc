@@ -8,6 +8,9 @@ open Timestamp
 
 let macros = ref []
 
+(* #+OPTIONS:   H:4 num:nil toc:2 p:t *)
+let options = ref []
+
 let concatmap f l = List.concat (List.map f l)
 
 let list_element = function
@@ -147,16 +150,31 @@ and inline t =
   | _ ->
     [Xml.empty]
 
-let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
-  let numbering =
+let get_int_option name =
+  try
+    match List.assoc name !options with
+    | "nil" -> 0
+    | s when is_number s -> int_of_string s
+    | _ -> 1024
+  with Not_found -> 1024
+
+let construct_numbering level numbering =
+  let num_option = get_int_option "num" in
+  if level <= num_option then
     match numbering with
     | Some l ->
-      let numbering = List.map string_of_int l |> String.concat "." in
+      let numbering =
+        List.map string_of_int l |> String.concat "." in
       Xml.block "span"
         ~attr:[("class", "numbering");
                ("style", "margin-right:6px")]
         [Xml.data numbering]
-    | None -> Xml.empty in
+    | None -> Xml.empty
+  else
+    Xml.empty
+
+let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
+  let numbering = construct_numbering level numbering in
   let marker =
     match marker with
     | Some v ->
@@ -304,6 +322,31 @@ and block t =
           [block (Paragraph definition)])]
   | _ -> Xml.empty
 
+(* FIXME: *)
+let toc items =
+  let toc_option = get_int_option "toc" in
+  if toc_option > 0 then
+    let rec go acc current_level = function
+      | [] -> Xml.block "ol" (List.rev acc)
+      | ({ title; level; anchor; numbering } :: t) as items ->
+        if level <= toc_option then
+          if level < current_level then (* breakout *)
+            go acc level items
+          else
+            let numbering = construct_numbering level (Some numbering) in
+            let a = Xml.block "a" ~attr: ["href", "#" ^ anchor]
+                (numbering :: map_inline title) in
+            let block = Xml.block "li" [a] in
+            go (block :: acc) level t
+        else
+          go acc current_level t
+    in
+    Xml.block "div"
+      ~attr:[("id", "toc")]
+      ((Xml.block "h2" [Xml.data "Table of contents"]) :: [go [] 0 items])
+  else
+    Xml.empty
+
 let collect_macros directives =
   let collected = directives
                   |> List.filter (fun (name, _) -> (String.uppercase_ascii name) = "MACRO")
@@ -311,6 +354,18 @@ let collect_macros directives =
                       let (name, definition) = splitl (fun c -> c <> ' ') df in
                       (name, String.trim definition)) in
   macros := collected
+
+let collect_options directives =
+  let collected = try
+      let options = List.find (fun (name, _) -> (String.uppercase_ascii name) = "OPTIONS") directives in
+      snd options |> String.split_on_char ' '
+      |> List.map (fun s ->
+          match String.split_on_char ':' s with
+          | [] -> ("", "")
+          | [k; v] -> (k, v)
+          | a -> (List.hd a, List.nth a 1))
+    with Not_found -> [] in
+  options := collected
 
 module HtmlExporter = struct
   let name = "html"
@@ -320,12 +375,14 @@ module HtmlExporter = struct
   let export doc output =
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
     collect_macros doc.directives;
+    collect_options doc.directives;
     let title = match doc.title with
       | None -> Xml.empty
       | Some s -> Xml.block "h1" ~attr:["class", "title"]
                     [(Xml.data s)] in
+    let toc = toc doc.toc in
     let body = [Xml.block "div" ~attr:["id", "content"]
-                  (title :: (List.map block doc.blocks))
+                  (title :: toc :: (List.map block doc.blocks))
                ] in
     Xml.output_xhtml output body
 end

@@ -1,7 +1,7 @@
 * mldoc_org TODOS
 ** DONE Heading numbers
    CLOSED: [2018-11-13 Tue 17:17]
-   
+
 ** DONE macro expansion
    CLOSED: [2018-11-13 Tue 18:46]
 
@@ -9,11 +9,12 @@
 
 *** TODO Heading
     ~#+OPTIONS: num:x~, *x* could be nil or number.
-   
+
 ** TODO unescape
-** TODO Code block supports reference (name attribute)
+** TODO source code block supports reference (name attribute)
 ** TODO table support column groups
+** TODO babel integration   
 ** TODO configuration, image extensions
-** TODO how to extent using javascript
-** TODO declarative parser using edn or json
-** TODO log
+** TODO better error report
+** TODO how to extent using javascript  :experiment:
+** TODO declarative parser using edn or json :experiment:

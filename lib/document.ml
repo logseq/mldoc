@@ -77,7 +77,8 @@ let build_doc filename ast =
       | Heading {title; tags; marker; level; priority; anchor; meta} ->
         let numbering = compute_heading_numbering level toc in
         let h = Heading {title; tags; marker; level; priority; anchor; meta; numbering=(Some numbering)} in
-        aut directives (h :: blocks) ({title; level; anchor; numbering} :: toc) tl
+        let toc_item = {title; level; anchor; numbering} in
+        aut directives (h :: blocks) (toc_item :: toc) tl
       | Paragraph inlines ->
         let blocks = (match get_timestamps inlines with
             | [] -> (h :: blocks)

@@ -146,6 +146,10 @@ let explode s =
     if i < 0 then l else exp (i - 1) (s.[i] :: l) in
   exp (String.length s - 1) []
 
+let is_number s =
+  let chars = explode s in
+  List.for_all (fun c -> is_digit c) chars
+
 let is_ordered s =
   let chars = explode s in
   List.for_all (fun c -> is_digit c) (drop_last 1 chars)
