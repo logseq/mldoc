@@ -2,7 +2,8 @@
 ** DONE Heading numbers
    CLOSED: [2018-11-13 Tue 17:17]
    
-** TODO macro expansion
+** DONE macro expansion
+   CLOSED: [2018-11-13 Tue 18:46]
 
 ** TODO support options
 
@@ -15,3 +16,4 @@
 ** TODO configuration, image extensions
 ** TODO how to extent using javascript
 ** TODO declarative parser using edn or json
+** TODO log

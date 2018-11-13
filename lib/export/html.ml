@@ -6,6 +6,8 @@ open Timestamp
 
 (* taken from mlorg *)
 
+let macros = ref []
+
 let concatmap f l = List.concat (List.map f l)
 
 let list_element = function
@@ -129,6 +131,19 @@ and inline t =
                    ("class", "footref");
                    ("href", "#fn." ^ name)]
             [Xml.data name]]]
+  | Macro {name; arguments} ->
+    (try
+       let value = (List.assoc name !macros) in
+       let buff = Buffer.create (String.length value) in
+       Buffer.add_substitute buff
+         (fun v -> try List.nth arguments (int_of_string v - 1) with _ -> v)
+         value ;
+       let content = (Buffer.contents buff) in
+       match Angstrom.parse_string Inline.parse content with
+       | Ok inlines -> map_inline inlines
+       | Error e -> [Xml.empty]
+     with Not_found ->
+       [Xml.empty])
   | _ ->
     [Xml.empty]
 
@@ -289,6 +304,14 @@ and block t =
           [block (Paragraph definition)])]
   | _ -> Xml.empty
 
+let collect_macros directives =
+  let collected = directives
+                  |> List.filter (fun (name, _) -> (String.uppercase_ascii name) = "MACRO")
+                  |> List.map (fun (_, df) ->
+                      let (name, definition) = splitl (fun c -> c <> ' ') df in
+                      (name, String.trim definition)) in
+  macros := collected
+
 module HtmlExporter = struct
   let name = "html"
 
@@ -296,6 +319,7 @@ module HtmlExporter = struct
 
   let export doc output =
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
+    collect_macros doc.directives;
     let title = match doc.title with
       | None -> Xml.empty
       | Some s -> Xml.block "h1" ~attr:["class", "title"]
