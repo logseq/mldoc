@@ -48,7 +48,10 @@
     1. [X] preliminary support
     2. [ ] column groups
 
-*** DONE List
+*** DONE List [3/3]
+    1. [X] Unordered list
+    2. [X] Ordered list
+    3. [X] Definition list
 
 *** DONE Directive
 

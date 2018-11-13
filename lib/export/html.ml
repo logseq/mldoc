@@ -10,7 +10,11 @@ let concatmap f l = List.concat (List.map f l)
 
 let list_element = function
   | [] -> "ul"
-  | { ordered } :: tl -> if ordered then "ol" else "ul"
+  | { ordered; name } :: tl ->
+    let name = match name with | None -> false | Some _ -> true in
+    if name then "dl"
+    else if ordered then "ol"
+    else "ul"
 
 let handle_image_link url href label =
   match url with
@@ -189,11 +193,20 @@ let rec list_item x =
     else Xml.block (list_element x.items) (concatmap list_item x.items) in
   match x.number with
   | None ->
-    [ Xml.block
-        ~attr:[("checked", string_of_bool checked)]
-        "li"
-        [Xml.block "p" (checked_html :: content);
-         items] ]
+    let block = match x.name with
+      | None -> (Xml.block
+                   ~attr:[("checked", string_of_bool checked)]
+                   "li"
+                   [Xml.block "p" (checked_html :: content);
+                    items])
+      | Some name ->
+          (Xml.block
+             ~attr:[("checked", string_of_bool checked)]
+             "dl"
+             [Xml.block "dt" [(Xml.data name)];
+              Xml.block "dd" (content @ [items])])
+    in
+    [ block ]
   | Some number ->
     [ Xml.block
         ~attr:

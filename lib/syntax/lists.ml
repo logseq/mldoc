@@ -3,6 +3,7 @@ open Parsers
 open Prelude
 open Type
 
+(* TODO: definition list *)
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
 let check_listitem line =
@@ -17,7 +18,7 @@ let check_listitem line =
   | None ->
     if String.length line > 2 then
       let prefix = String.sub line indent 2 in
-      (indent, prefix = "- " || prefix = "+ ", None)
+      (indent, prefix = "- " || prefix = "+ " || prefix = "* ", None)
     else
       (indent, false, None)
 
@@ -63,6 +64,7 @@ let terminator items =
 let format_parser =
   (string "+" *> spaces *> return None)
   <|> (string "-" *> spaces *> return None)
+  <|> (string "*" *> spaces *> return None)
   <|> (digits <* char '.' <* spaces >>= fun number -> return (Some number))
 
 let checkbox_parser =
@@ -78,6 +80,16 @@ let format_checkbox_parser =
     format_parser
     (checkbox_parser <* spaces)
 
+(* name :: definition *)
+let definition s =
+  let name_parser = (end_string " :: " (fun s -> s)) in
+  match parse_string name_parser s with
+  | Ok name ->
+    let l = (String.length name + 4) in
+    (Some name, String.sub s l (String.length s - l))
+  | Error e ->
+    (None, s)
+
 let rec list_parser content_parsers items last_indent =
   fix (fun list ->
       (indent_parser >>= fun indent ->
@@ -91,11 +103,12 @@ let rec list_parser content_parsers items last_indent =
            in
            let content = List.map String.trim content in
            let content = String.concat "\n" content in
+           let (name, content) = if ordered then (None, content) else (definition content) in
            let content = match parse_string content_parsers content with
              | Ok result -> List.concat result
              | Error _e -> []
            in
-           let item = {content; items=children; number; checkbox; indent; ordered} in
+           let item = {content; name=name; items=children; number; checkbox; indent; ordered} in
            items := item :: !items;
            list in
          Angstrom.take indent *> (* skip indent *)

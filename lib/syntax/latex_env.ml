@@ -44,7 +44,6 @@ let parse =
   let p =
     peek_char_fail >>= function
     | '\\' ->                      (* block *)
-      print_endline "debug";
       env_name_options_parser >>= fun (name, options) ->
       between_lines (fun line ->
           let prefix = "\\end{" ^ name ^ "}" in
