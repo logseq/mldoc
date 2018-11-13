@@ -3,6 +3,7 @@ type heading =
   ; tags: string list  (** The tags set by the user *)
   ; marker: string option  (** TODO, DONE, and so on *)
   ; level: int  (** The level (number of stars) -- starts at 1 *)
+  ; numbering: int list option
   ; priority: char option  (** The optional priority *)
   ; anchor: string
   ; meta: meta

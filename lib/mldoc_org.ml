@@ -12,13 +12,3 @@ module Backends = struct
 end
 
 module Xml = Xml
-
-(* TODO:
-   - ordered list support other formats, not just numbers.
-   - heading numbers
-   - macro expansion
-   - unescape
-   - Code block supports reference (name attribute).
-   - table support column groups
-   - configuration, image extensions
-*)

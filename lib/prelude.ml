@@ -1,4 +1,5 @@
 let (<<) f g x = f(g(x))
+(* TODO: group using modules *)
 
 let identity x = x
 
@@ -10,7 +11,12 @@ let hd_opt = function
 let rec last_opt = function
   | [] -> None
   | h :: [] -> Some h
-  | h :: tl -> last_opt tl
+  | _ :: tl -> last_opt tl
+
+let rec last = function
+  | [] -> raise Not_found
+  | h :: [] -> h
+  | _ :: tl -> last tl
 
 let remove p = List.filter (fun x -> not (p x))
 
@@ -42,6 +48,18 @@ let drop_last n l =
   in
   loop (len - n) [] l
 
+let split_n n l =
+  if List.length l < n then
+    (l, [0])
+  else
+    let rec loop n acc = function
+      | h :: t when n > 0 ->
+        loop (n - 1) (h :: acc) t
+      | _ ->
+        (List.rev acc, l)
+    in
+    loop n [] l
+
 let filter_map f l =
   let rec loop dst = function
     | [] -> List.rev dst
@@ -59,6 +77,20 @@ let print_list l =
 let print_bool = function
   | true -> print_string "true"
   | _ -> print_string "false"
+
+(* array *)
+module Array = struct
+  include Array
+
+  let findi p xs =
+    let n = Array.length xs in
+    let rec loop i =
+      if i = n then raise Not_found
+      else if p xs.(i) then i
+      else loop (succ i)
+    in
+    loop 0
+end
 
 (* string *)
 let starts_with s check =
@@ -94,6 +126,13 @@ let splitr p str =
   let i = ref len in
   while !i > 0 && p str.[!i - 1] do decr i; done;
   String.sub str 0 !i, String.sub str !i (len - !i)
+
+let lchop ?(n = 1) s =
+  if n < 0 then
+    invalid_arg "String.lchop: number of characters to chop is negative"
+  else
+    let slen = String.length s in
+    if slen <= n then "" else String.sub s n (slen - n)
 
 let is_uppercase c = 'A' <= c && c <= 'Z'
 let is_lowercase c = 'a' <= c && c <= 'z'

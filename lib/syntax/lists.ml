@@ -60,10 +60,14 @@ let terminator items =
     return @@ List.rev result
 
 let format_parser indent =
-  let choices = if indent = 0 then [char '+'; char '-'] else
-      [char '+'; char '-'; char '*'] in
-  (choice choices *> spaces *> return None)
-  <|> (digits <* char '.' <* spaces >>= fun number -> return (Some number))
+  let choices = if indent = 0 then
+      char '+' <|> char '-' else
+      char '+' <|> char '-' <|> char '*'
+      in
+  let unordered_format = (choices *> spaces *> return None) in
+  let ordered_format = (digits <* char '.' <* spaces >>=
+                        fun number -> return (Some number)) in
+  unordered_format <|> ordered_format
 
 let checkbox_parser =
   (string "[ ]" *> return (Some false))

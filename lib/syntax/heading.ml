@@ -61,7 +61,7 @@ let parse =
            | _ -> (title, []) in
          let anchor = anchor_link (Inline.asciis title) in
          let meta = { timestamps = []; properties = []} in
-         [Heading {level; marker; priority; title; tags; anchor; meta}] )
+         [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
       (level <* ws <?> "Heading level")
       (optional (lex marker <?> "Heading marker"))
       (optional (lex priority <?> "Heading priority"))

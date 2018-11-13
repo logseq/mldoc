@@ -132,7 +132,16 @@ and inline t =
   | _ ->
     [Xml.empty]
 
-let heading {title; tags; marker; level; priority; anchor; meta} =
+let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
+  let numbering =
+    match numbering with
+    | Some l ->
+      let numbering = List.map string_of_int l |> String.concat "." in
+      Xml.block "span"
+        ~attr:[("class", "numbering");
+               ("style", "margin-right:6px")]
+        [Xml.data numbering]
+    | None -> Xml.empty in
   let marker =
     match marker with
     | Some v ->
@@ -166,7 +175,7 @@ let heading {title; tags; marker; level; priority; anchor; meta} =
   in
   Xml.block (Printf.sprintf "h%d" level)
     ~attr:["id", anchor]
-    (marker :: priority :: map_inline title @ [tags])
+    (numbering :: marker :: priority :: map_inline title @ [tags])
 
 let rec list_item x =
   let content =

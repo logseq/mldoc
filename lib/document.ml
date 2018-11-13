@@ -2,9 +2,10 @@ open Type
 
 type toc = toc_item list [@@deriving yojson]
 and toc_item =
-  { title: Inline.t list
-  ; level: int
-  ; anchor: string }
+    { title: Inline.t list
+    ; level: int
+    ; anchor: string
+    ; numbering: int list}
 
 (**
     A document is:
@@ -57,8 +58,23 @@ let build_doc filename ast =
       | Directive (k, v) ->
         let directives = (k, v) :: directives in
         aut directives blocks toc tl
-      | Heading {title; level; anchor} ->
-        aut directives (h :: blocks) ({title; level; anchor} :: toc) tl
+      | Heading {title; tags; marker; level; priority; anchor; meta} ->
+        let numbering = match toc with
+          | [] -> [1]
+          | p :: _ ->
+            let open List in
+            let open Prelude in
+            (if p.level = level then
+               drop_last 1 p.numbering @ [(last p.numbering) + 1]
+             else if p.level < level then (* child *)
+               p.numbering @ [1]
+             else                (* breakout *)
+               let diff = p.level - level in
+               let (before, after) = Prelude.split_n (List.length p.numbering - (diff + 1)) p.numbering in
+               before @ [hd after + 1])
+        in
+        let h = Heading {title; tags; marker; level; priority; anchor; meta; numbering=(Some numbering)} in
+        aut directives (h :: blocks) ({title; level; anchor; numbering} :: toc) tl
       | Paragraph inlines ->
         let blocks = (match get_timestamps inlines with
             | [] -> (h :: blocks)
