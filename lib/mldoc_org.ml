@@ -14,8 +14,9 @@ end
 module Xml = Xml
 
 (* TODO:
-   - unordered list support "*".
    - ordered list support other formats, not just numbers.
+   - heading numbers
+   - macro expansion
    - unescape
    - Code block supports reference (name attribute).
    - table support column groups

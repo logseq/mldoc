@@ -17,7 +17,7 @@ let check_listitem line =
   | None ->
     if String.length line > 2 then
       let prefix = String.sub line indent 2 in
-      (indent, prefix = "- " || prefix = "+ ", None)
+      (indent, prefix = "- " || prefix = "+ " || (indent <> 0 && prefix = "* "), None)
     else
       (indent, false, None)
 
@@ -59,9 +59,10 @@ let terminator items =
     let result = ! items in
     return @@ List.rev result
 
-let format_parser =
-  (string "+" *> spaces *> return None)
-  <|> (string "-" *> spaces *> return None)
+let format_parser indent =
+  let choices = if indent = 0 then [char '+'; char '-'] else
+      [char '+'; char '-'; char '*'] in
+  (choice choices *> spaces *> return None)
   <|> (digits <* char '.' <* spaces >>= fun number -> return (Some number))
 
 let checkbox_parser =
@@ -71,10 +72,10 @@ let checkbox_parser =
   <|>
   return None
 
-let format_checkbox_parser =
+let format_checkbox_parser indent =
   lift2 (fun format checkbox ->
       (format, checkbox))
-    format_parser
+    (format_parser indent)
     (checkbox_parser <* spaces)
 
 (* name :: definition *)
@@ -113,7 +114,7 @@ let rec list_parser content_parsers items last_indent =
            items := item :: !items;
            list in
          Angstrom.take indent *> (* skip indent *)
-         (format_checkbox_parser >>= fun (number, checkbox) ->
+         (format_checkbox_parser indent >>= fun (number, checkbox) ->
           match number with
           | None -> content_parser None checkbox
           | Some number ->
