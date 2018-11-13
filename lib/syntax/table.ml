@@ -3,8 +3,6 @@ open Parsers
 open Prelude
 open Type
 
-(* TODO: support column groups *)
-
 (*
 | Foo                            | Bar                 |
 |--------------------------------+---------------------|

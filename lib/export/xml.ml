@@ -62,7 +62,8 @@ let output_lines ?(rewrite = true) fd indent_level lines =
     List.iter
       (fun s -> output_char fd '\n' ; indent fd indent_level ; output s)
       q ;
-    if lines.[String.length lines - 1] = '\n' then output "\n"
+    if String.length lines >= 1 then
+      if lines.[String.length lines - 1] = '\n' then output "\n"
   | [] -> ()
 
 let output ?(offset = 0) fd inlines prep_inlines exceptions space_significants

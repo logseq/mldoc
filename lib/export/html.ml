@@ -77,7 +77,7 @@ and inline t =
   | Superscript l -> [Xml.block "sup" (map_inline l)]
   | Subscript l -> [Xml.block "sub" (map_inline l)]
   | Emphasis (kind, data) ->
-    let l = [`Bold, "b"; `Italic, "i"; `Underline, "u"] in
+    let l = [`Bold, "b"; `Italic, "i"; `Underline, "u"; `Strike_through, "del"] in
     [Xml.block (assoc kind l) (map_inline data)]
   | Entity e ->
     [Xml.raw e.html]
@@ -89,7 +89,6 @@ and inline t =
   | Link {url; label} ->
     let href = Inline.string_of_url url in
     (* If it is an image *)
-    (* TODO: config *)
     if List.exists (ends_with href)
         [".png"; ".jpg"; ".jpeg"; ".gif"; ".bmp"] then
       handle_image_link url href label

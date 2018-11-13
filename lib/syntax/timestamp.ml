@@ -60,7 +60,6 @@ let normalize t =
 
 let weekday t = (to_tm t).Unix.tm_wday
 
-(* TODO:  *)
 let parse_time s =
   try Scanf.sscanf s "%d:%d" (fun hour min -> Some {hour; min})
   with _ -> None

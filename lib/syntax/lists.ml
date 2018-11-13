@@ -3,7 +3,6 @@ open Parsers
 open Prelude
 open Type
 
-(* TODO: definition list *)
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
 let check_listitem line =
@@ -18,7 +17,7 @@ let check_listitem line =
   | None ->
     if String.length line > 2 then
       let prefix = String.sub line indent 2 in
-      (indent, prefix = "- " || prefix = "+ " || prefix = "* ", None)
+      (indent, prefix = "- " || prefix = "+ ", None)
     else
       (indent, false, None)
 
@@ -60,11 +59,9 @@ let terminator items =
     let result = ! items in
     return @@ List.rev result
 
-(* TODO: support other ordered formats *)
 let format_parser =
   (string "+" *> spaces *> return None)
   <|> (string "-" *> spaces *> return None)
-  <|> (string "*" *> spaces *> return None)
   <|> (digits <* char '.' <* spaces >>= fun number -> return (Some number))
 
 let checkbox_parser =
@@ -82,11 +79,15 @@ let format_checkbox_parser =
 
 (* name :: definition *)
 let definition s =
-  let name_parser = (end_string " :: " (fun s -> s)) in
+  let name_parser = (end_string " ::" (fun s -> s)) in
   match parse_string name_parser s with
   | Ok name ->
-    let l = (String.length name + 4) in
-    (Some name, String.sub s l (String.length s - l))
+    let l = (String.length name + 3) in
+    let nc = String.get s l in
+    if is_space nc || is_eol nc then
+      (Some name, String.sub s l (String.length s - l))
+    else
+      (None, s)
   | Error e ->
     (None, s)
 

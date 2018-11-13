@@ -6,13 +6,6 @@ open Prelude
 (* TODO:
    1. Performance:
    `many` and `choice` together may affect performance, benchmarks are needed
-
-   2. Security:
-   unescape
-
-   3. Export inline markup
-   @@latex:\paragraph{My paragraph}@@
-   @@html:<b>HTML doesn't have \paragraphs</b>@@
 *)
 
 module Macro = struct
@@ -194,6 +187,7 @@ let nested_emphasis =
   return (aux_nested_emphasis e)
 
 let breakline = eol >>= fun _ -> fail "breakline"
+let allow_breakline = eol >>= fun _ -> return Break_Line
 
 let radio_target =
   between_string "<<<" ">>>"
@@ -503,8 +497,14 @@ let incr_id id =
   incr id;
   !id
 
-let footnote_inline_definition definition =
-  let parser = (many1 (choice [link; link_inline; radio_target; target; nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
+let footnote_inline_definition ?(break = false) definition =
+  let choices = if break then
+      [link; link_inline; radio_target; target; nested_emphasis; latex_fragment; entity;
+       code; allow_breakline; subscript; superscript; plain]
+    else
+      [link; link_inline; radio_target; target; nested_emphasis; latex_fragment; entity;
+       code; subscript; superscript; plain] in
+  let parser = (many1 (choice choices)) in
   match parse_string parser definition with
   | Ok result ->
     let result = concat_plains result in

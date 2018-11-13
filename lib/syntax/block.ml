@@ -13,10 +13,6 @@ open Type
    2. Verbatim, each line starts with `:`.
 *)
 
-(* TODO:
-   1. Code block supports reference (name attribute).
-*)
-
 let verbatim lines =
   fix (fun verbatim ->
       spaces *> char ':' *> ws *> take_till is_eol <* optional eol
