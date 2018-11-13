@@ -72,13 +72,13 @@ let block_content_parsers block_parse =
                       ; Comment.parse]
     ])
 
-let source_code_language_options = function
+let separate_name_options = function
   | None -> (None, None)
   | Some s ->
     match String.split_on_char ' ' s with
     | [] -> (None, None)
-    | language :: [] -> (Some language, None)
-    | language :: options -> (Some language, Some options)
+    | name :: [] -> (Some name, None)
+    | name :: options -> (Some name, Some options)
 
 let rec parse = fix (fun parse ->
     let p = peek_char_fail
@@ -98,7 +98,7 @@ let rec parse = fix (fun parse ->
         let name = String.lowercase_ascii name in
         (match name with
          | "src" ->
-           let (language, options) = source_code_language_options options in
+           let (language, options) = separate_name_options options in
            [Src {language; options; lines}]
          | "example" -> [Example lines]
          | "quote" ->
@@ -107,6 +107,11 @@ let rec parse = fix (fun parse ->
              | Ok result -> result
              | Error e -> [] in
            [Quote (List.concat result)]
+         | "export" ->          (* export html, etc *)
+           let (name, options) = separate_name_options options in
+           let name = match name with None -> "" | Some s -> s in
+           let content = String.concat "\n" lines in
+           [Export (name, options, content)]
          | _ ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers parse) content with

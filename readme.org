@@ -16,13 +16,15 @@
       make
     #+END_SRC
 
-** Parsing todos [10/12]
-*** DONE Heading [5/5]
+** Parsing todos [11/12]
+*** DONE Heading [7/7]
     1. [X] level
     2. [X] marker
     3. [X] priority
     4. [X] title
     5. [X] tags
+    6. [X] stats
+    7. [X] footnote
 
 *** DONE Markup (Inline) [14/14]
     1. [X] Latex fragment
@@ -71,9 +73,8 @@
 
 *** DONE Latex environment
 
-*** TODO Quoting
+*** DONE Quoting
 *** DONE TOC
-    CLOSED: [2018-11-08 Thu 18:04]
 
 ** DONE Export [2/2]
    1. [X] json

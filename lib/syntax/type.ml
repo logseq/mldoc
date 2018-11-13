@@ -50,6 +50,7 @@ and t =
   | Src of code_block
   (** [Src] is used to typeset code snippets. The integer is the line number in the source file. *)
   | Quote of t list  (** Quoted text *)
+  | Export of string * string list option * string
   | Custom of string * string option * t list
   (** Custom block of the form
       #+begin_name opts

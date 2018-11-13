@@ -199,11 +199,11 @@ let rec list_item x =
                    [Xml.block "p" (checked_html :: content);
                     items])
       | Some name ->
-          (Xml.block
-             ~attr:[("checked", string_of_bool checked)]
-             "dl"
-             [Xml.block "dt" [(Xml.data name)];
-              Xml.block "dd" (content @ [items])])
+        (Xml.block
+           ~attr:[("checked", string_of_bool checked)]
+           "dl"
+           [Xml.block "dt" [(Xml.data name)];
+            Xml.block "dd" (content @ [items])])
     in
     [ block ]
   | Some number ->
@@ -253,6 +253,8 @@ and block t =
   | Src {language; options; lines} -> Xml.block "pre" [Xml.data (String.concat "\n" lines)]
   | Quote l ->
     Xml.block "blockquote" (blocks l)
+  | Export ("html", options, content) ->
+    Xml.raw content
   | Custom (name, options, l) ->
     Xml.block "div" ~attr:["class", name]
       (blocks l)
