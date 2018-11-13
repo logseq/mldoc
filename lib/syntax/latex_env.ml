@@ -34,7 +34,7 @@ let env_name_options_parser =
       match options with
       | None | Some "" -> (name, None)
       | _ -> (name, options))
-    (string_ci "\begin{" *>
+    (string_ci "\\begin{" *>
      (take_while1 (fun c -> c <> '}'))
      <* char '}')
     (optional line)
@@ -43,7 +43,8 @@ let env_name_options_parser =
 let parse =
   let p =
     peek_char_fail >>= function
-    | '\b' ->                      (* block *)
+    | '\\' ->                      (* block *)
+      print_endline "debug";
       env_name_options_parser >>= fun (name, options) ->
       between_lines (fun line ->
           let prefix = "\\end{" ^ name ^ "}" in

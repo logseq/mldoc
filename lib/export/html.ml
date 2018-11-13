@@ -247,9 +247,13 @@ and block t =
   | Latex_Fragment l ->
     Xml.block "p" ~attr:["class", "latex-fragment"]
       (inline (Inline.Latex_Fragment l))
-  (* | Latex_Environment (name, option, content) ->
-   *   Xml.block "div" ~attr:["class", "latex-environment"]
-   *     (inline (Inline.Latex_Fragment content)) *)
+  | Latex_Environment (name, option, content) ->
+    let option = match option with | None -> "" | Some s -> s in
+    let content = "\n\\begin{" ^ name ^ "} " ^ option ^ "\n"
+                  ^ (String.concat "\n" content)
+                  ^ "\n\\end{" ^ name ^ "}" in
+    Xml.block "div" ~attr:["class", "latex-environment"]
+      [Xml.data content]
   | Footnote_Definition (name, definition) ->
     Xml.block "div" ~attr:["class", "footdef"]
       [(Xml.block "sup"
