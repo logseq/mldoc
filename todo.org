@@ -5,19 +5,32 @@
 ** DONE macro expansion
    CLOSED: [2018-11-13 Tue 18:46]
 
-** DONE support options
-   CLOSED: [2018-11-14 Wed 14:20]
-
+** TODO support options
 *** DONE Heading
     CLOSED: [2018-11-14 Wed 14:20]
     ~#+OPTIONS: num:x~, *x* could be nil or number.
 
-** TODO unescape
-** TODO source code block supports reference (name attribute)
-** TODO table support column groups
-** TODO babel integration
-** TODO configuration, image extensions
+***  Subscript, superscript ^:nil
+
+** DONE table support column groups
+   CLOSED: [2018-11-14 Wed 19:08]
+** TODO tangle extraction
+** TODO configuration
+   1. toc
+   2. num
+   3. html export
+      1. image extensions
+      2. mathjax
+      3. source highlight
+      4. standalone (html header)
+      5. css
+      6. javascript
+   4. hardbreak //
+
+
+
 ** TODO better error report
 ** TODO how to extent using javascript  :experiment:
 ** TODO declarative parser using edn or json :experiment:
-** TODO tangle
+** TODO presentation
+   revealjs?

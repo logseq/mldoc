@@ -3,20 +3,7 @@ open Parsers
 open Prelude
 open Type
 
-(*
-| Foo                            | Bar                 |
-|--------------------------------+---------------------|
-| (1, 1)                         | (2, 1) and /inline/ |
-| Second line, first group       | =stuff=             |
-|--------------------------------+---------------------|
-| First line of the second group | *bold*              |
-|--------------------------------+---------------------|
-#+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
-
-*)
-
-(* A table can has multiple groups, and each group can has multiple rows. The first row is the table header.*)
-
+(* TODO: groups *)
 let boundaries_spec =
   spaces *> string "#+TBLFM:" *> line
 
@@ -54,6 +41,39 @@ let group =
       ) in
   clear_parser_resource p (ref []) "table group"
 
+let is_col_row row =
+  let open Inline in
+  List.for_all
+    (function
+      | [Plain s] -> s = "/" || s = "<" || s = "" || s = ">"
+      | _ -> false)
+    row
+
+let build_col_groups row =
+  let open Inline in
+  let open List in
+  try
+    let l = fold_left
+        (fun acc element ->
+           match element with
+           | [Plain "/"] -> 1 :: acc
+           | [Plain "<"] -> 1 :: acc
+           | [Plain ""] | [Plain ">"] ->
+             (hd acc + 1) :: (tl acc)
+           | _ -> failwith "build_col_groups"
+        )
+        []
+        row in
+    Some (rev l)
+  with _ -> None
+
+let extract_col_row header t =
+  let open List in
+  match hd (hd t) with
+  | row when is_col_row row ->
+    (header, (tl (hd t)) :: (tl t), Some row)
+  | _ -> (header, t, None)
+
 let parse =
   let p groups =
     fix (fun p ->
@@ -65,15 +85,19 @@ let parse =
   optional eols *>
   clear_parser_resource p (ref []) "table"
   <* optional boundaries_spec
-  >>| function
-  | [] ->
-    [Table { header = None;
-             groups = []}]
-  | [] :: t ->
-    [Table { header = None;
-             groups = t }]
-  | (h1 :: t1) :: t ->
-    let groups = if List.length t1 = 0 then t
-      else List.concat [[t1]; t] in
-    [Table {header = Some h1;
-            groups}]
+  >>= function groups ->
+    let open List in
+    let (header, groups, col_groups) = match groups with
+      | [] ->
+        (None, [], None)
+      | [] :: t ->
+        extract_col_row None t
+      | (h1 :: t1) :: t ->
+        let groups = if List.length t1 = 0 then t
+          else List.concat [[t1]; t] in
+        extract_col_row (Some h1) groups
+    in
+    let col_groups = match col_groups with
+      | None -> None
+      | Some row -> build_col_groups row in
+    return [Table {header; groups; col_groups}]

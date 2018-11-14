@@ -46,11 +46,11 @@ and timestamp =
 
 (** {2 Inline call} *)
 and inline_call = {
-  program : string; (** The name of the block to call *)
-  arguments : (string * string) list; (** The arguments to the block *)
-  inside_headers : string option; (** The inside header arguments *)
-  end_headers : string option; (** The end header arguments *)
-}
+    program : string; (** The name of the block to call *)
+    arguments : (string * string) list; (** The arguments to the block *)
+    inside_headers : string option; (** The inside header arguments *)
+    end_headers : string option; (** The end header arguments *)
+  }
 (** See org's documentation for more information *)
 
 and inline_source_block = {
@@ -218,18 +218,21 @@ let entity =
   with Not_found ->
     Plain s
 
-(* foo_{bar}, foo^{bar} *)
+(* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
 let subscript, superscript =
   let p = many1 (choice [nested_emphasis; plain; entity]) in
   let gen s f =
-    string s *> take_while1 (fun c -> non_space c && c <> '}')
-    <* char '}' >>| fun s ->
+    (string (s ^ "{") *> take_while1 (fun c -> non_space c && c <> '}')
+     <* char '}')
+    <|>
+    (string s *> take_while1 (fun c -> non_space c))
+    >>| fun s ->
     match parse_string p s with
     | Ok result -> f result
     | Error e -> f [Plain s]
   in
-  ( gen "_{" (fun x -> Subscript x)
-  , gen "^{" (fun x -> Superscript x) )
+  ( gen "_" (fun x -> Subscript x)
+  , gen "^" (fun x -> Superscript x) )
 
 let statistics_cookie =
   between_char '[' ']'

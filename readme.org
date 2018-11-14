@@ -16,7 +16,7 @@
       make
     #+END_SRC
 
-** Parsing todos [11/12]
+** Parsing todos [12/12]
 *** DONE Heading [7/7]
     1. [X] level
     2. [X] marker
@@ -46,9 +46,9 @@
     13. [X] subscript
     14. [X] superscript
 
-*** TODO Table [1/2]
+*** DONE Table [2/2]
     1. [X] preliminary support
-    2. [ ] column groups
+    2. [X] column groups
 
 *** DONE List [3/3]
     1. [X] Unordered list
@@ -79,6 +79,3 @@
 ** DONE Export [2/2]
    1. [X] json
    2. [X] html
-
-** TODO Presentation
-   revealjs?

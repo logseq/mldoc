@@ -90,7 +90,7 @@ and inline t =
     [Xml.data ("\\["^s^"\\]")]
   | Latex_Fragment (Inline s) ->
     [Xml.data ("\\("^s^"\\)")]
-  | Target s -> [Xml.block "a" ~attr:[("id", s)] []]
+  | Target s -> [Xml.block "a" ~attr:[("id", s)] [Xml.data s]]
   | Link {url; label} ->
     let href = Inline.string_of_url url in
     (* If it is an image *)
@@ -102,8 +102,11 @@ and inline t =
         | Search x -> "#" ^ Heading.anchor_link x
         | _ -> href
       in
+      let label = match url with
+        | Search s -> [Xml.data s]
+        | _ -> map_inline label in
       [Xml.block "a" ~attr: ["href", href]
-         (map_inline label)]
+         label]
   | Verbatim s | Code s ->
     [Xml.block "code" [Xml.data s]]
   | Inline_Source_Block x ->
@@ -263,7 +266,7 @@ let rec list_item x =
              :: content);
           items] ]
 
-and table { header; groups} =
+and table { header; groups; col_groups} =
   let tr cols =
     Xml.block "tr"
       (List.map (fun col ->
@@ -271,6 +274,18 @@ and table { header; groups} =
                                   ("class", "org-right")]
               (map_inline col)))
           cols) in
+  let col_groups =
+    try
+      match col_groups with
+      | None -> [Xml.empty]
+      | Some numbers ->
+        List.map (fun number ->
+            let col_elem = Xml.block "col" [] in
+            Xml.block "colgroup"
+              (repeat number col_elem)
+          ) numbers
+    with _ -> []
+  in
   let head = match header with
     | None -> Xml.empty
     | Some cols ->
@@ -278,8 +293,12 @@ and table { header; groups} =
   let groups = List.map (fun group ->
       Xml.block "tbody" (List.map tr group)
     ) groups in
-  Xml.block ~attr:[("border", "1")] "table"
-    ([head] @ groups)
+  Xml.block ~attr:[("border", "2");
+                   ("cellspacing", "0");
+                   ("cellpadding", "6");
+                   ("rules", "groups");
+                   ("frame", "hsides")] "table"
+    (col_groups @ (head :: groups))
 
 and blocks l = List.map block l
 and block t =

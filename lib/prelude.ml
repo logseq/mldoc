@@ -4,6 +4,14 @@ let (<<) f g x = f(g(x))
 let identity x = x
 
 (* list *)
+
+let repeat n x =
+  let rec go acc = function
+    | 0 -> acc
+    | n when n >= 1  -> go (x :: acc) (n - 1)
+    | _ -> raise (Invalid_argument "List.repeat") in
+  go [] n
+
 let hd_opt = function
   | h :: _ -> Some h
   | _ -> None

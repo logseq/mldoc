@@ -22,7 +22,8 @@ and list_item =
     ; ordered: bool} [@@deriving yojson]
 
 and table = { header: row option
-            ; groups: group list} [@@deriving yojson]
+            ; groups: group list (* rows groups *)
+            ; col_groups: int list option} [@@deriving yojson]
 and
   group = row list
 and
