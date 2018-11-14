@@ -69,7 +69,7 @@ let rec toc_append_item parent depth item =
       let parent' = Prelude.last parent.items in
       toc_append_item parent' (depth - 1) item
     in
-    { parent with items = (tl parent.items) @ [item] }
+    { parent with items = (Prelude.drop_last 1 parent.items) @ [item] }
 
 let toc_tree items =
   let rec go acc = function
@@ -86,8 +86,7 @@ let toc_tree items =
   in
   go [] items
 
-(* let build_doc filename ?config:conf ast = () *)
-let build_doc filename ast =
+let from_ast filename ast =
   let find_directive directives k =
     try
       let r = List.assoc k directives in

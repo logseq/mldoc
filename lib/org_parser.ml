@@ -7,9 +7,11 @@ let list_content_parsers =
     ; Block.parse
     ; Latex_env.parse
     ; Hr.parse
+    ; Block.results
     ; Comment.parse
     ; Paragraph.parse [ Table.parse
                       ; Block.parse
+                      ; Block.results
                       ; Latex_env.parse
                       ; Hr.parse
                       ; Comment.parse]
@@ -25,6 +27,7 @@ let interrupt_parsers =
   ; Drawer.parse
   ; Latex_env.parse
   ; Hr.parse
+  ; Block.results
   ; Comment.parse
   ]
 

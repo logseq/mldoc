@@ -13,9 +13,12 @@ open Type
    2. Verbatim, each line starts with `:`.
 *)
 
+let results =
+  spaces *> string "#+RESULTS:" >>= fun _ -> return [Results]
+
 let verbatim lines =
   fix (fun verbatim ->
-      spaces *> char ':' *> ws *> take_till is_eol <* optional eol
+      spaces *> char ':' *> take_till is_eol <* optional eol
       >>= fun line ->
       lines := line :: !lines;
       verbatim
@@ -42,6 +45,7 @@ let list_content_parsers block_parse =
     ; Drawer.parse
     ; Latex_env.parse
     ; Hr.parse
+    ; results
     ; Comment.parse
     ; Paragraph.parse [ Table.parse
                       ; block_parse
@@ -49,6 +53,7 @@ let list_content_parsers block_parse =
                       ; Drawer.parse
                       ; Latex_env.parse
                       ; Hr.parse
+                      ; results
                       ; Comment.parse]
     ])
 
@@ -61,6 +66,7 @@ let block_content_parsers block_parse =
     ; Drawer.parse
     ; Latex_env.parse
     ; Hr.parse
+    ; results
     ; Comment.parse
     ; Paragraph.parse [ Table.parse
                       ; Lists.parse (list_content_parsers block_parse)
@@ -69,6 +75,7 @@ let block_content_parsers block_parse =
                       ; Drawer.parse
                       ; Latex_env.parse
                       ; Hr.parse
+                      ; results
                       ; Comment.parse]
     ])
 
@@ -112,6 +119,8 @@ let rec parse = fix (fun parse ->
            let name = match name with None -> "" | Some s -> s in
            let content = String.concat "\n" lines in
            [Export (name, options, content)]
+         | "comment" ->
+           [CommentBlock lines]
          | _ ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers parse) content with

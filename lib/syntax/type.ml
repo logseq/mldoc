@@ -46,12 +46,14 @@ and t =
   | Math of string  (** Math, enclosed by $$ ... $$ *)
   | With_Keywords of (string * string) list * t  (** Keywords for a block *)
   (* blocks *)
+  | Results                     (* TODO: include content or not? *)
   | Example of string list
   (** [Examples] used to typeset random code snippets. The integer is the line number in the source file. *)
   | Src of code_block
   (** [Src] is used to typeset code snippets. The integer is the line number in the source file. *)
   | Quote of t list  (** Quoted text *)
   | Export of string * string list option * string
+  | CommentBlock of string list
   | Custom of string * string option * t list
   (** Custom block of the form
       #+begin_name opts

@@ -19,6 +19,6 @@ let _ =
       method parseHtml input =
         let str = Js.to_string input in
         let ast = parse str in
-        let document = Document.build_doc None ast in
+        let document = Document.from_ast None ast in
         generate "html" document stdout
     end)

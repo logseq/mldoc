@@ -5,16 +5,19 @@
 ** DONE macro expansion
    CLOSED: [2018-11-13 Tue 18:46]
 
-** TODO support options
+** DONE support options
+   CLOSED: [2018-11-14 Wed 14:20]
 
-*** TODO Heading
+*** DONE Heading
+    CLOSED: [2018-11-14 Wed 14:20]
     ~#+OPTIONS: num:x~, *x* could be nil or number.
 
 ** TODO unescape
 ** TODO source code block supports reference (name attribute)
 ** TODO table support column groups
-** TODO babel integration   
+** TODO babel integration
 ** TODO configuration, image extensions
 ** TODO better error report
 ** TODO how to extent using javascript  :experiment:
 ** TODO declarative parser using edn or json :experiment:
+** TODO tangle

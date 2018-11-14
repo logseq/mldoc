@@ -8,7 +8,7 @@ open Timestamp
 
 let macros = ref []
 
-(* #+OPTIONS:   H:4 num:nil toc:2 p:t *)
+(* #+OPTIONS:   num:nil toc:2 *)
 let options = ref []
 
 let concatmap f l = List.concat (List.map f l)
@@ -193,7 +193,7 @@ let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
       Xml.block "span"
         ~attr:[("class", "priority");
                ("style", "margin-right:6px")]
-        [Xml.data ("#" ^ String.make 1 v)]
+        [Xml.data ("[#" ^ String.make 1 v ^ "]")]
     | None -> Xml.empty
   in
   let tags =

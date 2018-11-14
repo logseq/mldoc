@@ -44,6 +44,15 @@ and timestamp =
   | Range of Timestamp.range
 [@@deriving yojson]
 
+(** {2 Inline call} *)
+and inline_call = {
+  program : string; (** The name of the block to call *)
+  arguments : (string * string) list; (** The arguments to the block *)
+  inside_headers : string option; (** The inside header arguments *)
+  end_headers : string option; (** The end header arguments *)
+}
+(** See org's documentation for more information *)
+
 and inline_source_block = {
     language: string; (** The language of the code block *)
     options: string; (** The options *)
