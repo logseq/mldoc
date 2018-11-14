@@ -158,17 +158,20 @@ let get_int_option name =
     | _ -> 1024
   with Not_found -> 1024
 
-let construct_numbering level numbering =
+let construct_numbering ?(toc=false) level numbering =
   let num_option = get_int_option "num" in
   if level <= num_option then
     match numbering with
     | Some l ->
       let numbering =
         List.map string_of_int l |> String.concat "." in
-      Xml.block "span"
-        ~attr:[("class", "numbering");
-               ("style", "margin-right:6px")]
-        [Xml.data numbering]
+      if toc then
+        Xml.data (numbering ^ ". ")
+      else
+        Xml.block "span"
+          ~attr:[("class", "numbering");
+                 ("style", "margin-right:6px")]
+          [Xml.data numbering]
     | None -> Xml.empty
   else
     Xml.empty
@@ -322,28 +325,29 @@ and block t =
           [block (Paragraph definition)])]
   | _ -> Xml.empty
 
-(* FIXME: *)
-let toc items =
+let toc content =
   let toc_option = get_int_option "toc" in
-  if toc_option > 0 then
-    let rec go acc current_level = function
-      | [] -> Xml.block "ol" (List.rev acc)
-      | ({ title; level; anchor; numbering } :: t) as items ->
-        if level <= toc_option then
-          if level < current_level then (* breakout *)
-            go acc level items
-          else
-            let numbering = construct_numbering level (Some numbering) in
-            let a = Xml.block "a" ~attr: ["href", "#" ^ anchor]
+  let rec go content =
+    match Prelude.hd_opt content with
+    | None -> Xml.empty
+    | Some { level } ->
+      if level > toc_option then
+        Xml.empty
+      else
+        let items = (List.map (fun { title; level; anchor; numbering; items } ->
+            let numbering = construct_numbering ~toc:true level (Some numbering) in
+            let link = Xml.block "a" ~attr: ["href", "#" ^ anchor]
                 (numbering :: map_inline title) in
-            let block = Xml.block "li" [a] in
-            go (block :: acc) level t
-        else
-          go acc current_level t
-    in
+            Xml.block "li"
+              (link :: [go items])
+          ) content) in
+        Xml.block "ul" items
+  in
+  if toc_option > 0 then
+    let items = go content in
     Xml.block "div"
       ~attr:[("id", "toc")]
-      ((Xml.block "h2" [Xml.data "Table of contents"]) :: [go [] 0 items])
+      ((Xml.block "h2" [Xml.data "Table of contents"]) :: [items])
   else
     Xml.empty
 
@@ -376,10 +380,15 @@ module HtmlExporter = struct
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
     collect_macros doc.directives;
     collect_options doc.directives;
+    let subtitle = match doc.subtitle with
+      | None -> Xml.empty
+      | Some s -> Xml.block "span" ~attr:["class", "subtitle"]
+                    [(Xml.data s)] in
     let title = match doc.title with
       | None -> Xml.empty
       | Some s -> Xml.block "h1" ~attr:["class", "title"]
-                    [(Xml.data s)] in
+                    [Xml.data s; Xml.raw "<br />"; subtitle] in
+
     let toc = toc doc.toc in
     let body = [Xml.block "div" ~attr:["id", "content"]
                   (title :: toc :: (List.map block doc.blocks))

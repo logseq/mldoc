@@ -5,7 +5,8 @@ and toc_item =
     { title: Inline.t list
     ; level: int
     ; anchor: string
-    ; numbering: int list}
+    ; numbering: int list
+    ; items: toc}
 
 (**
     A document is:
@@ -20,6 +21,7 @@ type t =
   ; directives: (string * string) list
   (** The directives present in the file *)
   ; title: string option  (** The document's title *)
+  ; subtitle: string option (** The document's subtitle *)
   ; author: string option  (** The document's author *)
   ; toc: toc               (** Table of content *)
   } [@@deriving yojson]
@@ -55,6 +57,35 @@ let compute_heading_numbering level toc =
        let (before, after) = Prelude.split_n offset p.numbering in
        before @ [hd after + 1])
 
+let ast_to_json ast =
+  toc_item_to_yojson ast |> Yojson.Safe.to_string
+
+let rec toc_append_item parent depth item =
+  let open List in
+  if depth = 1 then
+    { parent with items = parent.items @ [item] }
+  else
+    let item =
+      let parent' = Prelude.last parent.items in
+      toc_append_item parent' (depth - 1) item
+    in
+    { parent with items = (tl parent.items) @ [item] }
+
+let toc_tree items =
+  let rec go acc = function
+    | [] -> List.rev acc
+    | { level; numbering } as h :: tl ->
+      match List.length numbering with
+      | 1 ->                    (* parent *)
+        go (h :: acc) tl
+      | _ ->                    (* child *)
+        let parent = List.hd acc in
+        let depth = List.length numbering - 1 in
+        let parent = toc_append_item parent depth h in
+        go (parent :: (List.tl acc)) tl
+  in
+  go [] items
+
 (* let build_doc filename ?config:conf ast = () *)
 let build_doc filename ast =
   let find_directive directives k =
@@ -77,7 +108,7 @@ let build_doc filename ast =
       | Heading {title; tags; marker; level; priority; anchor; meta} ->
         let numbering = compute_heading_numbering level toc in
         let h = Heading {title; tags; marker; level; priority; anchor; meta; numbering=(Some numbering)} in
-        let toc_item = {title; level; anchor; numbering} in
+        let toc_item = {title; level; anchor; numbering; items = []} in
         aut directives (h :: blocks) (toc_item :: toc) tl
       | Paragraph inlines ->
         let blocks = (match get_timestamps inlines with
@@ -105,6 +136,7 @@ let build_doc filename ast =
   ; directives
   ; blocks
   ; title = find_directive directives "TITLE"
+  ; subtitle = find_directive directives "SUBTITLE"
   ; author = find_directive directives "AUTHOR"
-  ; toc
+  ; toc = toc_tree toc
   }

@@ -5,7 +5,7 @@ let identity x = x
 
 (* list *)
 let hd_opt = function
-  | h :: [] -> Some h
+  | h :: _ -> Some h
   | _ -> None
 
 let rec last_opt = function
