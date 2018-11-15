@@ -23,7 +23,7 @@ and list_item =
 
 and table = { header: row option
             ; groups: group list (* rows groups *)
-            ; col_groups: int list option} [@@deriving yojson]
+            ; col_groups: int list} [@@deriving yojson]
 and
   group = row list
 and

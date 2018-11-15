@@ -25,6 +25,5 @@ let _ =
             Buffer.add_string buffer s
           ) in
         generate "html" document stdout;
-
         Js_of_ocaml.Js.string (Buffer.contents buffer)
     end)

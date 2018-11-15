@@ -64,15 +64,15 @@ let build_col_groups row =
         )
         []
         row in
-    Some (rev l)
-  with _ -> None
+    (rev l)
+  with _ -> [(length row)]
 
 let extract_col_row header t =
   let open List in
   match hd (hd t) with
   | row when is_col_row row ->
-    (header, (tl (hd t)) :: (tl t), Some row)
-  | _ -> (header, t, None)
+    (header, (tl (hd t)) :: (tl t), row)
+  | row -> (header, t, row)
 
 let parse =
   let p groups =
@@ -89,7 +89,7 @@ let parse =
     let open List in
     let (header, groups, col_groups) = match groups with
       | [] ->
-        (None, [], None)
+        (None, [], [])
       | [] :: t ->
         extract_col_row None t
       | (h1 :: t1) :: t ->
@@ -97,7 +97,5 @@ let parse =
           else List.concat [[t1]; t] in
         extract_col_row (Some h1) groups
     in
-    let col_groups = match col_groups with
-      | None -> None
-      | Some row -> build_col_groups row in
+    let col_groups = build_col_groups col_groups in
     return [Table {header; groups; col_groups}]

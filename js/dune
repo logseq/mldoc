@@ -2,7 +2,7 @@
  (name        org_js)
  (preprocess (pps js_of_ocaml-ppx))
  (libraries angstrom js_of_ocaml mldoc_org)
- (js_of_ocaml (flags --pretty)))
+ (js_of_ocaml (flags "--pretty" "--source-map-inline")))
 
 (alias
   (name JS)

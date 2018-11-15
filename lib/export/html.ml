@@ -267,31 +267,28 @@ let rec list_item x =
           items] ]
 
 and table { header; groups; col_groups} =
-  let tr cols =
+  let tr elm cols =
     Xml.block "tr"
       (List.map (fun col ->
-           (Xml.block "th" ~attr:[("scope", "col");
-                                  ("class", "org-right")]
+           (Xml.block elm ~attr:[("scope", "col");
+                                  ("class", "org-left")]
               (map_inline col)))
           cols) in
   let col_groups =
     try
-      match col_groups with
-      | None -> [Xml.empty]
-      | Some numbers ->
-        List.map (fun number ->
-            let col_elem = Xml.block "col" [] in
-            Xml.block "colgroup"
-              (repeat number col_elem)
-          ) numbers
+      List.map (fun number ->
+          let col_elem = Xml.block "col" ~attr:[("class", "org-left")] [] in
+          Xml.block "colgroup"
+            (repeat number col_elem)
+        ) col_groups
     with _ -> []
   in
   let head = match header with
     | None -> Xml.empty
     | Some cols ->
-      Xml.block "thead" [tr cols] in
+      Xml.block "thead" [tr "th" cols] in
   let groups = List.map (fun group ->
-      Xml.block "tbody" (List.map tr group)
+      Xml.block "tbody" (List.map (tr "td") group)
     ) groups in
   Xml.block ~attr:[("border", "2");
                    ("cellspacing", "0");
