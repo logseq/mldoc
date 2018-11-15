@@ -57,6 +57,7 @@ let chainl1 e op =
 
 let end_string s ?ci:(ci=false) f =
   let open String in
+  let last_s = sub s (length s - 1) 1 in
   let prev = ref None in
   let string_equal x y = if ci then lowercase_ascii x = lowercase_ascii y else x = y in
   take_while1 (fun c ->
@@ -69,7 +70,7 @@ let end_string s ?ci:(ci=false) f =
         ) in
       prev := Some p;
       if (string_equal p s) then false
-      else true)
+      else true) <* (string last_s)
   >>= fun s' ->
   let p = !prev in
   prev := None;

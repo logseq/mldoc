@@ -154,7 +154,7 @@ let verbatim =
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = ['*'; '_'; '/'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^';]
+let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^';]
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
 
@@ -363,7 +363,7 @@ let general_timestamp =
   let closed_parser typ = date_time ']' ~active:false typ in
   let parse rest typ =
     (* scheduled *)
-    string rest *> spaces *> any_char
+    string rest *> ws *> any_char
     >>= function
     | '<' -> active_parser typ
     | '[' -> closed_parser typ
@@ -511,10 +511,10 @@ let incr_id id =
 
 let footnote_inline_definition ?(break = false) definition =
   let choices = if break then
-      [link; link_inline; radio_target; target; nested_emphasis; latex_fragment; entity;
+      [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
        code; allow_breakline; subscript; superscript; plain]
     else
-      [link; link_inline; radio_target; target; nested_emphasis; latex_fragment; entity;
+      [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
        code; subscript; superscript; plain] in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
@@ -571,9 +571,8 @@ let inline_choices =
     ; plain ]
 
 let parse =
-  fix (fun inline ->
-      many1 inline_choices >>| fun l ->
-      concat_plains l)
+  many1 inline_choices >>| fun l ->
+  concat_plains l
 
 let string_of_url = function
   | File s | Search s -> s

@@ -64,8 +64,8 @@ let format_parser indent =
       char '+' <|> char '-' else
       char '+' <|> char '-' <|> char '*'
       in
-  let unordered_format = (choices *> spaces *> return None) in
-  let ordered_format = (digits <* char '.' <* spaces >>=
+  let unordered_format = (choices *> ws *> return None) in
+  let ordered_format = (digits <* char '.' <* ws >>=
                         fun number -> return (Some number)) in
   unordered_format <|> ordered_format
 

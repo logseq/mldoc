@@ -10,7 +10,7 @@ let generate backend doc output =
 
 let _ =
   let open Js_of_ocaml in
-  Js.export_all
+  Js.export "MldocOrg"
     (object%js
       method parseJson input =
         let str = Js.to_string input in
@@ -20,5 +20,11 @@ let _ =
         let str = Js.to_string input in
         let ast = parse str in
         let document = Document.from_ast None ast in
-        generate "html" document stdout
+        let buffer = Buffer.create 1024 in
+        let _ = Sys_js.set_channel_flusher stdout (fun s ->
+            Buffer.add_string buffer s
+          ) in
+        generate "html" document stdout;
+
+        Js_of_ocaml.Js.string (Buffer.contents buffer)
     end)
