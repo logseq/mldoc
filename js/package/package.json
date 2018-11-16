@@ -1,0 +1,32 @@
+{
+    "name": "mldoc_org",
+    "version": "0.0.2",
+    "description": "Another Emacs Org-mode parser.",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/mldoc/org.git"
+    },
+    "keywords": [
+        "Org",
+        "mode",
+        "parser",
+        "OCaml",
+        "Js_of_ocaml"
+    ],
+    "author": "Tienson Qin <tiensonqin@gmail.com>",
+    "license": "ISC",
+    "bin": {
+        "mldoc_org": "./bin/cli.js"
+    },
+    "dependencies": {
+        "yargs": "^12.0.2"
+    },
+    "bugs": {
+        "url": "https://github.com/mldoc/org/issues"
+    },
+    "homepage": "https://github.com/mldoc/org#readme"
+}

@@ -1,9 +1,8 @@
 (executable
- (name        org_js)
+ (name        lib)
  (preprocess (pps js_of_ocaml-ppx))
- (libraries angstrom js_of_ocaml mldoc_org)
- (js_of_ocaml (flags "--pretty" "--source-map-inline")))
+ (libraries angstrom js_of_ocaml mldoc_org))
 
 (alias
   (name JS)
-  (deps org_js.bc.js))
+  (deps lib.bc.js))
