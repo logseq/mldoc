@@ -147,7 +147,7 @@ and inline t =
        let content = (Buffer.contents buff) in
        match Angstrom.parse_string Inline.parse content with
        | Ok inlines -> map_inline inlines
-       | Error e -> [Xml.empty]
+       | Error _e -> [Xml.empty]
      with Not_found ->
        [Xml.empty])
   | _ ->

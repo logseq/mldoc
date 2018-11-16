@@ -91,7 +91,6 @@ let parse =
   clear_parser_resource p (ref []) "table"
   <* optional boundaries_spec
   >>= function groups ->
-    let open List in
     let (header, groups, col_groups) = match groups with
       | [] ->
         (None, [], [])

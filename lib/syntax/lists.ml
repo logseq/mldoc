@@ -38,7 +38,7 @@ let content_parser list_parser content_parsers indent lines =
             eol *> content_parser
           ) else if is_space c then (
             peek_line >>= fun content ->
-            let (indent', is_item, number) = check_listitem content in
+            let (indent', is_item, _number) = check_listitem content in
             if is_item then (
               if indent' <= indent then (* breakout, another item or a new list. *)
                 return @@ (List.rev !lines, [])
@@ -93,7 +93,7 @@ let definition s =
       (Some name, String.sub s l (String.length s - l))
     else
       (None, s)
-  | Error e ->
+  | Error _e ->
     (None, s)
 
 let rec list_parser content_parsers items last_indent =

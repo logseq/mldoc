@@ -41,7 +41,7 @@ let parse =
          let level = String.length level in
          let title = match (parse_string Inline.parse (String.trim title)) with
            | Ok title -> title
-           | Error e -> [] in
+           | Error _e -> [] in
          let last_inline = List.nth title (List.length title - 1) in
          let (title, tags) = match last_inline with
            | Inline.Plain s ->

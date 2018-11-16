@@ -113,7 +113,7 @@ let rec parse = fix (fun parse ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers parse) content with
              | Ok result -> result
-             | Error e -> [] in
+             | Error _e -> [] in
            [Quote (List.concat result)]
          | "export" ->          (* export html, etc *)
            let (name, options) = separate_name_options options in
@@ -126,7 +126,7 @@ let rec parse = fix (fun parse ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers parse) content with
              | Ok result -> result
-             | Error e -> [] in
+             | Error _e -> [] in
            [Custom (name, options, List.concat result)]
         )
       | ':' ->                      (* verbatim block *)
