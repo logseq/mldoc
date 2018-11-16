@@ -1,6 +1,5 @@
 open Angstrom
 open Parsers
-open Bigstringaf
 open Prelude
 
 (* TODO:
@@ -166,7 +165,7 @@ let plain =
          Some true
        else
          None)
-   >>= fun (s, state) ->
+   >>= fun (s, _state) ->
    return (Plain s))
   <|>
   (line >>= fun s -> return (Plain s))
@@ -189,7 +188,7 @@ let nested_emphasis =
        | Ok [Plain _] -> e
        | Ok result -> Emphasis (typ,
                                 List.map aux_nested_emphasis result)
-       | Error error -> e)
+       | Error _error -> e)
     | _ ->
       failwith "nested_emphasis" in
   emphasis >>= fun e ->
@@ -229,7 +228,7 @@ let subscript, superscript =
     >>| fun s ->
     match parse_string p s with
     | Ok result -> f result
-    | Error e -> f [Plain s]
+    | Error _e -> f [Plain s]
   in
   ( gen "_" (fun x -> Subscript x)
   , gen "^" (fun x -> Superscript x) )
@@ -445,7 +444,7 @@ let concat_plains inlines =
              match parse_string link_inline link with
              | Ok result ->
                (Plain r') :: result :: (Plain l) :: tl
-             | Error e ->
+             | Error _e ->
                (Plain (s' ^ s)) :: tl
            else
              (Plain (s' ^ s)) :: tl
@@ -477,7 +476,7 @@ let link =
        let parser = (many1 (choice [nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
        let label = match parse_string parser label with
            Ok result -> concat_plains result
-         | Error e -> [Plain label] in
+         | Error _e -> [Plain label] in
        Link {label; url} )
     url_part label_part
 
@@ -521,7 +520,7 @@ let footnote_inline_definition ?(break = false) definition =
   | Ok result ->
     let result = concat_plains result in
     result
-  | Error error ->
+  | Error _e ->
     [Plain definition]
 
 let latex_footnote =

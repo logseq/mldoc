@@ -181,7 +181,7 @@ let get_indent line =
 
 let result_default default = function
   | Ok result -> result
-  | Error e -> default
+  | Error _e -> default
 
 let lines s = String.split_on_char '\n' s
 
