@@ -87,7 +87,7 @@ let separate_name_options = function
     | name :: [] -> (Some name, None)
     | name :: options -> (Some name, Some options)
 
-let rec parse = fix (fun parse ->
+let parse = fix (fun parse ->
     let p = peek_char_fail
       >>= function
       | '#' ->

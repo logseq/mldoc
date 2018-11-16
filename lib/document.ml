@@ -61,7 +61,6 @@ let ast_to_json ast =
   toc_item_to_yojson ast |> Yojson.Safe.to_string
 
 let rec toc_append_item parent depth item =
-  let open List in
   if depth = 1 then
     { parent with items = parent.items @ [item] }
   else
@@ -74,7 +73,7 @@ let rec toc_append_item parent depth item =
 let toc_tree items =
   let rec go acc = function
     | [] -> List.rev acc
-    | { level; numbering } as h :: tl ->
+    | { numbering ; _ } as h :: tl ->
       match List.length numbering with
       | 1 ->                    (* parent *)
         go (h :: acc) tl
@@ -98,13 +97,13 @@ let from_ast filename ast =
       let update_meta f =
         match blocks with
         | [] -> h :: blocks
-        | Heading heading :: tl -> Heading (f heading) :: List.tl blocks
+        | Heading heading :: _tl -> Heading (f heading) :: List.tl blocks
         | _ -> h :: blocks in
       match h with
       | Directive (k, v) ->
         let directives = (k, v) :: directives in
         aut directives blocks toc tl
-      | Heading {title; tags; marker; level; priority; anchor; meta} ->
+      | Heading {title; tags; marker; level; priority; anchor; meta ; _} ->
         let numbering = compute_heading_numbering level toc in
         let h = Heading {title; tags; marker; level; priority; anchor; meta; numbering=(Some numbering)} in
         let toc_item = {title; level; anchor; numbering; items = []} in
