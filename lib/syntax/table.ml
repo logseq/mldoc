@@ -16,15 +16,18 @@ let split_into_columns s =
 
 let row_line =
   let open String in
-  spaces *> char '|' *> take_till is_eol <* optional eol
+  spaces *> char '|' *> take_till1 is_eol <* optional eol
   >>= fun line ->
   let line = trim line in
   let len = (length line - 1) in
-  if get line len <> '|' then
-    fail "raw_line"
+  if len >= 0 then
+    if get line len <> '|' then
+      fail "raw_line"
+    else
+      let s = sub line 0 len in
+      return @@ split_into_columns s
   else
-    let s = sub line 0 len in
-    return @@ split_into_columns s
+    fail "raw_line"
 
 let group =
   let p rows =
@@ -69,10 +72,12 @@ let build_col_groups row =
 
 let extract_col_row header t =
   let open List in
-  match hd (hd t) with
-  | row when is_col_row row ->
-    (header, (tl (hd t)) :: (tl t), row)
-  | row -> (header, t, row)
+  try
+    match hd (hd t) with
+    | row when is_col_row row ->
+      (header, (tl (hd t)) :: (tl t), row)
+    | row -> (header, t, row)
+  with _ -> (header, t, [])
 
 let parse =
   let p groups =

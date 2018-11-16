@@ -15,7 +15,7 @@ let check_listitem line =
   | Some number ->
     (indent, true, Some number)
   | None ->
-    if String.length line > 2 then
+    if (String.length line) - indent >= 2 then
       let prefix = String.sub line indent 2 in
       (indent, prefix = "- " || prefix = "+ " || (indent <> 0 && prefix = "* "), None)
     else
@@ -23,7 +23,7 @@ let check_listitem line =
 
 let content_parser list_parser content_parsers indent lines =
   fix (fun content_parser ->
-      take_till is_eol <* optional eol
+      take_till1 is_eol <* optional eol
       >>= fun content ->
       lines := content :: !lines;
       two_eols (List.rev !lines, []) (* two newlines end this list *)

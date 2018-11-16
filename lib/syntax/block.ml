@@ -98,10 +98,11 @@ let rec parse = fix (fun parse ->
             starts_with (String.trim line) prefix) "block"
         >>| fun lines ->
         (* clear indents *)
-        let indent = get_indent (List.hd lines) in
-        let lines = if indent = 0 then lines else
-            List.map (fun line ->
-                String.sub line indent (String.length line - indent)) lines in
+        let lines = if lines = [] then [] else
+            let indent = get_indent (List.hd lines) in
+            if indent = 0 then lines else
+              List.map (fun line ->
+                  String.sub line indent (String.length line - indent)) lines in
         let name = String.lowercase_ascii name in
         (match name with
          | "src" ->
