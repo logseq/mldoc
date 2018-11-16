@@ -4,6 +4,7 @@ module Document = Document
 module Block = Block
 module Inline = Inline
 module Exporters = Exporter.Exporters
+module Exporter = Exporter
 module Timestamp = Timestamp
 module Parser = Org_parser
 module Type = Type

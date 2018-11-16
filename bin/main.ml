@@ -1,21 +1,79 @@
 open Mldoc_org
 open Mldoc_org.Parser
 open Lwt
+open Cmdliner
 
-let generate backend doc output =
-  let export = Exporters.find backend in
-  Exporters.run export doc output
-
+(* stdin *)
 let rec read_lines () =
-  try let line = read_line () in
-    line :: read_lines ()
-  with
-    End_of_file -> []
+  Lwt_io.read_lines Lwt_io.stdin |> Lwt_stream.to_list
 
-let _ =
+(* file *)
+let from_file filename =
+  Lwt_io.lines_of_file filename |> Lwt_stream.to_list
+
+let generate backend output opts filename =
+  let lines = if filename = "-" then
+      read_lines ()
+    else from_file filename
+  in
+  lines >>= function lines ->
+    let ast = parse (String.concat "\n" lines) in
+    let document = Document.from_ast None ast in
+    let export = Exporters.find backend in
+    let module E = (val export : Exporter.Exporter) in
+    let output = if output = "" then E.default_filename filename else output in
+    let fdout = if output = "-" then stdout else open_out output in
+    let result = Exporters.run export document fdout in
+    return result
+
+(* Cmd liner part *)
+
+(* Commonon options *)
+let output =
+  let doc = "Write the generated file to $(docv). " in
+  Arg.(value & opt string "" & info ["o"; "output"] ~docv:"OUTPUT-FILE" ~doc)
+
+let backend =
+  let doc = "Uses $(docv) to generate the output. (`-` for stdout)" in
+  Arg.(value & opt string "html" & info ["b"; "backend"] ~docv:"BACKEND" ~doc)
+
+let filename =
+  let doc = "The input filename to use. (`-` for stdin) " in
+  Arg.(value & pos 0 string "-" & info [] ~docv:"FILENAME" ~doc)
+
+let options =
+  let doc =
+    "Extra option to use to configure the behaviour. (Can be used multiple \
+     times)"
+  in
+  Arg.(
+    value
+    & opt_all (pair ~sep:'=' string string) []
+    & info ["x"; "option"] ~docv:"OPTIONS" ~doc)
+
+let cmd = Term.(pure generate $ backend $ output $ options $ filename)
+
+let doc = "converts org-mode files into various formats"
+
+let options =
+  []
+
+let man =
+  [ `S "DESCRIPTION"
+  ; `P
+      "$(tname) can currently converts org-mode files into other formats such as
+       HTML." ]
+  @ options
+
+let infos = Term.info "mldoc_org" ~version:"0" ~doc ~man
+
+let main () =
+  match Term.eval (cmd, infos) with
+  | `Error _ -> exit 1
+  | `Ok expr -> Lwt_main.run expr
+  | _ -> exit 0
+
+let () =
   let _ = Printexc.record_backtrace true in
-
-  let lines = read_lines () in
-  let ast = parse (String.concat "\n" lines) in
-  let document = Document.from_ast None ast in
-  return (generate "html" document stdout)
+  if not !Sys.interactive then
+    main ()
