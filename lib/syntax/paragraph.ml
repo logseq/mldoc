@@ -6,19 +6,30 @@ open Type
 
 let parse_paragraph interrupt_parsers lines =
   let open List in
-  let join_lines lines =
-    let result = rev !lines in
-    concat (Prelude.join [Inline.Break_Line] result)
-  in
+  let inline_parse () =
+    let lines = List.map (fun (s, b) -> if b then s else s ^ " ") (rev !lines) in
+    let content = String.concat "" lines in
+    let content = String.sub content 0 (String.length content - 1) in
+    match parse_string Inline.parse content with
+    | Ok result -> Paragraph result
+    | Error e -> Paragraph [Inline.Plain content] in
   fix (fun parse ->
-      Inline.parse <* optional eol >>= fun line ->
-      let _ = lines := line :: !lines in
+      Inline.break_or_line <* optional eol >>= fun line ->
+      let () = match line with
+        | Inline.Plain s ->
+          let item = if Prelude.ends_with s " \\\\" then
+              (String.sub s 0 (String.length s - 3) ^ "\n", true)
+            else (s, false) in
+          lines := item :: !lines
+        | _ ->
+          () in
+      (* parse plain lines *)
       (choice interrupt_parsers >>= fun blocks ->
-       return [Paragraph (join_lines lines); hd blocks])
+       return [inline_parse () ; hd blocks])
       <|>
       parse
       <|>
-      return [Paragraph (join_lines lines)])
+      return [inline_parse ()])
 
 (* https://orgmode.org/manual/Footnotes.html *)
 (* It ends at the next footnote definition, headline, or after two consecutive empty lines. *)
@@ -60,9 +71,9 @@ let parse interrupt_parsers =
     (footnote_reference footnote_definition_lines >>| fun f -> [f])
     <|> p
   | _ -> p
-  >>= fun result ->
-  let _ = lines := [] in
-  return result
-  <|>
-  let _ = lines := [] in
-  fail "paragraph parse"
+    >>= fun result ->
+    let _ = lines := [] in
+    return result
+    <|>
+    let _ = lines := [] in
+    fail "paragraph parse"

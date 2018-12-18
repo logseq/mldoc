@@ -45,20 +45,21 @@ and timestamp =
 
 (** {2 Inline call} *)
 and inline_call = {
-    program : string; (** The name of the block to call *)
-    arguments : (string * string) list; (** The arguments to the block *)
-    inside_headers : string option; (** The inside header arguments *)
-    end_headers : string option; (** The end header arguments *)
-  }
+  program : string; (** The name of the block to call *)
+  arguments : (string * string) list; (** The arguments to the block *)
+  inside_headers : string option; (** The inside header arguments *)
+  end_headers : string option; (** The end header arguments *)
+}
 (** See org's documentation for more information *)
 
 and inline_source_block = {
-    language: string; (** The language of the code block *)
-    options: string; (** The options *)
-    code: string; (** The code *)
-  }
+  language: string; (** The language of the code block *)
+  options: string; (** The options *)
+  code: string; (** The code *)
+}
 and t =
     Emphasis of emphasis
+  | Hard_Break_Line
   | Break_Line
   | Verbatim of string
   | Code of string
@@ -194,7 +195,8 @@ let nested_emphasis =
   emphasis >>= fun e ->
   return (aux_nested_emphasis e)
 
-let breakline = eol >>= fun _ -> fail "breakline"
+let hard_breakline = string "\\" *> eol >>= fun _ -> return Hard_Break_Line
+let breakline = string "\\\\" *> eol >>= fun _ -> fail "breakline"
 let allow_breakline = eol >>= fun _ -> return Break_Line
 
 let radio_target =
@@ -547,6 +549,10 @@ let footnote_reference =
        else Footnote_Reference {id = incr_id id; name; definition= Some (footnote_inline_definition definition)} )
     name_part definition_part
 
+let break_or_line =
+  let line = line >>= fun s -> return (Plain s) in
+  choice [line; breakline]
+
 (* TODO: configurable *)
 let inline_choices =
   choice
@@ -563,7 +569,8 @@ let inline_choices =
     ; target                    (* "<" *)
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
-    ; breakline                 (* '\n' *)
+    ; hard_breakline            (* "\\" *)
+    ; allow_breakline                 (* '\n' *)
     ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)

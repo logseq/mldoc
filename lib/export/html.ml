@@ -113,7 +113,7 @@ and inline t =
     [Xml.block "code" [Xml.data x.code]]
   | Export_Snippet ("html", s) ->
     [Xml.raw s]
-  | Break_Line ->
+  | Break_Line | Hard_Break_Line ->
     [Xml.block "br" []]
   | Timestamp (Scheduled t) -> [timestamp t "Scheduled"]
   | Timestamp (Deadline t) -> [timestamp t "Deadline"]

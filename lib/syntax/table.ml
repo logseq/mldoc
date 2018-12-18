@@ -3,7 +3,6 @@ open Parsers
 open Prelude
 open Type
 
-(* TODO: groups *)
 let boundaries_spec =
   spaces *> string "#+TBLFM:" *> line
 
