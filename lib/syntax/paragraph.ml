@@ -29,7 +29,8 @@ let parse_paragraph interrupt_parsers lines =
       <|>
       parse
       <|>
-      return [inline_parse ()])
+      return [inline_parse ()]
+    )
 
 (* https://orgmode.org/manual/Footnotes.html *)
 (* It ends at the next footnote definition, headline, or after two consecutive empty lines. *)
@@ -65,15 +66,16 @@ let parse interrupt_parsers =
   let p = parse_paragraph interrupt_parsers lines in
   optional eols *>
   (* check for footer reference first *)
-  peek_char_fail >>= function
-  | '[' ->
-    let footnote_definition_lines = ref [] in
-    (footnote_reference footnote_definition_lines >>| fun f -> [f])
-    <|> p
-  | _ -> p
-    >>= fun result ->
-    let _ = lines := [] in
-    return result
-    <|>
-    let _ = lines := [] in
-    fail "paragraph parse"
+  peek_char_fail >>= fun c ->
+  let p = match c with
+    | '[' ->
+      let footnote_definition_lines = ref [] in
+      (footnote_reference footnote_definition_lines >>| fun f -> [f])
+      <|> p
+    | _ -> p in
+  p >>= fun result ->
+  let _ = lines := [] in
+  return result
+  <|>
+  let _ = lines := [] in
+  fail "paragraph parse"

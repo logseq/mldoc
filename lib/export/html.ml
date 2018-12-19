@@ -219,6 +219,7 @@ let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
 let rec list_item x =
   let content =
     match x.content with
+    | [] -> [Xml.empty]
     | Paragraph i :: rest -> map_inline i @ blocks rest
     | _ -> blocks x.content
   in

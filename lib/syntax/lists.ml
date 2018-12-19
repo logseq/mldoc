@@ -21,6 +21,13 @@ let check_listitem line =
     else
       (indent, false, None)
 
+let terminator items =
+  if !items = [] then
+    fail "list"
+  else
+    let result = ! items in
+    return @@ List.rev result
+
 let content_parser list_parser content_parsers indent lines =
   fix (fun content_parser ->
       take_till1 is_eol <* optional eol
@@ -36,34 +43,23 @@ let content_parser list_parser content_parsers indent lines =
           if is_eol c then (
             lines := "\n" :: !lines;
             eol *> content_parser
-          ) else if is_space c then (
+          ) else (
             peek_line >>= fun content ->
             let (indent', is_item, _number) = check_listitem content in
             if is_item then (
               if indent' <= indent then (* breakout, another item or a new list. *)
-                return @@ (List.rev !lines, [])
+                return (List.rev !lines, [])
               else                      (* list item child *)
                 list_parser content_parsers (ref []) indent' >>= fun items ->
-                return @@ (List.rev !lines, items)
+                return (List.rev !lines, items)
             ) else (                    (* content of current item *)
-              skip_while (fun c -> is_eol c) *> optional eol *> content_parser))
-          else (
-            return (List.rev !lines, [])))
-      <|>
-      return (List.rev !lines, []))
-
-let terminator items =
-  if !items = [] then
-    fail "list"
-  else
-    let result = ! items in
-    return @@ List.rev result
+              optional eols *> content_parser))))
 
 let format_parser indent =
   let choices = if indent = 0 then
       char '+' <|> char '-' else
       char '+' <|> char '-' <|> char '*'
-      in
+  in
   let unordered_format = (choices *> ws *> return None) in
   let ordered_format = (digits <* char '.' <* ws >>=
                         fun number -> return (Some number)) in
