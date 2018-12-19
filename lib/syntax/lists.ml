@@ -30,7 +30,7 @@ let terminator items =
 
 let content_parser list_parser content_parsers indent lines =
   fix (fun content_parser ->
-      take_till1 is_eol <* optional eol
+      take_till1 is_eol
       >>= fun content ->
       lines := content :: !lines;
       two_eols (List.rev !lines, []) (* two newlines end this list *)
@@ -43,7 +43,7 @@ let content_parser list_parser content_parsers indent lines =
           if is_eol c then (
             lines := "\n" :: !lines;
             eol *> content_parser
-          ) else (
+          ) else if is_space c then (
             peek_line >>= fun content ->
             let (indent', is_item, _number) = check_listitem content in
             if is_item then (
@@ -53,7 +53,9 @@ let content_parser list_parser content_parsers indent lines =
                 list_parser content_parsers (ref []) indent' >>= fun items ->
                 return (List.rev !lines, items)
             ) else (                    (* content of current item *)
-              optional eols *> content_parser))))
+              optional eols *> content_parser))
+          else (
+            return (List.rev !lines, []))))
 
 let format_parser indent =
   let choices = if indent = 0 then
