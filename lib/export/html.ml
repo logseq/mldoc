@@ -312,7 +312,13 @@ and block t =
     Xml.block "div" ~attr:["class", "mathblock"]
       [Xml.data ("$$" ^ s ^ "$$")]
   | Example l -> Xml.block "pre" [Xml.data (String.concat "\n" l)]
-  | Src {language; options; lines} -> Xml.block "pre" [Xml.data (String.concat "\n" lines)]
+  | Src {language; options; lines} ->
+    let attr = match language with
+      | None -> []
+      | Some l -> ["data-lang", l] in
+    Xml.block "pre"
+      [Xml.block "code" ~attr
+      [Xml.data (String.concat "\n" lines)]]
   | Quote l ->
     Xml.block "blockquote" (blocks l)
   | Export ("html", options, content) ->
