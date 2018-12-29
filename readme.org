@@ -3,17 +3,27 @@
   It's based on [[http://iso.mor.phis.me/projects/mlorg/][mlorg]] which is a high quality Org-mode parser written by [[https://github.com/asmanur?tab=repositories][Simon Castellan]].
 
 ** Usage
-   TODO...
+*** For Javascript users
+    #+BEGIN_SRC sh
+      # install mldoc_org
+      npm install -g mldoc_org
+
+      # convert org mode file to html
+      mldoc_org makehtml -i ./test.org -o ./test.html
+    #+END_SRC
+
+*** For OCaml users
+    #+BEGIN_SRC sh
+      # compile
+      make
+
+      # convert org file to html
+      _build/default/bin/main.exe ./test.org -o ./test.html
+    #+END_SRC
+
 *** Invoke utop in Emacs
     #+BEGIN_SRC sh
       opam config exec -- dune utop lib -- -emacs
-    #+END_SRC
-*** Js_of_ocaml build release js.
-    #+BEGIN_SRC sh
-      # Replace `(profile dev)` to `profile release` in `dune-workspace`
-
-      # make will output to `_build/default/js/org.bc.js`
-      make
     #+END_SRC
 
 ** Parsing todos [12/12]
