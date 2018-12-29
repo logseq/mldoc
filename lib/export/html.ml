@@ -131,11 +131,12 @@ and inline t =
         ~attr:[("class", "cookie-absolute")]
         [Xml.data ("[" ^ (string_of_int current) ^ "/" ^ (string_of_int total) ^ "]")]]
   | Footnote_Reference { id; name } ->
+    let encode_name = Uri.pct_encode name in
     [ Xml.block "sup"
         [ Xml.block "a"
-            ~attr:[("id", "fnr." ^ (string_of_int id));
+            ~attr:[("id", "fnr." ^ encode_name);
                    ("class", "footref");
-                   ("href", "#fn." ^ name)]
+                   ("href", "#fn." ^ encode_name)]
             [Xml.data name]]]
   | Macro {name; arguments} ->
     (try
@@ -318,7 +319,7 @@ and block t =
       | Some l -> ["data-lang", l] in
     Xml.block "pre"
       [Xml.block "code" ~attr
-      [Xml.data (String.concat "\n" lines)]]
+         [Xml.data (String.concat "\n" lines)]]
   | Quote l ->
     Xml.block "blockquote" (blocks l)
   | Export ("html", options, content) ->
@@ -337,15 +338,16 @@ and block t =
     Xml.block "div" ~attr:["class", "latex-environment"]
       [Xml.data content]
   | Footnote_Definition (name, definition) ->
+    let encode_name = Uri.pct_encode name in
     Xml.block "div" ~attr:["class", "footdef"]
-      [(Xml.block "sup"
+      [(Xml.block "div" ~attr:["class", "footpara"]
+          [block (Paragraph definition)]);
+       (Xml.block "sup"
           [(Xml.block "a"
-              ~attr:[("id", "fn." ^ name);
+              ~attr:[("id", "fn." ^ encode_name);
                      ("class", "footnum");
-                     ("href", "#fnr.1")]
-              [Xml.data name])]);
-       (Xml.block "div" ~attr:["class", "footpara"]
-          [block (Paragraph definition)])]
+                     ("href", "#fnr." ^ encode_name)]
+              [Xml.data (name ^ "↩︎")])])]
   | _ -> Xml.empty
 
 let toc content =
