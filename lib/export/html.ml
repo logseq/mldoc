@@ -272,7 +272,7 @@ and table { header; groups; col_groups} =
     Xml.block "tr"
       (List.map (fun col ->
            (Xml.block elm ~attr:[("scope", "col");
-                                  ("class", "org-left")]
+                                 ("class", "org-left")]
               (map_inline col)))
           cols) in
   let col_groups =
@@ -388,6 +388,10 @@ let collect_options directives =
     with Not_found -> [] in
   options := collected
 
+let directives_to_string directives =
+  let directives = List.map (fun (k, v) -> k ^ ": " ^ v) directives in
+  String.concat ";" directives
+
 module HtmlExporter = struct
   let name = "html"
 
@@ -407,8 +411,11 @@ module HtmlExporter = struct
                     [Xml.data s; Xml.raw "<br />"; subtitle] in
 
     let toc = toc doc.toc in
-    let body = [Xml.block "div" ~attr:["id", "content"]
-                  (title :: toc :: (List.map block doc.blocks))
+    let body = [Xml.block "div" ~attr:[("id", "content")]
+                  (title :: toc :: (List.map block doc.blocks));
+                Xml.block "div" ~attr:[("id", "directives");
+                                       ("style", "display:none")]
+                  [Xml.raw (directives_to_string doc.directives)]
                ] in
     Xml.output_xhtml output body
 end
