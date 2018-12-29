@@ -389,8 +389,7 @@ let collect_options directives =
   options := collected
 
 let directives_to_string directives =
-  let directives = List.map (fun (k, v) -> k ^ ": " ^ v) directives in
-  String.concat ";" directives
+  Document.directives_to_yojson directives |> Yojson.Safe.to_string
 
 module HtmlExporter = struct
   let name = "html"
@@ -401,21 +400,19 @@ module HtmlExporter = struct
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
     collect_macros doc.directives;
     collect_options doc.directives;
-    let subtitle = match doc.subtitle with
-      | None -> Xml.empty
-      | Some s -> Xml.block "span" ~attr:["class", "subtitle"]
-                    [(Xml.data s)] in
-    let title = match doc.title with
-      | None -> Xml.empty
-      | Some s -> Xml.block "h1" ~attr:["class", "title"]
-                    [Xml.data s; Xml.raw "<br />"; subtitle] in
+    (* let subtitle = match doc.subtitle with
+     *   | None -> Xml.empty
+     *   | Some s -> Xml.block "span" ~attr:["class", "subtitle"]
+     *                 [(Xml.data s)] in
+     * let title = match doc.title with
+     *   | None -> Xml.empty
+     *   | Some s -> Xml.block "h1" ~attr:["class", "title"]
+     *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
 
     let toc = toc doc.toc in
-    let body = [Xml.block "div" ~attr:[("id", "content")]
-                  (title :: toc :: (List.map block doc.blocks));
-                Xml.block "div" ~attr:[("id", "directives");
-                                       ("style", "display:none")]
-                  [Xml.raw (directives_to_string doc.directives)]
-               ] in
+    let body = [Xml.raw ("<!-- directives: " ^ (directives_to_string doc.directives) ^ " -->\n");
+
+                Xml.block "div" ~attr:[("id", "content")]
+                  (toc :: (List.map block doc.blocks))] in
     Xml.output_xhtml output body
 end

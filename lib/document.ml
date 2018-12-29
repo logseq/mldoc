@@ -8,6 +8,8 @@ and toc_item =
     ; numbering: int list
     ; items: toc}
 
+type directives = (string * string) list [@@deriving yojson]
+
 (**
     A document is:
     - some content before the first heading
@@ -18,7 +20,7 @@ and toc_item =
 type t =
   { filename: string option (** The filename the document was parsed from *)
   ; blocks: blocks  (** Blocks content *)
-  ; directives: (string * string) list
+  ; directives: directives
   (** The directives present in the file *)
   ; title: string option  (** The document's title *)
   ; subtitle: string option (** The document's subtitle *)
