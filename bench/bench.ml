@@ -1,4 +1,3 @@
-open Mldoc_org
 open Mldoc_org.Parser
 
 open Core

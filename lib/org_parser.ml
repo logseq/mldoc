@@ -1,5 +1,4 @@
 open Angstrom
-open Type
 
 let list_content_parsers =
   many1 (choice [

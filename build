@@ -1,0 +1,6 @@
+#!/bin/sh
+opam install angstrom bigstringaf cmdliner core core_bench js_of_ocaml js_of_ocaml-ppx ppx_deriving_yojson uri yojson
+
+opam pin add angstrom git://github.com/tiensonqin/angstrom#jsoo
+
+make

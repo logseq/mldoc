@@ -17,4 +17,4 @@ run:
 bench:
 	$(DUNE) exec ./bench/bench.exe
 
-.PHONY: test all clean check bench
+.PHONY: pin test all clean check bench

@@ -15,6 +15,7 @@
 *** For OCaml users
     #+BEGIN_SRC sh
       # compile
+      ./build
       make
 
       # convert org file to html

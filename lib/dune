@@ -1,8 +1,13 @@
 (include_subdirs unqualified)
 
+(env
+  (dev
+    (flags (:standard -warn-error -A))))
+    
 (library
  (name        mldoc_org)
  (public_name mldoc_org)
  (preprocess (pps ppx_deriving_yojson))
  (libraries angstrom bigstringaf yojson ppx_deriving_yojson.runtime uri)
- (wrapped false))
+ (wrapped false)
+ )
