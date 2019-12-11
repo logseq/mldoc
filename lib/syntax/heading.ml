@@ -3,8 +3,8 @@ open Parsers
 open Prelude
 open Type
 
-(* TODO, DOING, DONE *)
-let marker = string "TODO" <|> string "DOING" <|> string "DONE"
+(* todo keywords *)
+let marker = string "TODO" <|> string "DOING" <|> string "WAITING" <|> string "DONE" <|> string "CANCELLED" <|> string "STARTED" <|> string "IN-PROGRESS"
 
 let level = take_while1 (fun c -> c = '*')
 
