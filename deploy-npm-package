@@ -1,0 +1,6 @@
+#!/bin/sh
+
+make
+
+mv _build/default/js/lib.bc.js ./js/package/index.js
+cd ./js/package && yarn publish
