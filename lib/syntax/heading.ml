@@ -4,7 +4,7 @@ open Prelude
 open Type
 
 (* todo keywords *)
-let marker = string "TODO" <|> string "DOING" <|> string "WAITING" <|> string "DONE" <|> string "CANCELED" <|> string "STARTED" <|> string "IN-PROGRESS"
+let marker = string "TODO" <|> string "DOING" <|> string "WAITING" <|> string "WAIT" <|> string "DONE" <|> string "CANCELED" <|> string "STARTED" <|> string "IN-PROGRESS"
 
 let level = take_while1 (fun c -> c = '*')
 
