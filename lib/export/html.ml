@@ -316,7 +316,7 @@ and block t =
   | Src {language; options; lines} ->
     let attr = match language with
       | None -> []
-      | Some l -> ["data-lang", l] in
+      | Some l -> ["data-lang", l, "class", l] in
     Xml.block "pre"
       [Xml.block "code" ~attr
          [Xml.data (String.concat "\n" lines)]]
