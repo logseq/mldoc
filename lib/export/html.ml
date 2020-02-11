@@ -214,7 +214,7 @@ let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
            tags)
   in
   Xml.block (Printf.sprintf "h%d" level)
-    ~attr:["id", anchor]
+    ~attr:["id", anchor; "start-pos", (string_of_int meta.pos)]
     (numbering :: marker :: priority :: map_inline title @ [tags])
 
 let rec list_item x =
