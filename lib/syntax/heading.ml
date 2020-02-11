@@ -40,7 +40,6 @@ let anchor_link s =
 let parse =
   let p = lift5
       (fun pos level marker priority title ->
-         Printf.printf "Org heading pos: %d\n" pos;
          let level = String.length level in
          let title = match (parse_string Inline.parse (String.trim title)) with
            | Ok title -> title

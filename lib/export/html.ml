@@ -209,8 +209,11 @@ let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
         (List.map
            (fun tag ->
               Xml.block "span"
-                ~attr:[("class", "headding-tag"); ("style", "padding-left:6px")]
-                [Xml.data tag])
+                ~attr:[("class", "tag")]
+                [(Xml.block "span"
+                    ~attr:[("class", tag)]
+                    [Xml.data tag]
+                 )])
            tags)
   in
   Xml.block (Printf.sprintf "h%d" level)
