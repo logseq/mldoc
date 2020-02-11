@@ -38,8 +38,9 @@ let anchor_link s =
   Prelude.explode (String.trim s) |> List.map map_char |> String.concat ""
 
 let parse =
-  let p = lift4
-      (fun level marker priority title ->
+  let p = lift5
+      (fun pos level marker priority title ->
+         Printf.printf "Org heading pos: %d\n" pos;
          let level = String.length level in
          let title = match (parse_string Inline.parse (String.trim title)) with
            | Ok title -> title
@@ -62,8 +63,9 @@ let parse =
 
            | _ -> (title, []) in
          let anchor = anchor_link (Inline.asciis title) in
-         let meta = { timestamps = []; properties = []} in
+         let meta = { timestamps = []; properties = []; pos} in
          [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
+      pos
       (level <* ws <?> "Heading level")
       (optional (lex marker <?> "Heading marker"))
       (optional (lex priority <?> "Heading priority"))

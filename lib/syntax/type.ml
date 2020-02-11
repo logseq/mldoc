@@ -9,17 +9,18 @@ type heading =
   ; meta: meta
   } [@@deriving yojson]
 and meta =
-    { timestamps: Inline.timestamp list
-    ; properties: (string * string) list  (** The properties of the heading *)} [@@deriving yojson]
+  { pos: int
+  ; timestamps: Inline.timestamp list
+  ; properties: (string * string) list  (** The properties of the heading *)} [@@deriving yojson]
 
 and list_item =
-    { content: t list  (** The contents of the current item *)
-    ; items: list_item list
-    ; number: int option  (** Its number *)
-    ; name: string option  (** Definition *)
-    ; checkbox: bool option  (** Was it checked *)
-    ; indent: int (** Indentation of the current item. *)
-    ; ordered: bool} [@@deriving yojson]
+  { content: t list  (** The contents of the current item *)
+  ; items: list_item list
+  ; number: int option  (** Its number *)
+  ; name: string option  (** Definition *)
+  ; checkbox: bool option  (** Was it checked *)
+  ; indent: int (** Indentation of the current item. *)
+  ; ordered: bool} [@@deriving yojson]
 
 and table = { header: row option
             ; groups: group list (* rows groups *)
@@ -33,10 +34,10 @@ and
 
 (** {2 Code blocks} *)
 and code_block =
-    { lines: string list
-    ; language: string option (** The language the code is written in *)
-    ; options: string list option
-    } [@@deriving yojson]
+  { lines: string list
+  ; language: string option (** The language the code is written in *)
+  ; options: string list option
+  } [@@deriving yojson]
 (** Code blocks *)
 
 and t =
