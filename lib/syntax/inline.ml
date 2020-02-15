@@ -155,7 +155,7 @@ let verbatim =
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^';]
+let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^'; ' ']
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
 
@@ -163,9 +163,7 @@ let whitespaces = ws >>= fun spaces -> return (Plain spaces)
 
 let plain =
   (scan1 false (fun state c ->
-       if c = ' ' then
-         None
-       else if (not state && (c = '_' || c = '^')) then
+       if (not state && (c = '_' || c = '^')) then
          Some true
        else if (non_eol c && not (in_plain_delims c) ) then
          Some true
@@ -183,22 +181,6 @@ let emphasis =
   | '/' -> italic
   | '+' -> strike_through
   | _ -> fail "Inline emphasis"
-
-let nested_emphasis =
-  let rec aux_nested_emphasis = function
-    | Plain s ->
-      Plain s
-    | Emphasis (typ, [Plain s]) as e ->
-      let parser = (many1 (choice [emphasis; plain])) in
-      (match parse_string parser s with
-       | Ok [Plain _] -> e
-       | Ok result -> Emphasis (typ,
-                                List.map aux_nested_emphasis result)
-       | Error _error -> e)
-    | _ ->
-      failwith "nested_emphasis" in
-  emphasis >>= fun e ->
-  return (aux_nested_emphasis e)
 
 let hard_breakline = string "\\" *> eol >>= fun _ -> return Hard_Break_Line
 let breakline = string "\\\\" *> eol >>= fun _ -> fail "breakline"
@@ -226,7 +208,7 @@ let entity =
 
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
 let subscript, superscript =
-  let p = many1 (choice [nested_emphasis; plain; whitespaces; entity]) in
+  let p = many1 (choice [emphasis; plain; whitespaces; entity]) in
   let gen s f =
     (string (s ^ "{") *> take_while1 (fun c -> non_space c && c <> '}')
      <* char '}')
@@ -239,6 +221,26 @@ let subscript, superscript =
   in
   ( gen "_" (fun x -> Subscript x)
   , gen "^" (fun x -> Superscript x) )
+
+let nested_emphasis =
+  let rec aux_nested_emphasis = function
+    | Plain s ->
+      Plain s
+    | Emphasis (typ, [Plain s]) as e ->
+      let parser = (many1 (choice [emphasis; subscript; superscript; plain])) in
+      (match parse_string parser s with
+       | Ok [Plain _] -> e
+       | Ok result -> Emphasis (typ,
+                                List.map aux_nested_emphasis result)
+       | Error _error -> e)
+    | Subscript _ as s ->
+      s
+    | Superscript _ as s ->
+      s
+    | _ ->
+      failwith "nested_emphasis" in
+  emphasis >>= fun e ->
+  return (aux_nested_emphasis e)
 
 let statistics_cookie =
   between_char '[' ']'
