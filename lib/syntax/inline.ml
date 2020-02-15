@@ -63,6 +63,7 @@ and t =
   | Break_Line
   | Verbatim of string
   | Code of string
+  | Spaces of string
   | Plain of string
   | Link of link
   | Target of string
@@ -158,9 +159,13 @@ let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^';
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
 
+let whitespaces = ws >>= fun spaces -> return (Plain spaces)
+
 let plain =
   (scan1 false (fun state c ->
-       if (not state && (c = '_' || c = '^')) then
+       if c = ' ' then
+         None
+       else if (not state && (c = '_' || c = '^')) then
          Some true
        else if (non_eol c && not (in_plain_delims c) ) then
          Some true
@@ -169,7 +174,7 @@ let plain =
    >>= fun (s, _state) ->
    return (Plain s))
   <|>
-  (line >>= fun s -> return (Plain s))
+  (line_without_spaces >>= fun s -> return (Plain s))
 
 let emphasis =
   peek_char_fail >>= function
@@ -574,6 +579,7 @@ let inline_choices =
     ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)
+    ; whitespaces
     ; plain ]
 
 let parse =

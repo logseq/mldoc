@@ -66,8 +66,7 @@ let output_lines ?(rewrite = true) fd indent_level lines =
       if lines.[String.length lines - 1] = '\n' then output "\n"
   | [] -> ()
 
-let output ?(offset = 0) fd inlines prep_inlines exceptions space_significants
-    trees =
+let output ?(offset = 0) fd inlines prep_inlines exceptions space_significants trees =
   let rec write ?(ctx_inline = false) indent_level = function
     | Empty -> ()
     | Data s -> output_lines fd indent_level s

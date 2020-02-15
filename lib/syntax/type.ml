@@ -1,5 +1,6 @@
+type inline_list = Inline.t list [@@deriving yojson]
 type heading =
-  { title: Inline.t list  (** The title as inline formatted content *)
+  { title: inline_list  (** The title as inline formatted content *)
   ; tags: string list  (** The tags set by the user *)
   ; marker: string option  (** TODO, DONE, and so on *)
   ; level: int  (** The level (number of stars) -- starts at 1 *)

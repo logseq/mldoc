@@ -78,7 +78,7 @@ let rec map_inline l = concatmap inline l
 and inline t =
   let open List in
   match t with
-  | Plain s -> [Xml.data s]
+  | Plain s | Spaces s -> [Xml.data s]
   | Superscript l -> [Xml.block "sup" (map_inline l)]
   | Subscript l -> [Xml.block "sub" (map_inline l)]
   | Emphasis (kind, data) ->

@@ -92,6 +92,8 @@ let take_till1 f = take_while1 (fun c -> not (f c))
 
 let line = take_till1 is_eol
 
+let line_without_spaces = take_till1 (fun c -> c = '\r' || c = '\n' || c = ' ')
+
 let clear_parser_resource p r error =
   p r >>= fun result ->
   r := [];
