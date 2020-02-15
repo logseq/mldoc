@@ -14,13 +14,18 @@ let parse_paragraph interrupt_parsers lines =
     | Ok result -> Paragraph result
     | Error e -> Paragraph [Inline.Plain content] in
   fix (fun parse ->
-      Inline.break_or_line <* optional eol >>= fun line ->
+      Inline.break_or_line >>= fun line ->
       let () = match line with
         | Inline.Plain s ->
-          let item = if Prelude.ends_with s " \\\\" then
-              (String.sub s 0 (String.length s - 3) ^ "\n", true)
+          let hard_break = Prelude.ends_with s " \\" in
+          let item = if hard_break then
+              (String.sub s 0 (String.length s - 3), false)
             else (s, false) in
-          lines := item :: !lines
+          lines := item :: !lines;
+          if hard_break then
+            lines := ("\n", true) :: !lines
+        | Inline.Break_Line ->
+          lines := ("\n", true) :: !lines
         | _ ->
           () in
       (* parse plain lines *)

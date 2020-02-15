@@ -206,6 +206,7 @@ let entity =
   with Not_found ->
     Plain s
 
+(* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
 let subscript, superscript =
   let p = many1 (choice [emphasis; plain; whitespaces; entity]) in
@@ -558,7 +559,7 @@ let footnote_reference =
 
 let break_or_line =
   let line = line >>= fun s -> return (Plain s) in
-  choice [line; breakline]
+  choice [line; breakline; allow_breakline]
 
 (* TODO: configurable *)
 let inline_choices =
