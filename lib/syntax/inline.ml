@@ -226,7 +226,7 @@ let entity =
 
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
 let subscript, superscript =
-  let p = many1 (choice [nested_emphasis; plain; entity]) in
+  let p = many1 (choice [nested_emphasis; plain; whitespaces; entity]) in
   let gen s f =
     (string (s ^ "{") *> take_while1 (fun c -> non_space c && c <> '}')
      <* char '}')
@@ -480,7 +480,7 @@ let link =
                  Complex {protocol; link} )
            with _ -> Search url
        in
-       let parser = (many1 (choice [nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain])) in
+       let parser = (many1 (choice [nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain; whitespaces])) in
        let label = match parse_string parser label with
            Ok result -> concat_plains result
          | Error _e -> [Plain label] in
@@ -518,10 +518,10 @@ let incr_id id =
 let footnote_inline_definition ?(break = false) definition =
   let choices = if break then
       [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
-       code; allow_breakline; subscript; superscript; plain]
+       code; allow_breakline; subscript; superscript; plain; whitespaces]
     else
       [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
-       code; subscript; superscript; plain] in
+       code; subscript; superscript; plain; whitespaces] in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
   | Ok result ->
