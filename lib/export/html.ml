@@ -407,7 +407,7 @@ module HtmlExporter = struct
 
   let default_filename = change_ext "html"
 
-  let export doc output =
+  let export config doc output =
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
     collect_macros doc.directives;
     collect_options doc.directives;
@@ -420,10 +420,9 @@ module HtmlExporter = struct
      *   | Some s -> Xml.block "h1" ~attr:["class", "title"]
      *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
 
-    let toc = toc doc.toc in
+    let blocks = List.map block doc.blocks in
+    let blocks = if Config.(config.toc) then ((toc doc.toc) :: blocks) else blocks in
     let body = [Xml.raw ("<!-- directives: " ^ (directives_to_string doc.directives) ^ " -->\n");
-
-                Xml.block "div" ~attr:[("id", "content")]
-                  (toc :: (List.map block doc.blocks))] in
+                Xml.block "div" ~attr:[("id", "content")] blocks] in
     Xml.output_xhtml output body
 end

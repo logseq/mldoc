@@ -1,13 +1,10 @@
 (* taken from mlorg *)
-
 module type Exporter = sig
   val name : string
-  (* val config : Config.t *)
 
   val default_filename : string -> string
 
-  (* val export: Config.t -> Document.t -> 'a output -> unit *)
-  val export: Document.t -> out_channel -> unit
+  val export: Config.t -> Document.t -> out_channel -> unit
 end
 
 type exporter = (module Exporter)
@@ -24,9 +21,9 @@ module Exporters = struct
       let base = [(module Html.HtmlExporter : Exporter)]
     end)
 
-  let run exporter doc output =
+  let run exporter config doc output =
     let module M = (val exporter : Exporter) in
-    M.export doc output
+    M.export config doc output
 
   let find name = find name (get ())
 

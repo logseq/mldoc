@@ -1,5 +1,6 @@
 open Mldoc_org
 open Mldoc_org.Parser
+open Mldoc_org.Config
 open Lwt
 open Cmdliner
 
@@ -11,7 +12,7 @@ let read_lines () =
 let from_file filename =
   Lwt_io.lines_of_file filename |> Lwt_stream.to_list
 
-let generate backend output _opts filename =
+let generate backend output opts filename =
   let lines = if filename = "-" then
       read_lines ()
     else from_file filename
@@ -23,7 +24,9 @@ let generate backend output _opts filename =
     let module E = (val export : Exporter.Exporter) in
     let output = if output = "" then E.default_filename filename else output in
     let fdout = if output = "-" then stdout else open_out output in
-    let result = Exporters.run export document fdout in
+    (* FIXME: parse *)
+    let config = {toc = true; heading_number = true} in
+    let result = Exporters.run export config document fdout in
     return result
 
 (* Cmd liner part *)
