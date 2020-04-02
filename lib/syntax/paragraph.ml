@@ -14,7 +14,7 @@ let parse_paragraph interrupt_parsers lines =
     | Ok result -> Paragraph result
     | Error e -> Paragraph [Inline.Plain content] in
   fix (fun parse ->
-      Inline.break_or_line >>= fun line ->
+      Inline.break_or_line <* optional eol >>= fun line ->
       let () = match line with
         | Inline.Plain s ->
           let hard_break = Prelude.ends_with s " \\" in

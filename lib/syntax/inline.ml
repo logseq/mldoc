@@ -184,7 +184,7 @@ let emphasis =
 
 let hard_breakline = string "\\" *> eol >>= fun _ -> return Hard_Break_Line
 let breakline = string "\\\\" *> eol >>= fun _ -> fail "breakline"
-let allow_breakline = eol >>= fun _ -> return Break_Line
+(* let allow_breakline = eol >>= fun _ -> return Break_Line *)
 
 let radio_target =
   between_string "<<<" ">>>"
@@ -520,8 +520,10 @@ let incr_id id =
 
 let footnote_inline_definition ?(break = false) definition =
   let choices = if break then
+      (* [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity; *)
+       (* code; allow_breakline; subscript; superscript; plain; whitespaces] *)
       [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
-       code; allow_breakline; subscript; superscript; plain; whitespaces]
+       code; subscript; superscript; plain; whitespaces]
     else
       [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
        code; subscript; superscript; plain; whitespaces] in
@@ -559,7 +561,8 @@ let footnote_reference =
 
 let break_or_line =
   let line = line >>= fun s -> return (Plain s) in
-  choice [line; breakline; allow_breakline]
+  choice [line; breakline;]
+  (* choice [line; breakline; allow_breakline] *)
 
 (* TODO: configurable *)
 let inline_choices =
@@ -578,7 +581,7 @@ let inline_choices =
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
     ; hard_breakline            (* "\\" *)
-    ; allow_breakline                 (* '\n' *)
+    (* ; allow_breakline                 (\* '\n' *\) *)
     ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)

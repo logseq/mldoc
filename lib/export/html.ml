@@ -3,6 +3,7 @@ open Type
 open Inline
 open Document
 open Timestamp
+open Config
 
 (* taken from mlorg *)
 
@@ -162,26 +163,29 @@ let get_int_option name =
     | _ -> 1024
   with Not_found -> 1024
 
-let construct_numbering ?(toc=false) level numbering =
+let construct_numbering config ?(toc=false) level numbering =
   let num_option = get_int_option "num" in
-  if level <= num_option then
-    match numbering with
-    | Some l ->
-      let numbering =
-        List.map string_of_int l |> String.concat "." in
-      if toc then
-        Xml.data (numbering ^ ". ")
-      else
-        Xml.block "span"
-          ~attr:[("class", "numbering");
-                 ("style", "margin-right:6px")]
-          [Xml.data numbering]
-    | None -> Xml.empty
+  if config.heading_number then
+    if level <= num_option then
+      match numbering with
+      | Some l ->
+        let numbering =
+          List.map string_of_int l |> String.concat "." in
+        if toc then
+          Xml.data (numbering ^ ". ")
+        else
+          Xml.block "span"
+            ~attr:[("class", "numbering");
+                   ("style", "margin-right:6px")]
+            [Xml.data numbering]
+      | None -> Xml.empty
+    else
+      Xml.empty
   else
     Xml.empty
 
-let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
-  let numbering = construct_numbering level numbering in
+let heading config {title; tags; marker; level; priority; anchor; meta; numbering} =
+  let numbering = construct_numbering config level numbering in
   let marker =
     match marker with
     | Some v ->
@@ -220,12 +224,12 @@ let heading {title; tags; marker; level; priority; anchor; meta; numbering} =
     ~attr:["id", anchor; "start-pos", (string_of_int meta.pos)]
     (numbering :: marker :: priority :: map_inline title @ [tags])
 
-let rec list_item x =
+let rec list_item config x =
   let content =
     match x.content with
     | [] -> [Xml.empty]
-    | Paragraph i :: rest -> map_inline i @ blocks rest
-    | _ -> blocks x.content
+    | Paragraph i :: rest -> map_inline i @ blocks config rest
+    | _ -> blocks config x.content
   in
   let checked, checked_html =
     match x.checkbox with
@@ -242,7 +246,7 @@ let rec list_item x =
     | _ -> (false, Xml.empty)
   in
   let items = if List.length x.items = 0 then Xml.empty
-    else Xml.block (list_element x.items) (concatmap list_item x.items) in
+    else Xml.block (list_element x.items) (concatmap (list_item config) x.items) in
   match x.number with
   | None ->
     let block = match x.name with
@@ -302,15 +306,15 @@ and table { header; groups; col_groups} =
                    ("frame", "hsides")] "table"
     (col_groups @ (head :: groups))
 
-and blocks l = List.map block l
-and block t =
+and blocks config l = List.map (block config) l
+and block config t =
   let open List in
   match t with
   | Paragraph l -> Xml.block "p" (map_inline l)
   | Horizontal_Rule -> Xml.block "hr" []
   | Heading h ->
-    heading h
-  | List l -> Xml.block (list_element l) (concatmap list_item l)
+    heading config h
+  | List l -> Xml.block (list_element l) (concatmap (list_item config) l)
   | Table t -> table t
   | Math s ->
     Xml.block "div" ~attr:["class", "mathblock"]
@@ -324,12 +328,12 @@ and block t =
       [Xml.block "code" ~attr
          [Xml.data (String.concat "\n" lines)]]
   | Quote l ->
-    Xml.block "blockquote" (blocks l)
+    Xml.block "blockquote" (blocks config l)
   | Export ("html", options, content) ->
     Xml.raw content
   | Custom (name, options, l) ->
     Xml.block "div" ~attr:["class", name]
-      (blocks l)
+      (blocks config l)
   | Latex_Fragment l ->
     Xml.block "p" ~attr:["class", "latex-fragment"]
       (inline (Inline.Latex_Fragment l))
@@ -344,7 +348,7 @@ and block t =
     let encode_name = Uri.pct_encode name in
     Xml.block "div" ~attr:["class", "footdef"]
       [(Xml.block "div" ~attr:["class", "footpara"]
-          [block (Paragraph definition)]);
+          [block config (Paragraph definition)]);
        (Xml.block "sup"
           [(Xml.block "a"
               ~attr:[("id", "fn." ^ encode_name);
@@ -353,7 +357,7 @@ and block t =
               [Xml.data (name ^ "↩︎")])])]
   | _ -> Xml.empty
 
-let toc content =
+let toc config content =
   let toc_option = get_int_option "toc" in
   let rec go content =
     match Prelude.hd_opt content with
@@ -363,7 +367,7 @@ let toc content =
         Xml.empty
       else
         let items = (List.map (fun { title; level; anchor; numbering; items } ->
-            let numbering = construct_numbering ~toc:true level (Some numbering) in
+            let numbering = construct_numbering config ~toc:true level (Some numbering) in
             let link = Xml.block "a" ~attr: ["href", "#" ^ anchor]
                 (numbering :: map_inline title) in
             Xml.block "li"
@@ -420,8 +424,8 @@ module HtmlExporter = struct
      *   | Some s -> Xml.block "h1" ~attr:["class", "title"]
      *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
 
-    let blocks = List.map block doc.blocks in
-    let blocks = if Config.(config.toc) then ((toc doc.toc) :: blocks) else blocks in
+    let blocks = blocks config doc.blocks in
+    let blocks = if Config.(config.toc) then ((toc config doc.toc) :: blocks) else blocks in
     let body = [Xml.raw ("<!-- directives: " ^ (directives_to_string doc.directives) ^ " -->\n");
                 Xml.block "div" ~attr:[("id", "content")] blocks] in
     Xml.output_xhtml output body
