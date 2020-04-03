@@ -54,7 +54,7 @@ let _ =
               let _ = Xml.output_xhtml stdout xml_blocks in
               Js_of_ocaml.Js.string (Buffer.contents buffer)
             | Error e ->
-              Js_of_ocaml.Js.string "parse error"
+              Js_of_ocaml.Js.string e
           end
         | Error error ->
           Js_of_ocaml.Js.string error
