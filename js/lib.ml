@@ -34,8 +34,8 @@ let _ =
             ) in
           generate "html" config document stdout;
           Js_of_ocaml.Js.string (Buffer.contents buffer)
-        | Error error ->
-          Js_of_ocaml.Js.string error
+        | Error e ->
+          Js_of_ocaml.Js.string ("Config error: " ^ e)
 
       method jsonToHtmlStr input config_json =
         let config_json = Js.to_string config_json in
@@ -54,10 +54,10 @@ let _ =
               let _ = Xml.output_xhtml stdout xml_blocks in
               Js_of_ocaml.Js.string (Buffer.contents buffer)
             | Error e ->
-              Js_of_ocaml.Js.string e
+              Js_of_ocaml.Js.string ("Parse error: " ^ e)
           end
-        | Error error ->
-          Js_of_ocaml.Js.string error
+        | Error e ->
+          Js_of_ocaml.Js.string ("Config error: " ^ e)
 
       method inlineListToHtmlStr input =
         let json_str = Js.to_string input in
@@ -71,5 +71,5 @@ let _ =
           let _ = Xml.output_xhtml stdout (Html.map_inline inline_list) in
           Js_of_ocaml.Js.string (Buffer.contents buffer)
         | Error e ->
-          Js_of_ocaml.Js.string "parse error"
+          Js_of_ocaml.Js.string ("parse error: " ^ e)
     end)
