@@ -37,6 +37,28 @@ let _ =
         | Error error ->
           Js_of_ocaml.Js.string error
 
+      method jsonToHtmlStr input config_json =
+        let config_json = Js.to_string config_json in
+        let config_json = Yojson.Safe.from_string config_json in
+        match Config.of_yojson config_json with
+        | Ok config -> begin
+            let json_str = Js.to_string input in
+            let json = Yojson.Safe.from_string json_str in
+            match json_to_ast json with
+            | Ok blocks ->
+              let buffer = Buffer.create 1024 in
+              let _ = Sys_js.set_channel_flusher stdout (fun s ->
+                  Buffer.add_string buffer s
+                ) in
+              let xml_blocks = Html.blocks config blocks in
+              let _ = Xml.output_xhtml stdout xml_blocks in
+              Js_of_ocaml.Js.string (Buffer.contents buffer)
+            | Error e ->
+              Js_of_ocaml.Js.string "parse error"
+          end
+        | Error error ->
+          Js_of_ocaml.Js.string error
+
       method inlineListToHtmlStr input =
         let json_str = Js.to_string input in
         let json = Yojson.Safe.from_string json_str in
