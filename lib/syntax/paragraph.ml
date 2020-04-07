@@ -9,23 +9,24 @@ let parse_paragraph interrupt_parsers lines =
   let inline_parse () =
     let lines = List.map (fun (s, b) -> if b then s else s ^ " ") (rev !lines) in
     let content = String.concat "" lines in
-    let content = String.sub content 0 (String.length content - 1) in
+    let content = String.trim content in
     match parse_string Inline.parse content with
     | Ok result -> Paragraph result
-    | Error e -> Paragraph [Inline.Plain content] in
+    | Error _e -> Paragraph [Inline.Plain content] in
   fix (fun parse ->
       Inline.break_or_line <* optional eol >>= fun line ->
+      let hard_break_inline = "\\\n" in
       let () = match line with
         | Inline.Plain s ->
-          let hard_break = Prelude.ends_with s " \\" in
+          let hard_break = Prelude.ends_with s "\\" in
           let item = if hard_break then
-              (String.sub s 0 (String.length s - 3), false)
+              (String.sub s 0 (String.length s - 1), false)
             else (s, false) in
           lines := item :: !lines;
           if hard_break then
-            lines := ("\n", true) :: !lines
-        | Inline.Break_Line ->
-          lines := ("\n", true) :: !lines
+            lines := (hard_break_inline, true) :: !lines
+        | Inline.Hard_Break_Line ->
+          lines := (hard_break_inline, true) :: !lines
         | _ ->
           () in
       (* parse plain lines *)

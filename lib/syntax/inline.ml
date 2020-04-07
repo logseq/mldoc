@@ -60,7 +60,6 @@ and inline_source_block = {
 and t =
     Emphasis of emphasis
   | Hard_Break_Line
-  | Break_Line
   | Verbatim of string
   | Code of string
   | Spaces of string
@@ -183,7 +182,6 @@ let emphasis =
   | _ -> fail "Inline emphasis"
 
 let hard_breakline = string "\\" *> eol >>= fun _ -> return Hard_Break_Line
-let breakline = string "\\\\" *> eol >>= fun _ -> fail "breakline"
 (* let allow_breakline = eol >>= fun _ -> return Break_Line *)
 
 let radio_target =
@@ -561,13 +559,14 @@ let footnote_reference =
 
 let break_or_line =
   let line = line >>= fun s -> return (Plain s) in
-  choice [line; breakline;]
+  choice [line; hard_breakline;]
   (* choice [line; breakline; allow_breakline] *)
 
 (* TODO: configurable *)
 let inline_choices =
   choice
     [ latex_fragment            (* '$' '\' *)
+    ; hard_breakline            (* "\\" *)
     ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
     ; entity                    (* '\' *)
     ; macro                     (* '{' *)
@@ -580,7 +579,6 @@ let inline_choices =
     ; target                    (* "<" *)
     ; verbatim                  (*  *)
     ; code                      (* '=' *)
-    ; hard_breakline            (* "\\" *)
     (* ; allow_breakline                 (\* '\n' *\) *)
     ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
