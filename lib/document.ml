@@ -36,7 +36,7 @@ let get_timestamps inlines =
       (fun acc t ->
          match t with
          | Timestamp t -> t :: acc
-         | Hard_Break_Line -> acc
+         | Break_Line | Hard_Break_Line -> acc
          | _ -> raise Non_timestamp
       )
       []

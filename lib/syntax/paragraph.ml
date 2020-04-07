@@ -1,10 +1,11 @@
 open Angstrom
 open Parsers
 open Type
+open Config
 
 (* inline and footnotes *)
 
-let parse_paragraph interrupt_parsers lines =
+let parse_paragraph config interrupt_parsers lines =
   let open List in
   let inline_parse () =
     let lines = List.map (fun (s, b) -> if b then s else s ^ " ") (rev !lines) in
@@ -14,7 +15,7 @@ let parse_paragraph interrupt_parsers lines =
     | Ok result -> Paragraph result
     | Error _e -> Paragraph [Inline.Plain content] in
   fix (fun parse ->
-      Inline.break_or_line <* optional eol >>= fun line ->
+      Inline.break_or_line >>= fun line ->
       let hard_break_inline = "\\\n" in
       let () = match line with
         | Inline.Plain s ->
@@ -27,6 +28,11 @@ let parse_paragraph interrupt_parsers lines =
             lines := (hard_break_inline, true) :: !lines
         | Inline.Hard_Break_Line ->
           lines := (hard_break_inline, true) :: !lines
+        | Inline.Break_Line ->
+          if config.keep_line_break then
+            lines := ("\n", true) :: !lines
+          else
+            ()
         | _ ->
           () in
       (* parse plain lines *)
@@ -67,9 +73,9 @@ let footnote_reference lines =
        Footnote_Definition (name, definition))
     name_part definition_part
 
-let parse interrupt_parsers =
+let parse config interrupt_parsers =
   let lines = ref [] in
-  let p = parse_paragraph interrupt_parsers lines in
+  let p = parse_paragraph config interrupt_parsers lines in
   optional eols *>
   (* check for footer reference first *)
   peek_char_fail >>= fun c ->

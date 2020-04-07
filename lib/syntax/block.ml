@@ -37,7 +37,7 @@ let block_name_options_parser =
     (spaces *> optional line)
   <* (optional eol)
 
-let list_content_parsers block_parse =
+let list_content_parsers config block_parse =
   many1 (choice [
       Table.parse
     ; block_parse
@@ -47,20 +47,21 @@ let list_content_parsers block_parse =
     ; Hr.parse
     ; results
     ; Comment.parse
-    ; Paragraph.parse [ Table.parse
-                      ; block_parse
-                      ; Directive.parse
-                      ; Drawer.parse
-                      ; Latex_env.parse
-                      ; Hr.parse
-                      ; results
-                      ; Comment.parse]
+    ; Paragraph.parse config [ Table.parse
+                             ; block_parse
+                             ; Directive.parse
+                             ; Drawer.parse
+                             ; Latex_env.parse
+                             ; Hr.parse
+                             ; results
+                             ; Comment.parse]
     ])
 
-let block_content_parsers block_parse =
+let block_content_parsers config block_parse =
+  let list_content_parser = list_content_parsers config block_parse in
   many1 (choice [
       Table.parse
-    ; Lists.parse (list_content_parsers block_parse)
+    ; Lists.parse list_content_parser
     ; block_parse
     ; Directive.parse
     ; Drawer.parse
@@ -68,15 +69,15 @@ let block_content_parsers block_parse =
     ; Hr.parse
     ; results
     ; Comment.parse
-    ; Paragraph.parse [ Table.parse
-                      ; Lists.parse (list_content_parsers block_parse)
-                      ; block_parse
-                      ; Directive.parse
-                      ; Drawer.parse
-                      ; Latex_env.parse
-                      ; Hr.parse
-                      ; results
-                      ; Comment.parse]
+    ; Paragraph.parse config [ Table.parse
+                             ; Lists.parse list_content_parser
+                             ; block_parse
+                             ; Directive.parse
+                             ; Drawer.parse
+                             ; Latex_env.parse
+                             ; Hr.parse
+                             ; results
+                             ; Comment.parse]
     ])
 
 let separate_name_options = function
@@ -87,7 +88,7 @@ let separate_name_options = function
     | name :: [] -> (Some name, None)
     | name :: options -> (Some name, Some options)
 
-let parse = fix (fun parse ->
+let parse config = fix (fun parse ->
     let p = peek_char_fail
       >>= function
       | '#' ->
@@ -111,7 +112,7 @@ let parse = fix (fun parse ->
          | "example" -> [Example lines]
          | "quote" ->
            let content = String.concat "\n" lines in
-           let result = match parse_string (block_content_parsers parse) content with
+           let result = match parse_string (block_content_parsers config parse) content with
              | Ok result -> result
              | Error _e -> [] in
            [Quote (List.concat result)]
@@ -124,7 +125,7 @@ let parse = fix (fun parse ->
            [CommentBlock lines]
          | _ ->
            let content = String.concat "\n" lines in
-           let result = match parse_string (block_content_parsers parse) content with
+           let result = match parse_string (block_content_parsers config parse) content with
              | Ok result -> result
              | Error _e -> [] in
            [Custom (name, options, List.concat result)]

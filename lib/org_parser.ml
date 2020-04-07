@@ -1,27 +1,27 @@
 open Angstrom
 
-let list_content_parsers =
+let list_content_parsers config =
   many1 (choice [
       Table.parse
-    ; Block.parse
+    ; Block.parse config
     ; Latex_env.parse
     ; Hr.parse
     ; Block.results
     ; Comment.parse
-    ; Paragraph.parse [ Table.parse
-                      ; Block.parse
-                      ; Block.results
-                      ; Latex_env.parse
-                      ; Hr.parse
-                      ; Comment.parse]
+    ; Paragraph.parse config [ Table.parse
+                             ; Block.parse config
+                             ; Block.results
+                             ; Latex_env.parse
+                             ; Hr.parse
+                             ; Comment.parse]
     ])
 
 (* Orders care *)
-let interrupt_parsers =
+let interrupt_parsers config =
   [ Heading.parse
   ; Table.parse
-  ; Lists.parse list_content_parsers
-  ; Block.parse
+  ; Lists.parse (list_content_parsers config)
+  ; Block.parse config
   ; Directive.parse
   ; Drawer.parse
   ; Latex_env.parse
@@ -30,14 +30,14 @@ let interrupt_parsers =
   ; Comment.parse
   ]
 
-let parsers =
-  let parsers = List.append interrupt_parsers [Paragraph.parse interrupt_parsers] in
+let parsers config =
+  let parsers = List.append (interrupt_parsers config) [Paragraph.parse config (interrupt_parsers config)] in
   let choices = choice parsers
   in
   many1 choices
 
-let parse input =
-  match parse_string parsers input with
+let parse config input =
+  match parse_string (parsers config) input with
   | Ok result -> List.concat result
   | Error err -> failwith err
 
