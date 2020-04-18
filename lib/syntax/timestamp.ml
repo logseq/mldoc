@@ -6,7 +6,7 @@ type time = {hour: int; min: int} [@@deriving yojson]
 
 type repetition_kind = Plus | DoublePlus | Dotted [@@deriving yojson]
 
-type t = {date: date; time: time option; repetition: (repetition_kind * date) option; active: bool} [@@deriving yojson]
+type t = {date: date; wday: string; time: time option; repetition: (repetition_kind * date) option; active: bool} [@@deriving yojson]
 
 type range = {start: t; stop: t} [@@deriving yojson]
 
@@ -27,38 +27,6 @@ let min_opt t = Option.map_default (fun x -> Some x.min) None t.time
 let null_date = {year= 0; month= 0; day= 0}
 
 (* let null_time = {min= 0; hour= 0} *)
-
-let null = {date= null_date; time= None; repetition= None; active= true}
-
-let to_tm t =
-  let open Unix in
-  let tm =
-    { tm_sec= 0
-    ; tm_min= min t
-    ; tm_hour= hour t
-    ; tm_mday= day t
-    ; tm_mon= month t - 1
-    ; tm_year= year t - 1900
-    ; tm_wday= 0
-    ; tm_yday= 0
-    ; tm_isdst= false }
-  in
-  snd (mktime tm)
-
-let from_tm ?(active = true) tm =
-  let open Unix in
-  let tm = snd (mktime tm) in
-  { date= {year= tm.tm_year + 1900; month= tm.tm_mon + 1; day= tm.tm_mday}
-  ; time= Some {hour= tm.tm_hour; min= tm.tm_min}
-  ; active
-  ; repetition= None }
-
-let normalize t =
-  let normalized = from_tm (to_tm t) in
-  let t' = {normalized with repetition= t.repetition} in
-  if t.time = None then {t' with time= None} else t'
-
-let weekday t = (to_tm t).Unix.tm_wday
 
 let parse_time s =
   try Scanf.sscanf s "%d:%d" (fun hour min -> Some {hour; min})
@@ -95,11 +63,11 @@ let repetition_to_string (kind, d) =
   else if d.day <> 0 then Printf.sprintf "%s%dd" kind d.day
   else Printf.sprintf "%s0d" kind
 
-let to_string ?(wday = [|"Sun"; "Mon"; "Tue"; "Wed"; "Thu"; "Wed"; "Sat"|]) t =
+let to_string t =
   Printf.sprintf "%c%s%c"
     (if t.active then '<' else '[')
     ( [ Some (date_to_string t.date)
-      ; Some wday.(weekday t)
+      ; Some t.wday
       ; Option.map time_to_string t.time
       ; Option.map repetition_to_string t.repetition ]
       |> filter_map identity |> String.concat " " )
@@ -107,22 +75,6 @@ let to_string ?(wday = [|"Sun"; "Mon"; "Tue"; "Wed"; "Thu"; "Wed"; "Sat"|]) t =
 
 let range_to_string {start; stop} =
   Printf.sprintf "%s--%s" (to_string start) (to_string stop)
-
-let seconds_of_t t = to_tm t |> Unix.mktime |> fst
-
-let duration {start; stop} = truncate (seconds_of_t stop -. seconds_of_t start)
-
-let from_now t =
-  duration {start= t; stop= from_tm (Unix.localtime (Unix.time ()))}
-
-let string_of_seconds n =
-  let mins, _secs = (n / 60, n mod 60) in
-  let hours, mins = (mins / 60, mins mod 60) in
-  Printf.sprintf "%02d:%02d" hours mins
-
-let add_days t d = normalize {t with date= {t.date with day= t.date.day + d}}
-
-let today () = Unix.time () |> Unix.localtime |> from_tm
 
 let sub d d' =
   {year= d'.year - d.year; month= d'.month - d.month; day= d'.day - d.day}

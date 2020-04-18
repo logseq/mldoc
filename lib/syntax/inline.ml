@@ -328,7 +328,7 @@ let date_time close_char ~active typ =
   | None -> fail "date parser"
   | Some date ->
     lift3
-      (fun _day_name time_or_repeat tr2 ->
+      (fun wday time_or_repeat tr2 ->
          let date, time, repetition =
            match time_or_repeat with
            | None -> (date, None, None)
@@ -347,11 +347,11 @@ let date_time close_char ~active typ =
                  repetition_parser s' date time s'.[0] )
          in
          match typ with
-         | "Scheduled" -> Timestamp (Scheduled {date; time; repetition; active})
-         | "Deadline" -> Timestamp (Deadline {date; time; repetition; active})
-         | "Closed" -> Timestamp (Closed {date; time; repetition; active})
-         | "Clock" -> Timestamp (Clock (Started {date; time; repetition; active}))
-         | _ -> Timestamp (Date {date; time; repetition; active}) )
+         | "Scheduled" -> Timestamp (Scheduled {date; wday; time; repetition; active})
+         | "Deadline" -> Timestamp (Deadline {date; wday; time; repetition; active})
+         | "Closed" -> Timestamp (Closed {date; wday; time; repetition; active})
+         | "Clock" -> Timestamp (Clock (Started {date; wday; time; repetition; active}))
+         | _ -> Timestamp (Date {date; wday; time; repetition; active}) )
       day_name_parser tr1_parser tr2_parser
     <* char close_char
 
