@@ -57,6 +57,7 @@ and inline_source_block = {
   options: string; (** The options *)
   code: string; (** The code *)
 }
+
 and t =
     Emphasis of emphasis
   | Break_Line
@@ -288,7 +289,7 @@ let latex_fragment =
       (* inline math *)
       take_while1 (fun x -> x <> '$')
       <* char '$'
-      >>| fun s -> Latex_Fragment (Inline s)
+      >>| fun s -> Latex_Fragment (Inline (Char.escaped c ^ s))
   | '\\' -> (
       any_char
       >>= function
