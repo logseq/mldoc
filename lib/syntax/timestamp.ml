@@ -6,7 +6,11 @@ type time = {hour: int; min: int} [@@deriving yojson]
 
 type repetition_kind = Plus | DoublePlus | Dotted [@@deriving yojson]
 
-type t = {date: date; wday: string; time: time option; repetition: (repetition_kind * date) option; active: bool} [@@deriving yojson]
+type repetition_duration = Hour | Day | Week | Month | Year
+[@@deriving yojson]
+
+type t = {date: date; wday: string; time: time option; repetition: (repetition_kind * repetition_duration * int) option; active: bool} [@@deriving yojson]
+
 
 type range = {start: t; stop: t} [@@deriving yojson]
 
@@ -45,10 +49,11 @@ let parse_repetition_marker kind s =
   try
     Scanf.sscanf s "%d%c" (fun n c ->
         match c with
-        | 'w' -> Some (kind, {null_date with day= 7 * n})
-        | 'd' -> Some (kind, {null_date with day= n})
-        | 'm' -> Some (kind, {null_date with month= n})
-        | 'y' -> Some (kind, {null_date with year= n})
+        | 'h' -> Some (kind, Hour, n)
+        | 'd' -> Some (kind, Day, n)
+        | 'w' -> Some (kind, Week, n)
+        | 'm' -> Some (kind, Month, n)
+        | 'y' -> Some (kind, Year, n)
         | _ -> None )
   with _ -> None
 
@@ -56,12 +61,17 @@ let date_to_string d = Printf.sprintf "%d-%02d-%02d" d.year d.month d.day
 
 let time_to_string t = Printf.sprintf "%02d:%02d" t.hour t.min
 
-let repetition_to_string (kind, d) =
+let repetition_duration_to_string = function
+  | Hour -> "h"
+  | Day -> "d"
+  | Week -> "w"
+  | Month -> "m"
+  | Year -> "y"
+
+let repetition_to_string (kind, duration, n) =
   let kind = repetition_kind_to_string kind in
-  if d.year <> 0 then Printf.sprintf "%s%dy" kind d.year
-  else if d.month <> 0 then Printf.sprintf "%s%dm" kind d.month
-  else if d.day <> 0 then Printf.sprintf "%s%dd" kind d.day
-  else Printf.sprintf "%s0d" kind
+  let duration = repetition_duration_to_string duration in
+  Printf.sprintf "%s%d%s" kind n duration
 
 let to_string t =
   Printf.sprintf "%c%s%c"
@@ -78,17 +88,6 @@ let range_to_string {start; stop} =
 
 let sub d d' =
   {year= d'.year - d.year; month= d'.month - d.month; day= d'.day - d.day}
-
-let covers arg source =
-  match source.repetition with
-  | None -> source.date = arg.date
-  | Some (_kind, repetition) ->
-    if arg < source then false
-    else
-      let sub = sub arg.date source.date in
-      (repetition.year = 0 || sub.year mod repetition.year = 0)
-      && (repetition.month = 0 || sub.month mod repetition.month = 0)
-      && (repetition.day = 0 || sub.day mod repetition.day = 0)
 
 let repetition_parser s date time c =
   if s.[1] <> '+' then
