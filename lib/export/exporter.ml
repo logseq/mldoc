@@ -4,7 +4,7 @@ module type Exporter = sig
 
   val default_filename : string -> string
 
-  val export: Config.t -> Document.t -> out_channel -> unit
+  val export: Conf.t -> Document.t -> out_channel -> unit
 end
 
 type exporter = (module Exporter)

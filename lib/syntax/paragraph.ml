@@ -1,9 +1,17 @@
 open Angstrom
 open Parsers
 open Type
-open Config
+open Conf
 
 (* inline and footnotes *)
+
+let sep =
+  eols >>= fun s ->
+  print_int (String.length s);
+  if String.length s >= 2 then
+    return [Paragraph_Sep]
+  else
+    fail "only 1 eol"
 
 let parse_paragraph config interrupt_parsers lines =
   let open List in

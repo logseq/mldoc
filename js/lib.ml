@@ -1,6 +1,6 @@
 open Mldoc_org
 open Mldoc_org.Parser
-open Mldoc_org.Config
+open Mldoc_org.Conf
 
 let ast_to_json ast =
   Type.blocks_to_yojson ast |> Yojson.Safe.to_string
@@ -16,7 +16,7 @@ let _ =
       method parseJson input config_json =
         let config_json = Js.to_string config_json in
         let config_json = Yojson.Safe.from_string config_json in
-        match Config.of_yojson config_json with
+        match Conf.of_yojson config_json with
         | Ok config -> begin
             let str = Js.to_string input in
             parse config str |> ast_to_json |> Js.string

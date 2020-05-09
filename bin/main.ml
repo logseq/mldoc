@@ -1,6 +1,6 @@
 open Mldoc_org
 open Mldoc_org.Parser
-open Mldoc_org.Config
+open Mldoc_org.Conf
 open Lwt
 open Cmdliner
 

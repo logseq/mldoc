@@ -8,7 +8,8 @@ let list_content_parsers config =
     ; Hr.parse
     ; Block.results
     ; Comment.parse
-    ; Paragraph.parse config [ Table.parse
+    ; Paragraph.parse config [ Paragraph.sep
+                             ; Table.parse
                              ; Block.parse config
                              ; Block.results
                              ; Latex_env.parse
@@ -18,7 +19,8 @@ let list_content_parsers config =
 
 (* Orders care *)
 let interrupt_parsers config =
-  [ Heading.parse
+  [ Paragraph.sep
+  ; Heading.parse
   ; Table.parse
   ; Lists.parse (list_content_parsers config)
   ; Block.parse config

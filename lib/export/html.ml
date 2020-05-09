@@ -3,7 +3,7 @@ open Type
 open Inline
 open Document
 open Timestamp
-open Config
+open Conf
 
 (* taken from mlorg *)
 
@@ -425,7 +425,7 @@ module HtmlExporter = struct
      *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
 
     let blocks = blocks config doc.blocks in
-    let blocks = if Config.(config.toc) then ((toc config doc.toc) :: blocks) else blocks in
+    let blocks = if Conf.(config.toc) then ((toc config doc.toc) :: blocks) else blocks in
     let body = [Xml.raw ("<!-- directives: " ^ (directives_to_string doc.directives) ^ " -->\n");
                 Xml.block "div" ~attr:[("id", "content")] blocks] in
     Xml.output_xhtml output body

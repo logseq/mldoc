@@ -62,6 +62,7 @@ and t =
     Emphasis of emphasis
   | Break_Line
   | Hard_Break_Line
+  | Paragraph_Sep
   | Verbatim of string
   | Code of string
   | Spaces of string
@@ -156,7 +157,8 @@ let verbatim =
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^';]
+let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^'; '\n'; '\r'; '(']
+(* replace list with a  *)
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
 
