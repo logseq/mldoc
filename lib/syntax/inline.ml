@@ -565,8 +565,8 @@ let break_or_line =
 (* TODO: configurable, re-order *)
 let inline_choices =
   choice
-    [plain
-    ; latex_fragment            (* '$' '\' *)
+    [
+    latex_fragment            (* '$' '\' *)
     ; hard_breakline            (* "\\" *)
     ; breakline                 (* '\n' *)
     ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
@@ -584,6 +584,7 @@ let inline_choices =
     ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)
+    ; plain
     ]
 
 let parse =

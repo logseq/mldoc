@@ -7,7 +7,6 @@ open Conf
 
 let sep =
   eols >>= fun s ->
-  print_int (String.length s);
   if String.length s >= 2 then
     return [Paragraph_Sep]
   else
