@@ -156,7 +156,7 @@ let verbatim =
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^'; ' ']
+let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^';]
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
 
@@ -164,16 +164,12 @@ let whitespaces = ws >>= fun spaces -> return (Plain spaces)
 
 let plain =
   (scan1 false (fun state c ->
-       if (not state && (c = '_' || c = '^')) then
-         Some true
-       else if (non_eol c && not (in_plain_delims c) ) then
+       if (non_eol c && not (in_plain_delims c)) then
          Some true
        else
          None)
    >>= fun (s, _state) ->
    return (Plain s))
-  <|>
-  (line_without_spaces >>= fun s -> return (Plain s))
 
 let emphasis =
   peek_char_fail >>= function
@@ -211,7 +207,7 @@ let entity =
 let subscript, superscript =
   let p = many1 (choice [emphasis; plain; whitespaces; entity]) in
   let gen s f =
-    (string (s ^ "{") *> take_while1 (fun c -> non_space c && c <> '}')
+    (string (s ^ "{") *> take_while1 (fun c -> non_eol c && c <> '}')
      <* char '}')
     <|>
     (string s *> take_while1 (fun c -> non_space c))
@@ -564,10 +560,11 @@ let break_or_line =
   choice [line; hard_breakline; breakline]
 (* choice [line; breakline; allow_breakline] *)
 
-(* TODO: configurable *)
+(* TODO: configurable, re-order *)
 let inline_choices =
   choice
-    [ latex_fragment            (* '$' '\' *)
+    [plain
+    ; latex_fragment            (* '$' '\' *)
     ; hard_breakline            (* "\\" *)
     ; breakline                 (* '\n' *)
     ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
@@ -585,8 +582,7 @@ let inline_choices =
     ; nested_emphasis
     ; subscript                 (* '_' "_{" *)
     ; superscript               (* '^' "^{" *)
-    ; whitespaces
-    ; plain ]
+    ]
 
 let parse =
   many1 inline_choices >>| fun l ->
