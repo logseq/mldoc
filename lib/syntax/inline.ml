@@ -192,7 +192,7 @@ let radio_target =
       >>= fun s -> return @@ Radio_Target s )
 
 let target =
-  between_char '<' '>'
+  between_string "<<" ">>"
     ( take_while1 (function '>' | '\r' | '\n' -> false | _ -> true)
       >>= fun s -> return @@ Target s )
 
