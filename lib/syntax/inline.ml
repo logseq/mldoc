@@ -157,7 +157,7 @@ let verbatim =
 let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = ['*'; '_'; '/'; '\\'; '+'; '~'; '='; '['; '<'; '{'; '$'; '^'; '\n'; '\r'; '(']
+let plain_delims = [' '; '\\'; '_'; '^']
 (* replace list with a  *)
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
@@ -172,6 +172,8 @@ let plain =
          None)
    >>= fun (s, _state) ->
    return (Plain s))
+  <|>
+  (word >>= fun s -> return (Plain s))
 
 let emphasis =
   peek_char_fail >>= function
