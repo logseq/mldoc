@@ -8,7 +8,11 @@ let marker = string "TODO" <|> string "DOING" <|> string "WAITING"
              <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
              <|> string "STARTED" <|> string "IN-PROGRESS"
 
-let level = take_while1 (fun c -> c = '*')
+let org_level = take_while1 (fun c -> c = '*')
+
+let markdown_level = take_while1 (fun c -> c = '#')
+
+let level = choice [org_level; markdown_level]
 
 let priority = string "[#" *> any_char <* char ']'
 
