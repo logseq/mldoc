@@ -3,6 +3,10 @@ open Parsers
 open Prelude
 open Type
 
+(* TODO: Markdown alternate syntax,
+   https://www.markdownguide.org/basic-syntax/#alternate-syntax
+*)
+
 (* todo keywords *)
 let marker = string "TODO" <|> string "DOING" <|> string "WAITING"
              <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
