@@ -118,3 +118,15 @@ let between_lines ?trim:(trim=true) end_check error =
 
 let between_eols p =
   optional eols *> optional spaces *> p <* optional eols
+
+let rec at_most m p =
+  if m = 0
+  then return []
+  else
+    (lift2 (fun x xs -> x :: xs) p (at_most (m - 1) p))
+    <|> return []
+
+let limits n m p =
+  lift2 (fun xs ys -> xs @ ys)
+    (count   n p)
+    (at_most m p)

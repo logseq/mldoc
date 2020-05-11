@@ -183,6 +183,7 @@ let emphasis =
   | '+' -> strike_through
   | _ -> fail "Inline emphasis"
 
+(* let markdown_hard_breakline = *)
 let hard_breakline = string "\\" *> eol >>= fun _ -> return Hard_Break_Line
 let breakline = eol >>= fun _ -> return Break_Line
 
