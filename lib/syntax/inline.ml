@@ -495,10 +495,12 @@ let concat_plains config inlines =
     ) [] inlines in
   List.rev l
 
-
-
 (* link *)
-(* 1. [url](label) *)
+(* 1. [label](url)
+   2. [label](url "title"), for example:
+      My favorite search engine is [Duck Duck Go](https://duckduckgo.com "The best search engine for privacy").
+*)
+(* TODO: URI encode *)
 let markdown_link config =
   let label_part = char '[' *> take_while1 (fun c -> c <> ']') <* optional (string "](") in
   let url_part =
@@ -511,10 +513,37 @@ let markdown_link config =
          else
            try
              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                 Complex {protocol; link} )
+                 Complex {protocol; link})
            with _ -> Search url
        in
-       let parser = (many1 (choice [(nested_emphasis config); latex_fragment; entity; (code config); (subscript config); (superscript config); plain; whitespaces])) in
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment;
+                                    entity; (code config); (subscript config);
+                                    (superscript config); plain; whitespaces])) in
+       let label = match parse_string parser label with
+           Ok result -> concat_plains config result
+         | Error _e -> [Plain label] in
+       Link {label; url} )
+    label_part url_part
+
+(* TODO: make sure it's a proper image format. *)
+let markdown_image config =
+  let label_part = string "![" *> take_while1 (fun c -> c <> ']') <* optional (string "](") in
+  let url_part =
+    take_while (fun c -> c <> ')') <* string ")"
+  in
+  lift2
+    (fun label url ->
+       let url =
+         if url.[0] = '/' || url.[0] = '.' then File url
+         else
+           try
+             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                 Complex {protocol; link})
+           with _ -> Search url
+       in
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment;
+                                    entity; (code config); (subscript config);
+                                    (superscript config); plain; whitespaces])) in
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
@@ -583,10 +612,10 @@ let footnote_inline_definition config ?(break = false) definition =
   let choices = if break then
       (* [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity; *)
       (* code; allow_breakline; subscript; superscript; plain; whitespaces] *)
-      [(link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
+      [(markdown_image config); (link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
        (code config); (subscript config); (superscript config); plain; whitespaces]
     else
-      [(link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
+      [(markdown_image config); (link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
        (code config); (subscript config); (superscript config); plain; whitespaces] in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
@@ -637,6 +666,7 @@ let inline_choices config =
     ; macro                     (* '{' *)
     ; statistics_cookie         (* '[' *)
     ; footnote_reference config        (* 'f', fn *)
+    ; markdown_image config
     ; link config                      (* '[' [[]] *)
     ; link_inline config               (*  *)
     ; export_snippet
