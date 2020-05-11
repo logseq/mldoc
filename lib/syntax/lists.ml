@@ -138,8 +138,8 @@ let org_parse config content_parsers =
 
 let parse config content_parsers =
   match config.format with
-  | Org -> org_parse config content_parsers
-  | Markdown ->
+  | "Org" -> org_parse config content_parsers
+  | "Markdown" ->
     (org_parse config content_parsers)
     <|>
     fail "markdown"

@@ -48,10 +48,10 @@ let footnote_definition lines =
       return (List.rev !lines))
 
 let name_part config = match config.format with
-  | Org ->
+  | "Org" ->
     string "[fn:" *> take_while1 (fun c -> c <> ']' && non_eol c)
     <* char ']' <* spaces
-  | Markdown ->
+  | "Markdown" ->
     Markdown_footnote.reference <* char ':' <* spaces
 
 let footnote_reference config lines =

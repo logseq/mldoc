@@ -155,8 +155,8 @@ let verbatim =
 
 let code config =
   let c = match config.format with
-    | Org -> '~'
-    | Markdown -> '`' in
+    | "Org" -> '~'
+    | "Markdown" -> '`' in
   between c >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
@@ -214,8 +214,8 @@ let markdown_emphasis =
 
 let emphasis config =
   match config.format with
-  | Org -> org_emphasis
-  | Markdown -> markdown_emphasis
+  | "Org" -> org_emphasis
+  | "Markdown" -> markdown_emphasis
 
 let org_hard_breakline = string "\\" <* eol
 let hard_breakline = choice [org_hard_breakline; Markdown_line_breaks.parse] >>= fun _ -> return Hard_Break_Line
@@ -583,8 +583,8 @@ let org_link config =
 
 let link config =
   match config.format with
-  | Org -> org_link config
-  | Markdown -> markdown_link config
+  | "Org" -> org_link config
+  | "Markdown" -> markdown_link config
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') <* char ':' in
@@ -662,8 +662,8 @@ let org_inline_footnote_or_reference config =
 
 let inline_footnote_or_reference config =
   match config.format with
-  | Org -> org_inline_footnote_or_reference config
-  | Markdown -> markdown_footnote_reference
+  | "Org" -> org_inline_footnote_or_reference config
+  | "Markdown" -> markdown_footnote_reference
 
 let break_or_line =
   let line = line >>= fun s -> return (Plain s) in

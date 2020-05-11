@@ -12,5 +12,5 @@ let org_parse =
 
 let parse config =
   match config.format with
-  | Org -> org_parse
-  | Markdown -> Markdown_comment.parse
+  | "Org" -> org_parse
+  | "Markdown" -> Markdown_comment.parse

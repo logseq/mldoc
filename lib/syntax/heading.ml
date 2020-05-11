@@ -17,8 +17,8 @@ let org_level = take_while1 (fun c -> c = '*')
 
 let level config =
   match config.format with
-  | Org -> org_level
-  | Markdown -> Markdown_level.parse
+  | "Org" -> org_level
+  | "Markdown" -> Markdown_level.parse
 
 let priority = string "[#" *> any_char <* char ']'
 
