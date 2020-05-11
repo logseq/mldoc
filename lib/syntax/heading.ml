@@ -58,7 +58,7 @@ let parse config =
          let (title, tags) = match last_inline with
            | Inline.Plain s ->
              let s = String.trim s in
-             if s.[String.length s - 1] = ':' then
+             if String.length s > 1 && s.[String.length s - 1] = ':' then
                let (prefix, maybe_tags) = (splitr (fun c -> c <> ' ') s) in
                (match parse_string tags maybe_tags with
                 | Ok tags ->
