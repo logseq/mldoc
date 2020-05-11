@@ -18,7 +18,7 @@ let results =
 
 let verbatim lines =
   fix (fun verbatim ->
-      spaces *> char ':' *> take_till is_eol <* optional eol
+      (spaces *> char ':' <* (optional spaces)) *> take_till is_eol <* optional eol
       >>= fun line ->
       lines := line :: !lines;
       verbatim
@@ -27,6 +27,44 @@ let verbatim lines =
          fail "verbatim"
        else
          return (List.rev !lines)))
+
+(* TODO: nested blockquote *)
+let md_blockquote lines =
+  fix (fun md_blockquote ->
+      (spaces *> char '>' <* (optional spaces)) *> take_till is_eol <* optional eol
+      >>= fun line ->
+      lines := line :: !lines;
+      md_blockquote
+      <|>
+      (if !lines = [] then
+         fail "Markdown blockquote"
+       else
+         return (List.rev !lines)))
+
+(* ``` json
+ * {
+ *   "firstName": "John",
+ *   "lastName": "Smith",
+ *   "age": 25
+ * }
+ * ``` *)
+let fenced_language =
+  string "```" *> spaces *> optional line
+
+let fenced_code_block =
+  fenced_language
+  >>= fun language ->
+  between_lines ~trim:false (fun line ->
+      let prefix = "```" in
+      starts_with (String.trim line) prefix) "fenced_code_block"
+  >>| fun lines ->
+  (* clear indents *)
+  let lines = if lines = [] then [] else
+      let indent = get_indent (List.hd lines) in
+      if indent = 0 then lines else
+        List.map (fun line ->
+            String.sub line indent (String.length line - indent)) lines in
+    [Src {language; options=None; lines}]
 
 let block_name_options_parser =
   lift2 (fun name options ->
@@ -133,5 +171,15 @@ let parse config = fix (fun parse ->
       | ':' ->                      (* verbatim block *)
         verbatim (ref []) >>|
         fun lines -> [Example lines]
+      | '>' ->                      (* verbatim block *)
+        md_blockquote (ref []) >>|
+        fun lines ->
+        let content = String.concat "\n" lines in
+        let result = match parse_string (block_content_parsers config parse) content with
+          | Ok result -> result
+          | Error _e -> [] in
+        [Quote (List.concat result)]
+      | '`' ->
+        fenced_code_block
       | _ -> fail "block" in
     between_eols p)
