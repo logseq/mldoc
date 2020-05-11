@@ -3,11 +3,34 @@ open Parsers
 open Prelude
 open Type
 
+(* https://orgmode.org/manual/Column-Groups.html#Column-Groups *)
+(*
+| N | N^2 | N^3 | N^4 | sqrt(n) | sqrt[4](N) |
+|---+-----+-----+-----+---------+------------|
+| / |  <  |     |  >  |       < |          > |
+| 1 |  1  |  1  |  1  |       1 |          1 |
+| 2 |  4  |  8  | 16  |  1.4142 |     1.1892 |
+| 3 |  9  | 27  | 81  |  1.7321 |     1.3161 |
+|---+-----+-----+-----+---------+------------|
+#+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
+*)
+
+(* https://www.markdownguide.org/extended-syntax/#alignment *)
+(*
+| Syntax      | Description | Test Text     |
+| :---        |    :----:   |          ---: |
+| Header      | Title       | Here's this   |
+| Paragraph   | Text        | And more      |
+**)
+
+(* TODO: markdown add alignment support *)
+
 let boundaries_spec =
   spaces *> string "#+TBLFM:" *> line
 
 let separated_line =
-  spaces *> char '|' *> take_while1 (fun c -> c = '-' || c = '+') *> char '|' *> spaces *> optional eol
+  spaces *> char '|' *> take_while1 (fun c -> c = '-' || c = '+' || c = '|' || c = ' ' || c = ':') (* add '|' to support markdown*)
+  <* spaces <* eol
 
 let split_into_columns s =
   String.split_on_char '|' s
