@@ -74,17 +74,17 @@ and timestamp ({active; date; time; repetition} as t) kind =
       ; ("active", if active then "true" else "false") ]
     [prefix; Xml.data (to_string t)]
 
-let rec map_inline l = concatmap inline l
+let rec map_inline config l = concatmap (inline config) l
 
-and inline t =
+and inline config t =
   let open List in
   match t with
   | Plain s | Spaces s -> [Xml.data s]
-  | Superscript l -> [Xml.block "sup" (map_inline l)]
-  | Subscript l -> [Xml.block "sub" (map_inline l)]
+  | Superscript l -> [Xml.block "sup" (map_inline config l)]
+  | Subscript l -> [Xml.block "sub" (map_inline config l)]
   | Emphasis (kind, data) ->
-    let l = [`Bold, "b"; `Italic, "i"; `Underline, "u"; `Strike_through, "del"] in
-    [Xml.block (assoc kind l) (map_inline data)]
+    let l = [`Bold, "b"; `Italic, "i"; `Underline, "ins"; `Strike_through, "del"; `Highlight, "mark"] in
+    [Xml.block (assoc kind l) (map_inline config data)]
   | Entity e ->
     [Xml.raw e.html]
   | Latex_Fragment (Displayed s) ->
@@ -105,7 +105,7 @@ and inline t =
       in
       let label = match url with
         | Search s -> [Xml.data s]
-        | _ -> map_inline label in
+        | _ -> map_inline config label in
       [Xml.block "a" ~attr: ["href", href]
          label]
   | Verbatim s | Code s ->
@@ -147,8 +147,8 @@ and inline t =
          (fun v -> try List.nth arguments (int_of_string v - 1) with _ -> v)
          value ;
        let content = (Buffer.contents buff) in
-       match Angstrom.parse_string Inline.parse content with
-       | Ok inlines -> map_inline inlines
+       match Angstrom.parse_string (Inline.parse config) content with
+       | Ok inlines -> map_inline config inlines
        | Error _e -> [Xml.empty]
      with Not_found ->
        [Xml.empty])
@@ -222,13 +222,13 @@ let heading config {title; tags; marker; level; priority; anchor; meta; numberin
   in
   Xml.block (Printf.sprintf "h%d" level)
     ~attr:["id", anchor; "start-pos", (string_of_int meta.pos)]
-    (numbering :: marker :: priority :: map_inline title @ [tags])
+    (numbering :: marker :: priority :: map_inline config title @ [tags])
 
 let rec list_item config x =
   let content =
     match x.content with
     | [] -> [Xml.empty]
-    | Paragraph i :: rest -> map_inline i @ blocks config rest
+    | Paragraph i :: rest -> map_inline config i @ blocks config rest
     | _ -> blocks config x.content
   in
   let checked, checked_html =
@@ -275,13 +275,13 @@ let rec list_item config x =
              :: content);
           items] ]
 
-and table { header; groups; col_groups} =
+and table config { header; groups; col_groups} =
   let tr elm cols =
     Xml.block "tr"
       (List.map (fun col ->
            (Xml.block elm ~attr:[("scope", "col");
                                  ("class", "org-left")]
-              (map_inline col)))
+              (map_inline config col)))
           cols) in
   let col_groups =
     try
@@ -310,12 +310,12 @@ and blocks config l = List.map (block config) l
 and block config t =
   let open List in
   match t with
-  | Paragraph l -> Xml.block "p" (map_inline l)
+  | Paragraph l -> Xml.block "p" (map_inline config l)
   | Horizontal_Rule -> Xml.block "hr" []
   | Heading h ->
     heading config h
   | List l -> Xml.block (list_element l) (concatmap (list_item config) l)
-  | Table t -> table t
+  | Table t -> table config t
   | Math s ->
     Xml.block "div" ~attr:["class", "mathblock"]
       [Xml.data ("$$" ^ s ^ "$$")]
@@ -336,7 +336,7 @@ and block config t =
       (blocks config l)
   | Latex_Fragment l ->
     Xml.block "p" ~attr:["class", "latex-fragment"]
-      (inline (Inline.Latex_Fragment l))
+      (inline config (Inline.Latex_Fragment l))
   | Latex_Environment (name, option, content) ->
     let option = match option with | None -> "" | Some s -> s in
     let content = "\n\\begin{" ^ name ^ "} " ^ option ^ "\n"
@@ -369,7 +369,7 @@ let toc config content =
         let items = (List.map (fun { title; level; anchor; numbering; items } ->
             let numbering = construct_numbering config ~toc:true level (Some numbering) in
             let link = Xml.block "a" ~attr: ["href", "#" ^ anchor]
-                (numbering :: map_inline title) in
+                (numbering :: map_inline config title) in
             Xml.block "li"
               (link :: [go items])
           ) content) in

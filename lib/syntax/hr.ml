@@ -1,6 +1,8 @@
 open Angstrom
 open Parsers
 open Type
+open Prelude
+open Conf
 
 let org = count 5 (char '-')
 
@@ -10,16 +12,13 @@ let org = count 5 (char '-')
    _________________
 *)
 
-let markdown_char = choice [char '-'; char '*'; char '_']
-
-let rec remove_dups lst =
-  match lst with
-  | [] -> []
-  | h::t -> h::(remove_dups (List.filter (fun x -> x<>h) t))
-
-let parse =
-  let p = choice [many1 markdown_char; org]
-    >>= fun s ->
+let parse config =
+  let p =
+    let parser = match config.format with
+      | Org -> org
+      | Markdown -> Markdown_hr.parse
+    in
+    parser >>= fun s ->
     if List.length s >= 3 && (List.length (remove_dups s)) == 1 then
       return [Horizontal_Rule]
     else

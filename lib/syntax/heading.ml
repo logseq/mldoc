@@ -2,6 +2,7 @@ open Angstrom
 open Parsers
 open Prelude
 open Type
+open Conf
 
 (* TODO: Markdown alternate syntax,
    https://www.markdownguide.org/basic-syntax/#alternate-syntax
@@ -14,9 +15,10 @@ let marker = string "TODO" <|> string "DOING" <|> string "WAITING"
 
 let org_level = take_while1 (fun c -> c = '*')
 
-let markdown_level = take_while1 (fun c -> c = '#')
-
-let level = choice [org_level; markdown_level]
+let level config =
+  match config.format with
+  | Org -> org_level
+  | Markdown -> Markdown_level.parse
 
 let priority = string "[#" *> any_char <* char ']'
 
@@ -45,11 +47,11 @@ let anchor_link s =
   in
   Prelude.explode (String.trim s) |> List.map map_char |> String.concat ""
 
-let parse =
+let parse config =
   let p = lift5
       (fun pos level marker priority title ->
          let level = String.length level in
-         let title = match (parse_string Inline.parse (String.trim title)) with
+         let title = match (parse_string (Inline.parse config) (String.trim title)) with
            | Ok title -> title
            | Error _e -> [] in
          let last_inline = List.nth title (List.length title - 1) in
@@ -73,7 +75,7 @@ let parse =
          let meta = { timestamps = []; properties = []; pos} in
          [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
       pos
-      (level <* ws <?> "Heading level")
+      (level config <* ws <?> "Heading level")
       (optional (lex marker <?> "Heading marker"))
       (optional (lex priority <?> "Heading priority"))
       (lex title <?> "Heading title") in

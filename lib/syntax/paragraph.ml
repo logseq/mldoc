@@ -18,7 +18,7 @@ let parse_paragraph config interrupt_parsers lines =
     let lines = List.map (fun (s, b) -> if b then s else s ^ " ") (rev !lines) in
     let content = String.concat "" lines in
     let content = String.trim content in
-    match parse_string Inline.parse content with
+    match parse_string (Inline.parse config) content with
     | Ok result -> Paragraph result
     | Error _e -> Paragraph [Inline.Plain content] in
   fix (fun parse ->
@@ -60,7 +60,7 @@ let parse config interrupt_parsers =
   let p = match c with
     | '[' ->
       let lines = ref [] in
-      (Footnote.footnote_reference lines >>| fun f -> [f])
+      (Footnote.footnote_reference config lines >>| fun f -> [f])
       <|> p
     | _ -> p in
   p >>= fun result ->

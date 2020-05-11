@@ -28,14 +28,14 @@ let row_line =
   else
     fail "raw_line"
 
-let group =
+let group config =
   let p rows =
     fix (fun p ->
         optional separated_line >>= function
         | None ->               (* new row *)
           row_line >>= fun row ->
           let row = List.map (fun col ->
-              result_default [Inline.Plain col] (parse_string Inline.parse col)) row in
+              result_default [Inline.Plain col] (parse_string (Inline.parse config) col)) row in
           rows := row :: !rows;
           p <|> return @@ List.rev !rows
         | Some _ ->             (* separated *)
@@ -78,10 +78,10 @@ let extract_col_row header t =
     | row -> (header, t, row)
   with _ -> (header, t, [])
 
-let parse =
+let parse config =
   let p groups =
     fix (fun p ->
-        group >>= fun g ->
+        group config >>= fun g ->
         groups := g :: ! groups;
         p
         <|>

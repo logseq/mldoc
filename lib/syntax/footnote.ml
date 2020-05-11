@@ -21,13 +21,13 @@ let footnote_definition lines =
       <|>
       return (List.rev !lines))
 
-let footnote_reference lines =
+let footnote_reference config lines =
   let name_part =
     string "[fn:" *> take_while1 (fun c -> c <> ']' && non_eol c)
     <* char ']' <* optional spaces in
   let definition_part = footnote_definition lines in
   lift2
     (fun name definition ->
-       let definition = Inline.footnote_inline_definition ~break:true (String.concat "\n" definition) in
+       let definition = Inline.footnote_inline_definition config ~break:true (String.concat "\n" definition) in
        Footnote_Definition (name, definition))
     name_part definition_part

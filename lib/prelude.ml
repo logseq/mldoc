@@ -191,3 +191,8 @@ let clear_indents s =
 let change_ext ext file =
   if file = "-" then file
   else Filename.chop_extension file ^ "." ^ ext
+
+let rec remove_dups lst =
+  match lst with
+  | [] -> []
+  | h::t -> h::(remove_dups (List.filter (fun x -> x<>h) t))

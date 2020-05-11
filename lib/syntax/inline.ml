@@ -1,6 +1,7 @@
 open Angstrom
 open Parsers
 open Prelude
+open Conf
 
 (* TODO:
    1. Performance:
@@ -11,7 +12,7 @@ module Macro = struct
   type t = {name: string; arguments: string list} [@@deriving yojson]
 end
 
-type emphasis = [`Bold | `Italic | `Underline | `Strike_through] * t list [@@deriving yojson]
+type emphasis = [`Bold | `Italic | `Underline | `Strike_through | `Highlight] * t list [@@deriving yojson]
 
 and footnote_reference = {id: int; name: string; definition: t list option} [@@deriving yojson]
 
@@ -82,19 +83,6 @@ and t =
   | Inline_Source_Block of inline_source_block
 [@@deriving yojson]
 
-(* emphasis *)
-let delims =
-  [ ('*', ('*', `Bold))
-  ; ('_', ('_', `Underline))
-  ; ('/', ('/', `Italic))
-  ; ('+', ('+', `Strike_through))
-  ; ('~', ('~', `Code))
-  ; ('=', ('=', `Verbatim))
-  ; ('[', (']', `Bracket))
-  ; ('<', ('>', `Chev))
-  ; ('{', ('}', `Brace))
-  ; ('(', (')', `Paren)) ]
-
 let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
 
 let prev = ref None
@@ -150,11 +138,20 @@ let strike_through =
   >>= fun s ->
   return (Emphasis (`Strike_through, [Plain s])) <?> "Inline strike_through"
 
+(* ^highlight^ *)
+let highlight =
+  between '^'
+  >>= fun s -> return (Emphasis (`Highlight, [Plain s])) <?> "Inline highlight"
+
 (* '=', '~' verbatim *)
 let verbatim =
   between '=' >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
 
-let code = between '~' >>= fun s -> return (Code s) <?> "Inline code"
+let code config =
+  let c = match config.format with
+  | Org -> '~'
+  | Markdown -> '`' in
+  between c >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
 let plain_delims = [' '; '\\'; '_'; '^']
@@ -175,16 +172,47 @@ let plain =
   <|>
   (word >>= fun s -> return (Plain s))
 
-let emphasis =
+(* Slow version *)
+(* let emphasis =
+ *   choice [bold; underline; italic; strike_through; highlight] *)
+let org_emphasis =
   peek_char_fail >>= function
   | '*' -> bold
   | '_' -> underline
   | '/' -> italic
   | '+' -> strike_through
+  | '^' -> highlight
   | _ -> fail "Inline emphasis"
 
-(* let markdown_hard_breakline = *)
-let hard_breakline = string "\\" *> eol >>= fun _ -> return Hard_Break_Line
+let md_em_parser pattern typ =
+  let pattern_c = String.get pattern 0 in
+  let stop_chars = [pattern_c; '\r'; '\n'] in
+  between_string pattern pattern
+    ( take_while1 (fun c ->
+          if List.exists (fun d -> c = d) stop_chars then
+            false
+          else
+            true)
+      >>= fun s -> return @@ Emphasis (typ, [Plain s]) )
+
+(* TODO: html tags support *)
+(* <ins></ins> *)
+(* let underline =    *)
+
+let markdown_emphasis =
+  peek_char_fail >>= function
+  | '*' -> choice [md_em_parser "**" `Bold; md_em_parser "*" `Italic;]
+  | '~' -> md_em_parser "~~" `Strike_through
+  | '^' -> md_em_parser "^" `Highlight
+  | _ -> fail "Inline emphasis"
+
+let emphasis config =
+  match config.format with
+  | Org -> org_emphasis
+  | Markdown -> markdown_emphasis
+
+let org_hard_breakline = string "\\" <* eol
+let hard_breakline = choice [org_hard_breakline; Markdown_line_breaks.parse] >>= fun _ -> return Hard_Break_Line
 let breakline = eol >>= fun _ -> return Break_Line
 
 let radio_target =
@@ -209,27 +237,29 @@ let entity =
 
 (* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
-let subscript, superscript =
-  let p = many1 (choice [emphasis; plain; whitespaces; entity]) in
-  let gen s f =
-    (string (s ^ "{") *> take_while1 (fun c -> non_eol c && c <> '}')
-     <* char '}')
-    <|>
-    (string s *> take_while1 (fun c -> non_space c))
-    >>| fun s ->
-    match parse_string p s with
-    | Ok result -> f result
-    | Error _e -> f [Plain s]
-  in
-  ( gen "_" (fun x -> Subscript x)
-  , gen "^" (fun x -> Superscript x) )
+let gen_script config s f =
+  let p = many1 (choice [(emphasis config); plain; whitespaces; entity]) in
+  (string (s ^ "{") *> take_while1 (fun c -> non_eol c && c <> '}')
+   <* char '}')
+  <|>
+  (string s *> take_while1 (fun c -> non_space c))
+  >>| fun s ->
+  match parse_string p s with
+  | Ok result -> f result
+  | Error _e -> f [Plain s]
 
-let nested_emphasis =
+let subscript config =
+  gen_script config "_" (fun x -> Subscript x)
+
+let superscript config =
+  gen_script config "^" (fun x -> Superscript x)
+
+let nested_emphasis config =
   let rec aux_nested_emphasis = function
     | Plain s ->
       Plain s
     | Emphasis (typ, [Plain s]) as e ->
-      let parser = (many1 (choice [emphasis; subscript; superscript; plain])) in
+      let parser = (many1 (choice [(emphasis config); (subscript config); (superscript config); plain])) in
       (match parse_string parser s with
        | Ok [Plain _] -> e
        | Ok result -> Emphasis (typ,
@@ -241,7 +271,7 @@ let nested_emphasis =
       s
     | _ ->
       failwith "nested_emphasis" in
-  emphasis >>= fun e ->
+  (emphasis config) >>= fun e ->
   return (aux_nested_emphasis e)
 
 let statistics_cookie =
@@ -427,7 +457,7 @@ let timestamp =
 
 (* complex link *)
 (* :// *)
-let link_inline =
+let link_inline _config =
   let protocol_part = take_while1 is_letter <* string "://" in
   let link_part =
     take_while1 (fun c ->
@@ -441,7 +471,7 @@ let link_inline =
     protocol_part link_part
 
 (* Build direct links *)
-let concat_plains inlines =
+let concat_plains config inlines =
   let l = List.fold_left (fun acc inline ->
       match inline with
       | Plain s ->
@@ -452,7 +482,7 @@ let concat_plains inlines =
              let (l, r) = splitr non_space s' in
              let (l', r') = splitl non_space s in
              let link = r ^ l' in
-             match parse_string link_inline link with
+             match parse_string (link_inline config) link with
              | Ok result ->
                (Plain r') :: result :: (Plain l) :: tl
              | Error _e ->
@@ -468,7 +498,7 @@ let concat_plains inlines =
 (* link *)
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
-let link =
+let link config =
   let url_part =
     string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
   in
@@ -484,9 +514,9 @@ let link =
                  Complex {protocol; link} )
            with _ -> Search url
        in
-       let parser = (many1 (choice [nested_emphasis; latex_fragment; entity; code; subscript; superscript; plain; whitespaces])) in
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment; entity; (code config); (subscript config); (superscript config); plain; whitespaces])) in
        let label = match parse_string parser label with
-           Ok result -> concat_plains result
+           Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
        Link {label; url} )
     url_part label_part
@@ -519,30 +549,30 @@ let incr_id id =
   incr id;
   !id
 
-let footnote_inline_definition ?(break = false) definition =
+let footnote_inline_definition config ?(break = false) definition =
   let choices = if break then
       (* [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity; *)
       (* code; allow_breakline; subscript; superscript; plain; whitespaces] *)
-      [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
-       code; subscript; superscript; plain; whitespaces]
+      [(link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
+       (code config); (subscript config); (superscript config); plain; whitespaces]
     else
-      [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity;
-       code; subscript; superscript; plain; whitespaces] in
+      [(link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
+       (code config); (subscript config); (superscript config); plain; whitespaces] in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
   | Ok result ->
-    let result = concat_plains result in
+    let result = concat_plains config result in
     result
   | Error _e ->
     [Plain definition]
 
-let latex_footnote =
+let latex_footnote config =
   string "[fn::" *> take_while1 (fun c -> c <> ']' && non_eol c)
   <* char ']' >>| fun definition ->
-  Footnote_Reference {id = incr_id id; name = ""; definition= Some (footnote_inline_definition definition)}
+  Footnote_Reference {id = incr_id id; name = ""; definition= Some (footnote_inline_definition config definition)}
 
-let footnote_reference =
-  latex_footnote
+let footnote_reference config =
+  latex_footnote config
   <|>
   let name_part =
     string "[fn:" *> take_while1 (fun c -> c <> ':' && c <> ']' && non_eol c)
@@ -557,7 +587,7 @@ let footnote_reference =
          else name
        in
        if definition = "" then Footnote_Reference {id = incr_id id; name; definition= None}
-       else Footnote_Reference {id = incr_id id; name; definition= Some (footnote_inline_definition definition)} )
+       else Footnote_Reference {id = incr_id id; name; definition= Some (footnote_inline_definition config definition)} )
     name_part definition_part
 
 let break_or_line =
@@ -566,33 +596,33 @@ let break_or_line =
 (* choice [line; breakline; allow_breakline] *)
 
 (* TODO: configurable, re-order *)
-let inline_choices =
+let inline_choices config =
   choice
     [
-    latex_fragment            (* '$' '\' *)
+      latex_fragment            (* '$' '\' *)
     ; hard_breakline            (* "\\" *)
     ; breakline                 (* '\n' *)
     ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
     ; entity                    (* '\' *)
     ; macro                     (* '{' *)
     ; statistics_cookie         (* '[' *)
-    ; footnote_reference        (* 'f', fn *)
-    ; link                      (* '[' [[]] *)
-    ; link_inline               (*  *)
+    ; footnote_reference config        (* 'f', fn *)
+    ; link config                      (* '[' [[]] *)
+    ; link_inline config               (*  *)
     ; export_snippet
     ; radio_target              (* "<<<" *)
     ; target                    (* "<" *)
     ; verbatim                  (*  *)
-    ; code                      (* '=' *)
-    ; nested_emphasis
-    ; subscript                 (* '_' "_{" *)
-    ; superscript               (* '^' "^{" *)
+    ; code config                      (* '=' *)
+    ; nested_emphasis config
+    ; subscript config                 (* '_' "_{" *)
+    ; superscript config               (* '^' "^{" *)
     ; plain
     ]
 
-let parse =
-  many1 inline_choices >>| fun l ->
-  concat_plains l
+let parse config =
+  many1 (inline_choices config) >>| fun l ->
+  concat_plains config l
 
 let string_of_url = function
   | File s | Search s -> s

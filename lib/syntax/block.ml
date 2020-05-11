@@ -39,45 +39,45 @@ let block_name_options_parser =
 
 let list_content_parsers config block_parse =
   many1 (choice [
-      Table.parse
+      Table.parse config
     ; block_parse
     ; Directive.parse
     ; Drawer.parse
     ; Latex_env.parse
-    ; Hr.parse
+    ; Hr.parse config
     ; results
-    ; Comment.parse
-    ; Paragraph.parse config [ Table.parse
+    ; Comment.parse config
+    ; Paragraph.parse config [ Table.parse config
                              ; block_parse
                              ; Directive.parse
                              ; Drawer.parse
                              ; Latex_env.parse
-                             ; Hr.parse
+                             ; Hr.parse config
                              ; results
-                             ; Comment.parse]
+                             ; Comment.parse config]
     ])
 
 let block_content_parsers config block_parse =
   let list_content_parser = list_content_parsers config block_parse in
   many1 (choice [
-      Table.parse
+      Table.parse config
     ; Lists.parse list_content_parser
     ; block_parse
     ; Directive.parse
     ; Drawer.parse
     ; Latex_env.parse
-    ; Hr.parse
+    ; Hr.parse config
     ; results
-    ; Comment.parse
-    ; Paragraph.parse config [ Table.parse
+    ; Comment.parse config
+    ; Paragraph.parse config [ Table.parse config
                              ; Lists.parse list_content_parser
                              ; block_parse
                              ; Directive.parse
                              ; Drawer.parse
                              ; Latex_env.parse
-                             ; Hr.parse
+                             ; Hr.parse config
                              ; results
-                             ; Comment.parse]
+                             ; Comment.parse config]
     ])
 
 let separate_name_options = function

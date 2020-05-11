@@ -2,34 +2,34 @@ open Angstrom
 
 let list_content_parsers config =
   many1 (choice [
-      Table.parse
+      Table.parse config
     ; Block.parse config
     ; Latex_env.parse
-    ; Hr.parse
+    ; Hr.parse config
     ; Block.results
-    ; Comment.parse
+    ; Comment.parse config
     ; Paragraph.parse config [ Paragraph.sep
-                             ; Table.parse
+                             ; Table.parse config
                              ; Block.parse config
                              ; Block.results
                              ; Latex_env.parse
-                             ; Hr.parse
-                             ; Comment.parse]
+                             ; Hr.parse config
+                             ; Comment.parse config]
     ])
 
 (* Orders care *)
 let interrupt_parsers config =
   [ Paragraph.sep
-  ; Heading.parse
-  ; Table.parse
+  ; Heading.parse config
+  ; Table.parse config
   ; Lists.parse (list_content_parsers config)
   ; Block.parse config
   ; Directive.parse
   ; Drawer.parse
   ; Latex_env.parse
-  ; Hr.parse
+  ; Hr.parse config
   ; Block.results
-  ; Comment.parse
+  ; Comment.parse config
   ]
 
 let parsers config =
