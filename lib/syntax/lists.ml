@@ -2,6 +2,7 @@ open Angstrom
 open Parsers
 open Prelude
 open Type
+open Conf
 
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
@@ -57,7 +58,7 @@ let content_parser list_parser content_parsers indent lines =
           else (
             return (List.rev !lines, []))))
 
-let format_parser indent =
+let format_parser _config indent =
   let choices = if indent = 0 then
       char '+' <|> char '-' else
       char '+' <|> char '-' <|> char '*'
@@ -74,10 +75,10 @@ let checkbox_parser =
   <|>
   return None
 
-let format_checkbox_parser indent =
+let format_checkbox_parser config indent =
   lift2 (fun format checkbox ->
       (format, checkbox))
-    (format_parser indent)
+    (format_parser config indent)
     (checkbox_parser <* spaces)
 
 (* name :: definition *)
@@ -94,14 +95,14 @@ let definition s =
   | Error _e ->
     (None, s)
 
-let rec list_parser content_parsers items last_indent =
+let rec list_parser config content_parsers items last_indent =
   fix (fun list ->
       (indent_parser >>= fun indent ->
        if last_indent > indent then
          terminator items       (* breakout *)
        else
          let content_parser number checkbox =
-           content_parser list_parser content_parsers indent (ref []) >>= fun (content, children) ->
+           content_parser (list_parser config) content_parsers indent (ref []) >>= fun (content, children) ->
            let ordered =
              match number with Some _ -> true | None -> false
            in
@@ -110,13 +111,13 @@ let rec list_parser content_parsers items last_indent =
            let (name, content) = if ordered then (None, content) else (definition content) in
            let content = match parse_string content_parsers content with
              | Ok result -> List.concat result
-             | Error _e -> []
+             | Error _e -> [Paragraph [Inline.Plain content]]
            in
-           let item = {content; name=name; items=children; number; checkbox; indent; ordered} in
+           let item = {content; name; items=children; number; checkbox; indent; ordered} in
            items := item :: !items;
            list in
          Angstrom.take indent *> (* skip indent *)
-         (format_checkbox_parser indent >>= fun (number, checkbox) ->
+         (format_checkbox_parser config indent >>= fun (number, checkbox) ->
           match number with
           | None -> content_parser None checkbox
           | Some number ->
@@ -125,12 +126,20 @@ let rec list_parser content_parsers items last_indent =
          terminator items       (* breakout *)
       ))
 
-let parse content_parsers =
+let org_parse config content_parsers =
   let r = ref [] in
-  let p = list_parser content_parsers r 0 in
+  let p = list_parser config content_parsers r 0 in
   optional eols *> p >>= fun result ->
   r := [];
   return [List result]
   <|>
   let _ = r := [] in
   fail "list"
+
+let parse config content_parsers =
+  match config.format with
+  | Org -> org_parse config content_parsers
+  | Markdown ->
+    (org_parse config content_parsers)
+    <|>
+    fail "markdown"

@@ -2,6 +2,7 @@ open Angstrom
 open Parsers
 open Prelude
 open Type
+open Conf
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`
@@ -64,7 +65,7 @@ let fenced_code_block =
       if indent = 0 then lines else
         List.map (fun line ->
             String.sub line indent (String.length line - indent)) lines in
-    [Src {language; options=None; lines}]
+  [Src {language; options=None; lines}]
 
 let block_name_options_parser =
   lift2 (fun name options ->
@@ -99,7 +100,7 @@ let block_content_parsers config block_parse =
   let list_content_parser = list_content_parsers config block_parse in
   many1 (choice [
       Table.parse config
-    ; Lists.parse list_content_parser
+    ; Lists.parse config list_content_parser
     ; block_parse
     ; Directive.parse
     ; Drawer.parse
@@ -108,7 +109,7 @@ let block_content_parsers config block_parse =
     ; results
     ; Comment.parse config
     ; Paragraph.parse config [ Table.parse config
-                             ; Lists.parse list_content_parser
+                             ; Lists.parse config list_content_parser
                              ; block_parse
                              ; Directive.parse
                              ; Drawer.parse
@@ -169,8 +170,13 @@ let parse config = fix (fun parse ->
            [Custom (name, options, List.concat result)]
         )
       | ':' ->                      (* verbatim block *)
-        verbatim (ref []) >>|
-        fun lines -> [Example lines]
+        begin match config.format with
+          | Org ->
+            verbatim (ref []) >>|
+            fun lines -> [Example lines]
+          | Markdown ->
+            fail "block"
+        end
       | '>' ->                      (* verbatim block *)
         md_blockquote (ref []) >>|
         fun lines ->

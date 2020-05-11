@@ -22,7 +22,7 @@ let interrupt_parsers config =
   [ Paragraph.sep
   ; Heading.parse config
   ; Table.parse config
-  ; Lists.parse (list_content_parsers config)
+  ; Lists.parse config (list_content_parsers config)
   ; Block.parse config
   ; Directive.parse
   ; Drawer.parse

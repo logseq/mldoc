@@ -16,7 +16,6 @@ let html_comment =
   <* end_of_line
   >>= function _ ->
     between_lines ~trim:false (fun line ->
-        print_endline line;
         let prefix = "-->" in
         String.equal (String.trim line) prefix) "markdown_comment"
     >>= fun lines ->
