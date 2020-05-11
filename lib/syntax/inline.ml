@@ -149,8 +149,8 @@ let verbatim =
 
 let code config =
   let c = match config.format with
-  | Org -> '~'
-  | Markdown -> '`' in
+    | Org -> '~'
+    | Markdown -> '`' in
   between c >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
@@ -455,7 +455,7 @@ let range =
 let timestamp =
   range <|> general_timestamp
 
-(* complex link *)
+(* complex link, or auto link *)
 (* :// *)
 let link_inline _config =
   let protocol_part = take_while1 is_letter <* string "://" in
@@ -495,10 +495,35 @@ let concat_plains config inlines =
     ) [] inlines in
   List.rev l
 
+
+
 (* link *)
+(* 1. [url](label) *)
+let markdown_link config =
+  let label_part = char '[' *> take_while1 (fun c -> c <> ']') <* optional (string "](") in
+  let url_part =
+    take_while (fun c -> c <> ')') <* string ")"
+  in
+  lift2
+    (fun label url ->
+       let url =
+         if url.[0] = '/' || url.[0] = '.' then File url
+         else
+           try
+             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                 Complex {protocol; link} )
+           with _ -> Search url
+       in
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment; entity; (code config); (subscript config); (superscript config); plain; whitespaces])) in
+       let label = match parse_string parser label with
+           Ok result -> concat_plains config result
+         | Error _e -> [Plain label] in
+       Link {label; url} )
+    label_part url_part
+
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
-let link config =
+let org_link config =
   let url_part =
     string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
   in
@@ -520,6 +545,11 @@ let link config =
          | Error _e -> [Plain label] in
        Link {label; url} )
     url_part label_part
+
+let link config =
+  match config.format with
+  | Org -> org_link config
+  | Markdown -> markdown_link config
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') <* char ':' in
