@@ -138,10 +138,16 @@ let strike_through =
   >>= fun s ->
   return (Emphasis (`Strike_through, [Plain s])) <?> "Inline strike_through"
 
-(* ^highlight^ *)
+(* ^^highlight^^ *)
 let highlight =
-  between '^'
-  >>= fun s -> return (Emphasis (`Highlight, [Plain s])) <?> "Inline highlight"
+  between_string "^^" "^^"
+    ( take_while1 (fun c ->
+          if List.exists (fun d -> c = d) ['^'; '\r'; '\n'] then
+            false
+          else
+            true)
+      >>= fun s -> return (Emphasis (`Highlight, [Plain s])))
+  <?> "Inline highlight"
 
 (* '=', '~' verbatim *)
 let verbatim =
@@ -154,7 +160,7 @@ let code config =
   between c >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = [' '; '\\'; '_'; '^']
+let plain_delims = [' '; '\\'; '_'; '^'; '[']
 (* replace list with a  *)
 let in_plain_delims c =
   List.exists (fun d -> c = d) plain_delims
@@ -203,7 +209,7 @@ let markdown_emphasis =
   peek_char_fail >>= function
   | '*' -> choice [md_em_parser "**" `Bold; md_em_parser "*" `Italic;]
   | '~' -> md_em_parser "~~" `Strike_through
-  | '^' -> md_em_parser "^" `Highlight
+  | '^' -> md_em_parser "^^" `Highlight
   | _ -> fail "Inline emphasis"
 
 let emphasis config =
@@ -630,7 +636,12 @@ let latex_footnote config =
   <* char ']' >>| fun definition ->
   Footnote_Reference {id = incr_id id; name = ""; definition= Some (footnote_inline_definition config definition)}
 
-let footnote_reference config =
+let markdown_footnote_reference =
+  Markdown_footnote.reference
+  >>= fun name ->
+  return (Footnote_Reference {id = incr_id id; name; definition= None})
+
+let org_inline_footnote_or_reference config =
   latex_footnote config
   <|>
   let name_part =
@@ -649,6 +660,11 @@ let footnote_reference config =
        else Footnote_Reference {id = incr_id id; name; definition= Some (footnote_inline_definition config definition)} )
     name_part definition_part
 
+let inline_footnote_or_reference config =
+  match config.format with
+  | Org -> org_inline_footnote_or_reference config
+  | Markdown -> markdown_footnote_reference
+
 let break_or_line =
   let line = line >>= fun s -> return (Plain s) in
   choice [line; hard_breakline; breakline]
@@ -659,13 +675,13 @@ let inline_choices config =
   choice
     [
       latex_fragment            (* '$' '\' *)
+    ; inline_footnote_or_reference config        (* 'f', fn *)
     ; hard_breakline            (* "\\" *)
     ; breakline                 (* '\n' *)
     ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
     ; entity                    (* '\' *)
     ; macro                     (* '{' *)
     ; statistics_cookie         (* '[' *)
-    ; footnote_reference config        (* 'f', fn *)
     ; markdown_image config
     ; link config                      (* '[' [[]] *)
     ; link_inline config               (*  *)
