@@ -135,7 +135,7 @@ let rec list_parser config content_parsers items last_indent =
          terminator items       (* breakout *)
       ))
 
-let parse config content_parsers =
+let parse_aux config content_parsers =
   let r = ref [] in
   let p = list_parser config content_parsers r 0 in
   optional eols *> p >>= fun result ->
@@ -144,3 +144,13 @@ let parse config content_parsers =
   <|>
   let _ = r := [] in
   fail "list"
+
+let md_definition config =
+  Markdown_definition.parse config >>= fun result ->
+    return [List result]
+
+let parse config content_parsers =
+  match config.format with
+  | "Org" -> parse_aux config content_parsers
+  | "Markdown" ->
+    parse_aux config content_parsers <|> md_definition config
