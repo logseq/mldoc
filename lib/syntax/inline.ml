@@ -173,7 +173,7 @@ let in_plain_delims config c =
 let whitespaces = ws >>= fun spaces -> return (Plain spaces)
 
 let plain config =
-  (scan1 false (fun state c ->
+    (scan1 false (fun state c ->
        if (non_eol c && not (in_plain_delims config c)) then
          Some true
        else
@@ -182,6 +182,13 @@ let plain config =
    return (Plain s))
   <|>
   (word >>= fun s -> return (Plain s))
+  <|>
+  (any_char >>= fun c ->
+   if (in_plain_delims config c) then
+     return (Plain (String.make 1 c))
+   else
+     fail "plain"
+  )
 
 (* Slow version *)
 (* let emphasis =
