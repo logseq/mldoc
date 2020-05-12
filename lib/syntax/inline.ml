@@ -153,11 +153,15 @@ let highlight =
 let verbatim =
   between '=' >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
 
+let markdown_escape_backticks =
+  string "``" *>
+  end_string "``" (fun s -> Code s)
+
 let code config =
-  let c = match config.format with
-    | "Org" -> '~'
-    | "Markdown" -> '`' in
-  between c >>= fun s -> return (Code s) <?> "Inline code"
+  let is_markdown = String.equal config.format "Markdown" in
+  let c = if is_markdown then '`' else '~' in
+  let p = between c >>= fun s -> return (Code s) <?> "Inline code" in
+  if is_markdown then p <|> markdown_escape_backticks else p
 
 (* TODO: optimization *)
 let org_plain_delims = [' '; '\\'; '_'; '^';]
@@ -173,7 +177,7 @@ let in_plain_delims config c =
 let whitespaces = ws >>= fun spaces -> return (Plain spaces)
 
 let plain config =
-    (scan1 false (fun state c ->
+  (scan1 false (fun state c ->
        if (non_eol c && not (in_plain_delims config c)) then
          Some true
        else
