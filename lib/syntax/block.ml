@@ -17,6 +17,7 @@ open Conf
 let results =
   spaces *> string "#+RESULTS:" >>= fun _ -> return [Results]
 
+(* TODO: replace with many1  *)
 let verbatim lines =
   fix (fun verbatim ->
       (spaces *> char ':' <* (optional spaces)) *> take_till is_eol <* optional eol
@@ -127,7 +128,7 @@ let separate_name_options = function
     | name :: [] -> (Some name, None)
     | name :: options -> (Some name, Some options)
 
-let parse config = fix (fun parse ->
+let block_parse config = fix (fun parse ->
     let p = peek_char_fail
       >>= function
       | '#' ->
@@ -177,7 +178,7 @@ let parse config = fix (fun parse ->
           | "Markdown" ->
             fail "block"
         end
-      | '>' ->                      (* verbatim block *)
+      | '>' ->
         md_blockquote (ref []) >>|
         fun lines ->
         let content = String.concat "\n" lines in
@@ -189,3 +190,10 @@ let parse config = fix (fun parse ->
         fenced_code_block
       | _ -> fail "block" in
     between_eols p)
+
+let parse config =
+  match config.format with
+  | "Org" ->
+    block_parse config
+  | "Markdown" ->
+    block_parse config <|> Markdown_code_block.parse
