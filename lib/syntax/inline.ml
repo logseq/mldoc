@@ -160,16 +160,21 @@ let code config =
   between c >>= fun s -> return (Code s) <?> "Inline code"
 
 (* TODO: optimization *)
-let plain_delims = [' '; '\\'; '_'; '^'; '[']
+let org_plain_delims = [' '; '\\'; '_'; '^';]
+let markdown_plain_delims = [' '; '\\'; '_'; '^'; '[']
 (* replace list with a  *)
-let in_plain_delims c =
+let in_plain_delims config c =
+  let plain_delims = match config.format with
+    | "Org" -> org_plain_delims
+    | "Markdown" -> markdown_plain_delims
+  in
   List.exists (fun d -> c = d) plain_delims
 
 let whitespaces = ws >>= fun spaces -> return (Plain spaces)
 
-let plain =
+let plain config =
   (scan1 false (fun state c ->
-       if (non_eol c && not (in_plain_delims c)) then
+       if (non_eol c && not (in_plain_delims config c)) then
          Some true
        else
          None)
@@ -244,7 +249,7 @@ let entity =
 (* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
 let gen_script config s f =
-  let p = many1 (choice [(emphasis config); plain; whitespaces; entity]) in
+  let p = many1 (choice [(emphasis config); plain config; whitespaces; entity]) in
   (string (s ^ "{") *> take_while1 (fun c -> non_eol c && c <> '}')
    <* char '}')
   <|>
@@ -265,7 +270,7 @@ let nested_emphasis config =
     | Plain s ->
       Plain s
     | Emphasis (typ, [Plain s]) as e ->
-      let parser = (many1 (choice [(emphasis config); (subscript config); (superscript config); plain])) in
+      let parser = (many1 (choice [(emphasis config); (subscript config); (superscript config); plain config])) in
       (match parse_string parser s with
        | Ok [Plain _] -> e
        | Ok result -> Emphasis (typ,
@@ -524,7 +529,7 @@ let markdown_link config =
        in
        let parser = (many1 (choice [(nested_emphasis config); latex_fragment;
                                     entity; (code config); (subscript config);
-                                    (superscript config); plain; whitespaces])) in
+                                    (superscript config); plain config; whitespaces])) in
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
@@ -549,7 +554,7 @@ let markdown_image config =
        in
        let parser = (many1 (choice [(nested_emphasis config); latex_fragment;
                                     entity; (code config); (subscript config);
-                                    (superscript config); plain; whitespaces])) in
+                                    (superscript config); plain config; whitespaces])) in
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
@@ -574,7 +579,7 @@ let org_link config =
                  Complex {protocol; link} )
            with _ -> Search url
        in
-       let parser = (many1 (choice [(nested_emphasis config); latex_fragment; entity; (code config); (subscript config); (superscript config); plain; whitespaces])) in
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment; entity; (code config); (subscript config); (superscript config); plain config; whitespaces])) in
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
@@ -619,10 +624,10 @@ let footnote_inline_definition config ?(break = false) definition =
       (* [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity; *)
       (* code; allow_breakline; subscript; superscript; plain; whitespaces] *)
       [(markdown_image config); (link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
-       (code config); (subscript config); (superscript config); plain; whitespaces]
+       (code config); (subscript config); (superscript config); plain config; whitespaces]
     else
       [(markdown_image config); (link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
-       (code config); (subscript config); (superscript config); plain; whitespaces] in
+       (code config); (subscript config); (superscript config); plain config; whitespaces] in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
   | Ok result ->
@@ -693,7 +698,7 @@ let inline_choices config =
     ; nested_emphasis config
     ; subscript config                 (* '_' "_{" *)
     ; superscript config               (* '^' "^{" *)
-    ; plain
+    ; plain config
     ]
 
 let parse config =
