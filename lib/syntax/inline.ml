@@ -548,7 +548,6 @@ let markdown_link config =
   in
   lift2
     (fun label url ->
-       let _ = print_endline url in
        let (url, title) = split_first '"' url in
        let url =
          if url.[0] = '/' || url.[0] = '.' then File url
