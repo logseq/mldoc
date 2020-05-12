@@ -596,7 +596,7 @@ let org_link config =
 let link config =
   match config.format with
   | "Org" -> org_link config
-  | "Markdown" -> markdown_link config
+  | "Markdown" -> markdown_link config <|> org_link config (* page reference *)
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') <* char ':' in

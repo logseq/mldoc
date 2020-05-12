@@ -6,7 +6,8 @@ open Conf
 
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
-let check_listitem line =
+let check_listitem config line =
+  let is_markdown = String.equal config.format "Markdown" in
   let indent = get_indent line in
   let number =
     try
@@ -18,7 +19,12 @@ let check_listitem line =
   | None ->
     if (String.length line) - indent >= 2 then
       let prefix = String.sub line indent 2 in
-      (indent, prefix = "- " || prefix = "+ " || (indent <> 0 && prefix = "* "), None)
+      let star_condition = if is_markdown then
+          prefix = "* "
+        else
+          (indent <> 0 && prefix = "* ")
+      in
+      (indent, prefix = "- " || prefix = "+ " || star_condition, None)
     else
       (indent, false, None)
 
@@ -29,7 +35,7 @@ let terminator items =
     let result = ! items in
     return @@ List.rev result
 
-let content_parser list_parser content_parsers indent lines =
+let content_parser config list_parser content_parsers indent lines =
   fix (fun content_parser ->
       take_till1 is_eol
       >>= fun content ->
@@ -46,7 +52,7 @@ let content_parser list_parser content_parsers indent lines =
             eol *> content_parser
           ) else if is_space c then (
             peek_line >>= fun content ->
-            let (indent', is_item, _number) = check_listitem content in
+            let (indent', is_item, _number) = check_listitem config content in
             if is_item then (
               if indent' <= indent then (* breakout, another item or a new list. *)
                 return (List.rev !lines, [])
@@ -58,10 +64,13 @@ let content_parser list_parser content_parsers indent lines =
           else (
             return (List.rev !lines, []))))
 
-let format_parser _config indent =
-  let choices = if indent = 0 then
-      char '+' <|> char '-' else
+let format_parser config indent =
+  let is_markdown = String.equal config.format "Markdown" in
+  let choices =
+    if is_markdown || indent <> 0 then
       char '+' <|> char '-' <|> char '*'
+    else
+      char '+' <|> char '-'
   in
   let unordered_format = (choices *> ws *> return None) in
   let ordered_format = (digits <* char '.' <* ws >>=
@@ -102,7 +111,7 @@ let rec list_parser config content_parsers items last_indent =
          terminator items       (* breakout *)
        else
          let content_parser number checkbox =
-           content_parser (list_parser config) content_parsers indent (ref []) >>= fun (content, children) ->
+           content_parser config (list_parser config) content_parsers indent (ref []) >>= fun (content, children) ->
            let ordered =
              match number with Some _ -> true | None -> false
            in
@@ -126,7 +135,7 @@ let rec list_parser config content_parsers items last_indent =
          terminator items       (* breakout *)
       ))
 
-let org_parse config content_parsers =
+let parse config content_parsers =
   let r = ref [] in
   let p = list_parser config content_parsers r 0 in
   optional eols *> p >>= fun result ->
@@ -135,11 +144,3 @@ let org_parse config content_parsers =
   <|>
   let _ = r := [] in
   fail "list"
-
-let parse config content_parsers =
-  match config.format with
-  | "Org" -> org_parse config content_parsers
-  | "Markdown" ->
-    (org_parse config content_parsers)
-    <|>
-    fail "markdown"
