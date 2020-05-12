@@ -213,14 +213,25 @@ let md_em_parser pattern typ =
             true)
       >>= fun s -> return @@ Emphasis (typ, [Plain s]) )
 
+let md_em_nested_parser pattern =
+  let pattern_c = String.get pattern 0 in
+  let stop_chars = [pattern_c; '\r'; '\n'] in
+  between_string pattern pattern
+    ( take_while1 (fun c ->
+          if List.exists (fun d -> c = d) stop_chars then
+            false
+          else
+            true)
+      >>= fun s -> return @@ Emphasis (`Italic, [Emphasis (`Bold, [Plain s])]))
+
 (* TODO: html tags support *)
 (* <ins></ins> *)
 (* let underline =    *)
 
 let markdown_emphasis =
   peek_char_fail >>= function
-  | '*' -> choice [md_em_parser "**" `Bold; md_em_parser "*" `Italic;]
-  | '_' -> choice [md_em_parser "__" `Bold; md_em_parser "_" `Italic;]
+  | '*' -> choice [md_em_parser "**" `Bold; md_em_parser "*" `Italic; md_em_nested_parser "***"]
+  | '_' -> choice [md_em_parser "__" `Bold; md_em_parser "_" `Italic; md_em_nested_parser "___"]
   | '~' -> md_em_parser "~~" `Strike_through
   | '^' -> md_em_parser "^^" `Highlight
   | _ -> fail "Inline emphasis"
@@ -284,6 +295,8 @@ let nested_emphasis config =
        | Ok result -> Emphasis (typ,
                                 List.map aux_nested_emphasis result)
        | Error _error -> e)
+    | Emphasis (`Italic, [Emphasis (`Bold, _)]) as e ->
+      e
     | Subscript _ as s ->
       s
     | Superscript _ as s ->
