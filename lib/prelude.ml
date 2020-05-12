@@ -196,3 +196,11 @@ let rec remove_dups lst =
   match lst with
   | [] -> []
   | h::t -> h::(remove_dups (List.filter (fun x -> x<>h) t))
+
+let split_first c s =
+  try
+    let k = String.index s c in
+    let n = String.length s in
+    String.sub s 0 k, String.sub s (k + 1) (n - k - 1)
+  with _ ->
+    s, ""

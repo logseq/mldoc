@@ -20,7 +20,7 @@ and url = File of string | Search of string | Complex of complex [@@deriving yoj
 
 and complex = {protocol: string; link: string} [@@deriving yojson]
 
-and link = {url: url; label: t list} [@@deriving yojson]
+and link = {url: url; label: t list; title: string option} [@@deriving yojson]
 
 (** {2 Cookies} *)
 
@@ -506,7 +506,8 @@ let link_inline _config =
     (fun protocol link ->
        Link
          { label= [Plain (protocol ^ "://" ^ link)]
-         ; url= Complex {protocol; link= "//" ^ link} } )
+         ; url= Complex {protocol; link= "//" ^ link}
+         ; title= None} )
     protocol_part link_part
 
 (* Build direct links *)
@@ -547,6 +548,8 @@ let markdown_link config =
   in
   lift2
     (fun label url ->
+       let _ = print_endline url in
+       let (url, title) = split_first '"' url in
        let url =
          if url.[0] = '/' || url.[0] = '.' then File url
          else
@@ -561,7 +564,12 @@ let markdown_link config =
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
-       Link {label; url} )
+       let title = if String.equal title "" || String.equal title "\"" then
+           None
+         else
+           Some (String.sub title 0 (String.length title - 1))
+       in
+       Link {label; url; title})
     label_part url_part
 
 (* TODO: make sure it's a proper image format. *)
@@ -586,7 +594,8 @@ let markdown_image config =
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
-       Link {label; url} )
+       let title = None in
+       Link {label; url; title} )
     label_part url_part
 
 (* 1. [[url][label]] *)
@@ -611,7 +620,8 @@ let org_link config =
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
-       Link {label; url} )
+       let title = None in
+       Link {label; url; title} )
     url_part label_part
 
 let link config =

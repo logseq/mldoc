@@ -1,0 +1,4 @@
+#!/bin/sh
+make
+cp _build/default/js/lib.bc.js /tmp/org.js
+uglifyjs --compress --mangle -- /tmp/org.js > ~/codes/projects/logseq/resources/static/js/mldoc_org.min.js
