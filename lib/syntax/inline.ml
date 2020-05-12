@@ -81,11 +81,14 @@ and t =
   | Radio_Target of string
   | Export_Snippet of string * string
   | Inline_Source_Block of inline_source_block
+  | Email of Email_address.t
 [@@deriving yojson]
 
 let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
 
 let prev = ref None
+
+let email = Email_address.email >>| fun email -> Email email
 
 let emphasis_token c =
   let blank_before_delimiter = ref false in
@@ -645,14 +648,9 @@ let incr_id id =
   !id
 
 let footnote_inline_definition config ?(break = false) definition =
-  let choices = if break then
-      (* [link; link_inline; radio_target; target; latex_fragment; nested_emphasis; entity; *)
-      (* code; allow_breakline; subscript; superscript; plain; whitespaces] *)
-      [(markdown_image config); (link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
-       (code config); (subscript config); (superscript config); plain config; whitespaces]
-    else
-      [(markdown_image config); (link config); (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
-       (code config); (subscript config); (superscript config); plain config; whitespaces] in
+  let choices =
+    [(markdown_image config); (link config); email; (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
+     (code config); (subscript config); (superscript config); plain config; whitespaces] in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
   | Ok result ->
@@ -715,6 +713,7 @@ let inline_choices config =
     ; markdown_image config
     ; link config                      (* '[' [[]] *)
     ; link_inline config               (*  *)
+    ; email
     ; export_snippet
     ; radio_target              (* "<<<" *)
     ; target                    (* "<" *)
