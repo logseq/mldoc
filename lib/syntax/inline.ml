@@ -161,7 +161,7 @@ let code config =
 
 (* TODO: optimization *)
 let org_plain_delims = [' '; '\\'; '_'; '^';]
-let markdown_plain_delims = [' '; '\\'; '_'; '^'; '[']
+let markdown_plain_delims = [' '; '\\'; '_'; '^'; '['; '*'; '^'; '~']
 (* replace list with a  *)
 let in_plain_delims config c =
   let plain_delims = match config.format with
@@ -220,6 +220,7 @@ let md_em_parser pattern typ =
 let markdown_emphasis =
   peek_char_fail >>= function
   | '*' -> choice [md_em_parser "**" `Bold; md_em_parser "*" `Italic;]
+  | '_' -> choice [md_em_parser "__" `Bold; md_em_parser "_" `Italic;]
   | '~' -> md_em_parser "~~" `Strike_through
   | '^' -> md_em_parser "^^" `Highlight
   | _ -> fail "Inline emphasis"
