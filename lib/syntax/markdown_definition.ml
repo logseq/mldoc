@@ -43,4 +43,4 @@ let definition_parse config =
   return list
 
 let parse config =
-  many1 (definition_parse config)
+  many1 (definition_parse config <* eols)
