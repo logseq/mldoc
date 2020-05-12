@@ -23,7 +23,7 @@ let definition_content lines =
          return (List.rev !lines)))
 
 let definition_parse config =
-  let name = spaces *> non_spaces <* eol in
+  let name = spaces *> line <* eol in
   name >>= fun name ->
   definition_content (ref []) >>= fun lines ->
   let content = List.map (fun line ->
