@@ -51,26 +51,32 @@ let parse config =
   let p = lift5
       (fun pos level marker priority title ->
          let level = String.length level in
-         let title = match (parse_string (Inline.parse config) (String.trim title)) with
-           | Ok title -> title
-           | Error _e -> [] in
-         let last_inline = List.nth title (List.length title - 1) in
-         let (title, tags) = match last_inline with
-           | Inline.Plain s ->
-             let s = String.trim s in
-             if String.length s > 1 && s.[String.length s - 1] = ':' then
-               let (prefix, maybe_tags) = (splitr (fun c -> c <> ' ') s) in
-               (match parse_string tags maybe_tags with
-                | Ok tags ->
-                  let title = if prefix = "" then (drop_last 1 title) else
-                      (drop_last 1 title) @ [Inline.Plain prefix] in
-                  (title, remove is_blank tags)
-                | _ ->
-                  (title, []))
-             else
-               (title, [])
+         let title = match title with
+           | None -> []
+           | Some title ->
+             match (parse_string (Inline.parse config) (String.trim title)) with
+             | Ok title -> title
+             | Error _e -> [] in
+         let (title, tags) = match title with
+           | [] -> (title, [])
+           | _ ->
+             let last_inline = List.nth title (List.length title - 1) in
+             match last_inline with
+             | Inline.Plain s ->
+               let s = String.trim s in
+               if String.length s > 1 && s.[String.length s - 1] = ':' then
+                 let (prefix, maybe_tags) = (splitr (fun c -> c <> ' ') s) in
+                 (match parse_string tags maybe_tags with
+                  | Ok tags ->
+                    let title = if prefix = "" then (drop_last 1 title) else
+                        (drop_last 1 title) @ [Inline.Plain prefix] in
+                    (title, remove is_blank tags)
+                  | _ ->
+                    (title, []))
+               else
+                 (title, [])
 
-           | _ -> (title, []) in
+             | _ -> (title, []) in
          let anchor = anchor_link (Inline.asciis title) in
          let meta = { timestamps = []; properties = []; pos} in
          [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
@@ -78,7 +84,7 @@ let parse config =
       (level config <* ws <?> "Heading level")
       (optional (lex marker <?> "Heading marker"))
       (optional (lex priority <?> "Heading priority"))
-      (lex title <?> "Heading title") in
+      (optional (lex title <?> "Heading title")) in
   between_eols p
 
 (*
