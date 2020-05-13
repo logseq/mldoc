@@ -18,7 +18,7 @@ let generate backend output opts filename =
     else from_file filename
   in
   lines >>= function lines ->
-    let config = {toc = true; heading_number = true; keep_line_break = false; format = "Org"; } in
+    let config = {toc = true; heading_number = true; keep_line_break = false; format = "Markdown"; } in
     let ast = parse config (String.concat "\n" lines) in
     let document = Document.from_ast None ast in
     let export = Exporters.find backend in

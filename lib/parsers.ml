@@ -5,6 +5,14 @@ let is_space = function
   | ' ' | '\009' | '\026' | '\012' -> true
   | _ -> false
 
+let is_tab = function
+  | '\t' -> true
+  | _ -> false
+
+let is_tab_or_space = function
+  | '\t' | ' ' | '\026' | '\012' | '\009'   -> true
+  | _ -> false
+
 let non_space = not << is_space
 
 (* end of line *)
@@ -26,6 +34,8 @@ let eols = take_while1 is_eol
 let two_eols result = eol *> eol *> return result
 
 let ws = take_while1 is_space
+let tabs = take_while1 is_tab
+let tabs_or_ws = take_while1 is_tab_or_space
 
 let spaces = skip_while is_space
 let spaces_or_eols = skip_while (fun c -> is_eol c || is_space c)

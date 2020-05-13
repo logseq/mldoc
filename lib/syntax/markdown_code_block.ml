@@ -1,6 +1,7 @@
 open Angstrom
 open Parsers
 open Type
+open Prelude
 
 (* https://www.markdownguide.org/basic-syntax/#code-blocks *)
 (*
@@ -13,8 +14,10 @@ To create code blocks, indent every line of the block by at least four spaces or
     </html>
 *)
 let single_line =
-  let spaces = ws >>= fun s ->
-    let indent = String.length s in
+  let spaces = tabs_or_ws >>= fun s ->
+    let l = explode s in
+    let tabs_count = List.length (List.filter (fun c -> Char.equal c '\t') l) in
+    let indent = (String.length s - tabs_count) + (tabs_count * 4) in
     if indent >= 4 then return indent else fail "single_line not enough spaces"
   in
   lift2 (fun indent content -> (indent, content)) spaces line
