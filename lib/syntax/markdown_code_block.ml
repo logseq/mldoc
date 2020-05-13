@@ -19,10 +19,13 @@ let single_line =
   in
   lift2 (fun indent content -> (indent, content)) spaces line
 
-let parse = many1 (single_line <* (end_of_line <|> end_of_input))
+let parse = many1 (single_line <* (end_of_line <|> end_of_input) <* optional eols)
   >>= fun lines ->
   let start_indent, _content = List.hd lines in
   let lines = List.map (fun (i, c) ->
-      (String.make (i - start_indent) ' ') ^ c
+      if i > start_indent then
+        (String.make (i - start_indent) ' ') ^ c
+      else
+        c
     ) lines in
   return [Example lines]
