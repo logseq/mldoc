@@ -4,7 +4,7 @@ let list_content_parsers config =
   many1 (choice [
       Table.parse config
     ; Block.parse config
-    ; Latex_env.parse
+    ; Latex_env.parse config
     ; Hr.parse config
     ; Block.results
     ; Comment.parse config
@@ -12,7 +12,7 @@ let list_content_parsers config =
                              ; Table.parse config
                              ; Block.parse config
                              ; Block.results
-                             ; Latex_env.parse
+                             ; Latex_env.parse config
                              ; Hr.parse config
                              ; Comment.parse config]
     ])
@@ -26,7 +26,7 @@ let interrupt_parsers config =
   ; Block.parse config
   ; Directive.parse
   ; Drawer.parse
-  ; Latex_env.parse
+  ; Latex_env.parse config
   ; Hr.parse config
   ; Block.results
   ; Comment.parse config

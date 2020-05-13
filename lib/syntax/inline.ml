@@ -344,7 +344,7 @@ let statistics_cookie =
    \end{equation}
 
 *)
-let latex_fragment =
+let latex_fragment config =
   any_char
   >>= function
   | '$' ->
@@ -352,15 +352,16 @@ let latex_fragment =
     >>= fun c ->
     if c == '$' then
       (* displayed math *)
-      take_while1 (fun x -> x <> '$')
+      take_while1 (fun x -> x <> '$' && x <> '\r' && x <> '\n')
       <* string "$$"
       >>| fun s -> Latex_Fragment (Displayed s)
     else
       (* inline math *)
-      take_while1 (fun x -> x <> '$')
+      take_while1 (fun x -> x <> '$' && x <> '\r' && x <> '\n')
       <* char '$'
       >>| fun s -> Latex_Fragment (Inline (Char.escaped c ^ s))
-  | '\\' -> (
+  | '\\' ->
+    (
       any_char
       >>= function
       | '[' ->
@@ -557,7 +558,7 @@ let markdown_link config =
                  Complex {protocol; link})
            with _ -> Search url
        in
-       let parser = (many1 (choice [(nested_emphasis config); latex_fragment;
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment config;
                                     entity; (code config); (subscript config);
                                     (superscript config); plain config; whitespaces])) in
        let label = match parse_string parser label with
@@ -587,7 +588,7 @@ let markdown_image config =
                  Complex {protocol; link})
            with _ -> Search url
        in
-       let parser = (many1 (choice [(nested_emphasis config); latex_fragment;
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment config;
                                     entity; (code config); (subscript config);
                                     (superscript config); plain config; whitespaces])) in
        let label = match parse_string parser label with
@@ -615,7 +616,7 @@ let org_link config =
                  Complex {protocol; link} )
            with _ -> Search url
        in
-       let parser = (many1 (choice [(nested_emphasis config); latex_fragment; entity; (code config); (subscript config); (superscript config); plain config; whitespaces])) in
+       let parser = (many1 (choice [(nested_emphasis config); latex_fragment config; entity; (code config); (subscript config); (superscript config); plain config; whitespaces])) in
        let label = match parse_string parser label with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label] in
@@ -658,7 +659,7 @@ let incr_id id =
 
 let footnote_inline_definition config ?(break = false) definition =
   let choices =
-    [(markdown_image config); (link config); email; (link_inline config); radio_target; target; latex_fragment; (nested_emphasis config); entity;
+    [(markdown_image config); (link config); email; (link_inline config); radio_target; target; latex_fragment config; (nested_emphasis config); entity;
      (code config); (subscript config); (superscript config); plain config; whitespaces] in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
@@ -709,9 +710,9 @@ let break_or_line =
 
 (* TODO: configurable, re-order *)
 let inline_choices config =
-  choice
+  let choices =
     [
-      latex_fragment            (* '$' '\' *)
+      latex_fragment config            (* '$' '\' *)
     ; inline_footnote_or_reference config        (* 'f', fn *)
     ; hard_breakline            (* "\\" *)
     ; breakline                 (* '\n' *)
@@ -732,7 +733,8 @@ let inline_choices config =
     ; subscript config                 (* '_' "_{" *)
     ; superscript config               (* '^' "^{" *)
     ; plain config
-    ]
+    ] in
+  choice choices
 
 let parse config =
   many1 (inline_choices config) >>| fun l ->

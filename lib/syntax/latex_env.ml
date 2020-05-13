@@ -40,7 +40,7 @@ let env_name_options_parser =
     (optional line)
   <* eol
 
-let parse =
+let parse config =
   let p =
     peek_char_fail >>= function
     | '\\' ->                      (* block *)
@@ -51,7 +51,7 @@ let parse =
       >>= (fun lines ->
           return [Latex_Environment (String.lowercase_ascii name, options, lines)])
     | _ ->
-      Inline.latex_fragment >>= function
+      Inline.latex_fragment config >>= function
       | Inline.Latex_Fragment x ->
         return [Latex_Fragment x]
       | _ ->

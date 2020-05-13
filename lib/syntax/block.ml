@@ -83,7 +83,7 @@ let list_content_parsers config block_parse =
     ; block_parse
     ; Directive.parse
     ; Drawer.parse
-    ; Latex_env.parse
+    ; Latex_env.parse config
     ; Hr.parse config
     ; results
     ; Comment.parse config
@@ -91,7 +91,7 @@ let list_content_parsers config block_parse =
                              ; block_parse
                              ; Directive.parse
                              ; Drawer.parse
-                             ; Latex_env.parse
+                             ; Latex_env.parse config
                              ; Hr.parse config
                              ; results
                              ; Comment.parse config]
@@ -105,7 +105,7 @@ let block_content_parsers config block_parse =
     ; block_parse
     ; Directive.parse
     ; Drawer.parse
-    ; Latex_env.parse
+    ; Latex_env.parse config
     ; Hr.parse config
     ; results
     ; Comment.parse config
@@ -114,7 +114,7 @@ let block_content_parsers config block_parse =
                              ; block_parse
                              ; Directive.parse
                              ; Drawer.parse
-                             ; Latex_env.parse
+                             ; Latex_env.parse config
                              ; Hr.parse config
                              ; results
                              ; Comment.parse config]
