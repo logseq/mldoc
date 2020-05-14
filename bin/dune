@@ -1,7 +1,7 @@
 (executable
  (name        main)
- (public_name mldoc_org)
- (libraries angstrom mldoc_org cmdliner lwt.unix))
+ (public_name mldoc)
+ (libraries angstrom mldoc cmdliner lwt.unix))
 
 (alias
  (name main)

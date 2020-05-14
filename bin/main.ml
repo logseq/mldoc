@@ -1,6 +1,6 @@
-open Mldoc_org
-open Mldoc_org.Parser
-open Mldoc_org.Conf
+open Mldoc
+open Mldoc.Parser
+open Mldoc.Conf
 open Lwt
 open Cmdliner
 
@@ -13,12 +13,16 @@ let from_file filename =
   Lwt_io.lines_of_file filename |> Lwt_stream.to_list
 
 let generate backend output opts filename =
+  let extension = Filename.extension filename in
+  let format = match extension with
+    | ".markdown" | ".md" -> "Markdown"
+    | _ -> "Org" in
   let lines = if filename = "-" then
       read_lines ()
     else from_file filename
   in
   lines >>= function lines ->
-    let config = {toc = true; heading_number = true; keep_line_break = false; format = "Markdown"; } in
+    let config = {toc = true; heading_number = true; keep_line_break = false; format; } in
     let ast = parse config (String.concat "\n" lines) in
     let document = Document.from_ast None ast in
     let export = Exporters.find backend in
@@ -56,7 +60,7 @@ let options =
 
 let cmd = Term.(pure generate $ backend $ output $ options $ filename)
 
-let doc = "converts org-mode files into various formats"
+let doc = "converts org-mode or markdown files into various formats"
 
 let options =
   []
@@ -64,11 +68,11 @@ let options =
 let man =
   [ `S "DESCRIPTION"
   ; `P
-      "$(tname) can currently converts org-mode files into other formats such as
+      "$(tname) can currently converts org-mode or markdown files into other formats such as
        HTML." ]
   @ options
 
-let infos = Term.info "mldoc_org" ~version:"0" ~doc ~man
+let infos = Term.info "mldoc" ~version:"0" ~doc ~man
 
 let main () =
   match Term.eval (cmd, infos) with

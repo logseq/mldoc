@@ -1,7 +1,7 @@
 (executable
  (name        lib)
  (preprocess (pps js_of_ocaml-ppx))
- (libraries angstrom js_of_ocaml mldoc_org))
+ (libraries angstrom js_of_ocaml mldoc))
 
 (alias
   (name JS)

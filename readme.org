@@ -1,15 +1,18 @@
-* mldoc_org
-  Another Org-mode parser implemented using OCaml and [[https://github.com/inhabitedtype/angstrom][Angstrom]].
+* Mldoc
+  Another Org-mode and Markdown parser implemented using OCaml and [[https://github.com/inhabitedtype/angstrom][Angstrom]].
   It's based on [[http://iso.mor.phis.me/projects/mlorg/][mlorg]] which is a high quality Org-mode parser written by [[https://github.com/asmanur?tab=repositories][Simon Castellan]].
 
 ** Usage
 *** For Javascript users
     #+BEGIN_SRC sh
-      # install mldoc_org
-      npm install -g mldoc_org
+      # install mldoc
+      npm install -g mldoc
 
       # convert org mode file to html
-      mldoc_org makehtml -i ./test.org -o ./test.html
+      mldoc makehtml -i ./test.org -o ./test.html
+
+      # convert markdown mode file to html
+      mldoc makehtml -i ./test.markdown -o ./test.html
     #+END_SRC
 
 *** For OCaml users
@@ -26,6 +29,9 @@
     #+BEGIN_SRC sh
       opam config exec -- dune utop lib -- -emacs
     #+END_SRC
+
+** Who's using Mldoc?
+   - [[https://logseq.com][Logseq]], a local-first notes app
 
 ** Parsing todos [12/12]
 *** DONE Heading [7/7]

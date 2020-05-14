@@ -4,9 +4,9 @@ var yargs = require('yargs'),
     MO = require('../index').MldocOrg;
 
     yargs.reset()
-    .usage('Usage: mldoc_org makehtml [options]')
-    .example('mldoc_org makehtml -i', 'Reads from stdin and outputs to stdout')
-    .example('mldoc_org makehtml -i foo.org -o bar.html', 'Reads \'foo.org\' and writes to \'bar.html\'')
+    .usage('Usage: mldoc makehtml [options]')
+    .example('mldoc makehtml -i', 'Reads from stdin and outputs to stdout')
+    .example('mldoc makehtml -i foo.org -o bar.html', 'Reads \'foo.org\' and writes to \'bar.html\'')
     .version()
     .alias('v', 'version')
     .config('c')
@@ -63,16 +63,21 @@ function run () {
         write = (writeMode === 'stdout') ? writeToStdOut : writeToFile,
         enc = argv.encoding || 'utf8',
         append = argv.a || false,
-        org, html;
-
+        content, html;
+    var extension = argv.i.split('.').pop();
+    var format = (extension === 'org') ? 'Org' : 'Markdown';
     messenger.printMsg('...');
     // read the input
     messenger.printMsg('Reading data from ' + readMode + '...');
-    org = read(enc);
+    content = read(enc);
 
     // process the input
-    messenger.printMsg('Parsing org...');
-    html = MO.parseHtml(org);
+    messenger.printMsg('Parsing file...');
+    // TODO: add config options
+    html = MO.parseHtml(content, JSON.stringify({"toc": true,
+                                                 "heading_number": true,
+                                                 "keep_line_break": false,
+                                                 "format": format}));
 
     // write the output
     messenger.printMsg('Writing data to ' + writeMode + '...');

@@ -1,4 +1,4 @@
-open Mldoc_org.Parser
+open Mldoc.Parser
 
 open Core
 open Core_bench.Std

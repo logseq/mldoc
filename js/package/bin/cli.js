@@ -23,10 +23,10 @@ yargs
         type: 'boolean',
         default: false
     })
-    .usage('Usage: mldoc_org <command> [options]')
+    .usage('Usage: mldoc <command> [options]')
     .demand(1, 'You must provide a valid command')
-    .command('makehtml', 'Converts org mode into html')
-    .example('mldoc_org makehtml -i foo.org -o bar.html', 'Converts \'foo.org\' to \'bar.html\'')
+    .command('makehtml', 'Converts org mode or markdown into html')
+    .example('mldoc makehtml -i foo.org -o bar.html', 'Converts \'foo.org\' to \'bar.html\'')
     .wrap(yargs.terminalWidth());
 
 var argv = yargs.argv,

@@ -8,7 +8,7 @@ function Messenger (writeMode, supress, mute) {
     this.errorExit = function (e) {
         if (!mute) {
             console.error('ERROR: ' + e.message);
-            console.error('Run \'showdown <command> -h\' for help');
+            console.error('Run \'mldoc <command> -h\' for help');
         }
         process.exit(1);
     };

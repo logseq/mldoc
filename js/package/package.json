@@ -1,5 +1,5 @@
 {
-    "name": "mldoc_org",
+    "name": "mldoc",
     "version": "0.2.7",
     "description": "Another Emacs Org-mode parser.",
     "main": "index.js",
@@ -20,7 +20,7 @@
     "author": "Tienson Qin <tiensonqin@gmail.com>",
     "license": "ISC",
     "bin": {
-        "mldoc_org": "./bin/cli.js"
+        "mldoc": "./bin/cli.js"
     },
     "dependencies": {
         "yargs": "^12.0.2"
