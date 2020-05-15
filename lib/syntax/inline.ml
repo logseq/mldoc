@@ -575,7 +575,7 @@ let markdown_link config =
 
 (* TODO: make sure it's a proper image format. *)
 let markdown_image config =
-  let label_part = string "![" *> take_while1 (fun c -> c <> ']') <* optional (string "](") in
+  let label_part = string "![" *> take_while (fun c -> c <> ']') <* optional (string "](") in
   let url_part =
     take_while (fun c -> c <> ')') <* string ")"
   in
