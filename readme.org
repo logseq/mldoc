@@ -3,7 +3,7 @@
   It's based on [[http://iso.mor.phis.me/projects/mlorg/][mlorg]] which is a high quality Org-mode parser written by [[https://github.com/asmanur?tab=repositories][Simon Castellan]].
 
 ** Who's using Mldoc?
-   - [[https://logseq.com][Logseq]], a local-first notes app
+   - [[https://logseq.com][Logseq]], a local-first notes app (In development)
 
 ** Usage
 *** For Javascript users
