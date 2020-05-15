@@ -8,7 +8,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/mldoc/org.git"
+        "url": "git+https://github.com/mldoc/mldoc.git"
     },
     "keywords": [
         "Org",
@@ -26,7 +26,7 @@
         "yargs": "^12.0.2"
     },
     "bugs": {
-        "url": "https://github.com/mldoc/org/issues"
+        "url": "https://github.com/mldoc/mldoc/issues"
     },
-    "homepage": "https://github.com/mldoc/org#readme"
+    "homepage": "https://github.com/mldoc/mldoc#readme"
 }

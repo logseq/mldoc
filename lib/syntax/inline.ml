@@ -503,13 +503,14 @@ let link_inline _config =
     take_while1 (fun c ->
         non_space c && List.for_all (fun c' -> c <> c') link_delims )
   in
-  lift2
+  let p = lift2
     (fun protocol link ->
        Link
          { label= [Plain (protocol ^ "://" ^ link)]
          ; url= Complex {protocol; link= "//" ^ link}
          ; title= None} )
-    protocol_part link_part
+    protocol_part link_part in
+  between_char '<' '>' p
 
 (* Build direct links *)
 let concat_plains config inlines =

@@ -81,7 +81,7 @@ let parse config =
          let meta = { timestamps = []; properties = []; pos} in
          [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
       pos
-      (level config <* ws <?> "Heading level")
+      (level config <* spaces <?> "Heading level")
       (optional (lex marker <?> "Heading marker"))
       (optional (lex priority <?> "Heading priority"))
       (optional (lex title <?> "Heading title")) in

@@ -11,7 +11,7 @@ let generate backend config doc output =
 
 let _ =
   let open Js_of_ocaml in
-  Js.export "MldocOrg"
+  Js.export "Mldoc"
     (object%js
       method parseJson input config_json =
         let config_json = Js.to_string config_json in

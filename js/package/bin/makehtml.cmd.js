@@ -1,7 +1,7 @@
 var yargs = require('yargs'),
     fs = require('fs'),
     Messenger = require('./messenger.js'),
-    MO = require('../index').MldocOrg;
+    MO = require('../index').Mldoc;
 
     yargs.reset()
     .usage('Usage: mldoc makehtml [options]')
