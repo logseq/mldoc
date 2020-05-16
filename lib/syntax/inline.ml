@@ -504,12 +504,12 @@ let link_inline _config =
         non_space c && List.for_all (fun c' -> c <> c') link_delims )
   in
   let p = lift2
-    (fun protocol link ->
-       Link
-         { label= [Plain (protocol ^ "://" ^ link)]
-         ; url= Complex {protocol; link= "//" ^ link}
-         ; title= None} )
-    protocol_part link_part in
+      (fun protocol link ->
+         Link
+           { label= [Plain (protocol ^ "://" ^ link)]
+           ; url= Complex {protocol; link= "//" ^ link}
+           ; title= None} )
+      protocol_part link_part in
   between_char '<' '>' p
 
 (* Build direct links *)
@@ -552,7 +552,7 @@ let markdown_link config =
     (fun label url ->
        let (url, title) = split_first '"' url in
        let url =
-         if url.[0] = '/' || url.[0] = '.' then File url
+         if (not (String.equal url "")) && (url.[0] = '/' || url.[0] = '.') then File url
          else
            try
              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
@@ -738,8 +738,9 @@ let inline_choices config =
   choice choices
 
 let parse config =
-  many1 (inline_choices config) >>| fun l ->
-  concat_plains config l
+  (many1 (inline_choices config) >>| fun l ->
+  concat_plains config l)
+  <?> "inline"
 
 let string_of_url = function
   | File s | Search s -> s
