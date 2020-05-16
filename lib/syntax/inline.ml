@@ -82,6 +82,7 @@ and t =
   | Export_Snippet of string * string
   | Inline_Source_Block of inline_source_block
   | Email of Email_address.t
+  | Block_reference of string   (** Block reference *)
 [@@deriving yojson]
 
 let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
@@ -709,12 +710,18 @@ let break_or_line =
   choice [line; hard_breakline; breakline]
 (* choice [line; breakline; allow_breakline] *)
 
+(* TODO: Allow to disable this *)
+let block_reference _config =
+  Block_reference.parse
+  >>= fun s -> return @@ Block_reference s
+
 (* TODO: configurable, re-order *)
 let inline_choices config =
   let choices =
     [
       latex_fragment config            (* '$' '\' *)
     ; inline_footnote_or_reference config        (* 'f', fn *)
+    ; block_reference config               (* (()) *)
     ; hard_breakline            (* "\\" *)
     ; breakline                 (* '\n' *)
     ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
@@ -739,7 +746,7 @@ let inline_choices config =
 
 let parse config =
   (many1 (inline_choices config) >>| fun l ->
-  concat_plains config l)
+   concat_plains config l)
   <?> "inline"
 
 let string_of_url = function

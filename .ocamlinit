@@ -6,5 +6,5 @@ open Angstrom;;
 open Prelude;;
 open Parsers;;
 open Inline;;
-open Org_parser;;
+open Mldoc_parser;;
 let _ = Printexc.record_backtrace true;;
