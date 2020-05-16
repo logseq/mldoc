@@ -23,9 +23,9 @@ let interrupt_parsers config =
   ; Heading.parse config
   ; Table.parse config
   ; Lists.parse config (list_content_parsers config)
+  ; Drawer.parse
   ; Block.parse config
   ; Directive.parse
-  ; Drawer.parse
   ; Latex_env.parse config
   ; Hr.parse config
   ; Block.results

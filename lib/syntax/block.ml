@@ -88,9 +88,9 @@ let list_content_parsers config block_parse =
     ; results
     ; Comment.parse config
     ; Paragraph.parse config [ Table.parse config
+                             ; Drawer.parse
                              ; block_parse
                              ; Directive.parse
-                             ; Drawer.parse
                              ; Latex_env.parse config
                              ; Hr.parse config
                              ; results
@@ -100,20 +100,20 @@ let list_content_parsers config block_parse =
 let block_content_parsers config block_parse =
   let list_content_parser = list_content_parsers config block_parse in
   many1 (choice [
-      Table.parse config
+      Directive.parse
+    ; Table.parse config
     ; Lists.parse config list_content_parser
-    ; block_parse
-    ; Directive.parse
     ; Drawer.parse
+    ; block_parse
     ; Latex_env.parse config
     ; Hr.parse config
     ; results
     ; Comment.parse config
     ; Paragraph.parse config [ Table.parse config
                              ; Lists.parse config list_content_parser
+                             ; Drawer.parse
                              ; block_parse
                              ; Directive.parse
-                             ; Drawer.parse
                              ; Latex_env.parse config
                              ; Hr.parse config
                              ; results
