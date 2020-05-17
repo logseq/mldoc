@@ -27,7 +27,7 @@ let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':' && non_eo
 let tags = char ':' *> seperated_tags <* char ':'
 
 (* not priority, tags, marker *)
-let title = take_while1 (function | '\r' | '\n' -> false | _ -> true)
+let title = ws *> take_while (function | '\r' | '\n' -> false | _ -> true)
 
 let is_blank s =
   let n = String.length s in
@@ -81,11 +81,11 @@ let parse config =
          let meta = { timestamps = []; properties = []; pos} in
          [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
       pos
-      (level config <* spaces <?> "Heading level")
+      (level config <?> "Heading level")
       (optional (lex marker <?> "Heading marker"))
       (optional (lex priority <?> "Heading priority"))
       (optional (lex title <?> "Heading title")) in
-  between_eols p
+  p <* (end_of_line <|> end_of_input)
 
 (*
 
