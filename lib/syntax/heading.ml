@@ -86,7 +86,7 @@ let parse config =
       (optional (marker <?> "Heading marker"))
       (optional (priority <?> "Heading priority"))
       (optional (title <?> "Heading title")) in
-  p <* (end_of_line <|> end_of_input)
+  optional eols *> p <* (end_of_line <|> end_of_input) <* optional eols
 
 (*
 
