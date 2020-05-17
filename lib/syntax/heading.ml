@@ -9,10 +9,11 @@ open Conf
 *)
 
 (* todo keywords *)
-let marker = string "TODO" <|> string "DOING" <|> string "WAITING"
+let marker = ws *>
+             (string "TODO" <|> string "DOING" <|> string "WAITING"
              <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
              <|> string "STARTED" <|> string "IN-PROGRESS"
-
+)
 let org_level = take_while1 (fun c -> c = '*')
 
 let level config =
@@ -20,7 +21,7 @@ let level config =
   | "Org" -> org_level
   | "Markdown" -> Markdown_level.parse
 
-let priority = string "[#" *> any_char <* char ']'
+let priority = ws *> (string "[#" *> any_char <* char ']')
 
 let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':' && non_eol x))
 
@@ -82,9 +83,9 @@ let parse config =
          [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
       pos
       (level config <?> "Heading level")
-      (optional (lex marker <?> "Heading marker"))
-      (optional (lex priority <?> "Heading priority"))
-      (optional (lex title <?> "Heading title")) in
+      (optional (marker <?> "Heading marker"))
+      (optional (priority <?> "Heading priority"))
+      (optional (title <?> "Heading title")) in
   p <* (end_of_line <|> end_of_input)
 
 (*
