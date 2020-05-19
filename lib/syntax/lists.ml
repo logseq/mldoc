@@ -96,11 +96,14 @@ let definition s =
   match parse_string name_parser s with
   | Ok name ->
     let l = (String.length name + 3) in
-    let nc = String.get s l in
-    if is_space nc || is_eol nc then
-      (Some name, String.sub s l (String.length s - l))
+    if String.length s >= l + 1 then
+      let nc = String.get s l in
+      if is_space nc || is_eol nc then
+        (Some name, String.sub s l (String.length s - l))
+      else
+        (None, s)
     else
-      (None, s)
+      (Some name, "")
   | Error _e ->
     (None, s)
 
@@ -147,7 +150,7 @@ let parse_aux config content_parsers =
 
 let md_definition config =
   Markdown_definition.parse config >>= fun result ->
-    return [List result]
+  return [List result]
 
 let parse config content_parsers =
   match config.format with
