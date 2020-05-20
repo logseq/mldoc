@@ -18,8 +18,12 @@ let _ =
         let config_json = Yojson.Safe.from_string config_json in
         match Conf.of_yojson config_json with
         | Ok config -> begin
-            let str = Js.to_string input in
-            parse config str |> ast_to_json |> Js.string
+            try
+              let str = Js.to_string input in
+              parse config str |> ast_to_json |> Js.string
+            with error ->
+              print_endline (Printexc.to_string error);
+              input
           end
         | Error e ->
           Js_of_ocaml.Js.string ("Config error: " ^ e)
