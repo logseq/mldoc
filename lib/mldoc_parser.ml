@@ -19,13 +19,13 @@ let list_content_parsers config =
 
 (* Orders care *)
 let interrupt_parsers config =
-  [ Paragraph.sep
+  [ Directive.parse
   ; Heading.parse config
+  ; Paragraph.sep
   ; Table.parse config
   ; Lists.parse config (list_content_parsers config)
   ; Drawer.parse
   ; Block.parse config
-  ; Directive.parse
   ; Latex_env.parse config
   ; Hr.parse config
   ; Block.results
@@ -36,7 +36,11 @@ let parsers config =
   let parsers = List.append (interrupt_parsers config) [Paragraph.parse config (interrupt_parsers config)] in
   let choices = choice parsers
   in
-  many1 choices
+  let parse = many choices in
+  Markdown_front_matter.parse >>=
+  fun fm_result ->
+  parse >>= fun result ->
+  return (List.append fm_result result)
 
 let parse config input =
   match parse_string (parsers config) input with
