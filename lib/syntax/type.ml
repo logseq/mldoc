@@ -58,7 +58,7 @@ and t =
   | Quote of t list  (** Quoted text *)
   | Export of string * string list option * string
   | CommentBlock of string list
-  | Custom of string * string option * t list
+  | Custom of string * string option * string
   (** Custom block of the form
       #+begin_name opts
       DATA

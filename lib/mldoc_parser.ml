@@ -37,10 +37,11 @@ let parsers config =
   let choices = choice parsers
   in
   let parse = many choices in
-  Markdown_front_matter.parse >>=
+  (Markdown_front_matter.parse >>=
   fun fm_result ->
   parse >>= fun result ->
-  return (List.append fm_result result)
+  return (List.append fm_result result))
+  <|> parse
 
 let parse config input =
   match parse_string (parsers config) input with

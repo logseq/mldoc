@@ -331,9 +331,9 @@ and block config t =
     Xml.block "blockquote" (blocks config l)
   | Export ("html", options, content) ->
     Xml.raw content
-  | Custom (name, options, l) ->
+  | Custom (name, options, content) ->
     Xml.block "div" ~attr:["class", name]
-      (blocks config l)
+      [Xml.data content]
   | Latex_Fragment l ->
     Xml.block "p" ~attr:["class", "latex-fragment"]
       (inline config (Inline.Latex_Fragment l))
