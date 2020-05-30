@@ -26,6 +26,9 @@ let definition_parse config =
   let name = spaces *> line <* eol in
   name >>= fun name ->
   definition_content (ref []) >>= fun lines ->
+  let name = match parse_string (Inline.parse config) name with
+    | Ok inlines -> inlines
+    | Error _e -> [Inline.Plain name] in
   let content = List.map (fun line ->
       match parse_string (Inline.parse config) (String.trim line) with
       | Ok content -> Paragraph content
@@ -35,7 +38,7 @@ let definition_parse config =
     content;
     items = [];
     number = None;
-    name = Some name;
+    name;
     checkbox = None;
     indent = 0;                 (* TODO: *)
     ordered = false;

@@ -17,7 +17,7 @@ let concatmap f l = List.concat (List.map f l)
 let list_element = function
   | [] -> "ul"
   | { ordered; name } :: tl ->
-    let name = match name with | None -> false | Some _ -> true in
+    let name = if List.length name == 0 then false else true in
     if name then "dl"
     else if ordered then "ol"
     else "ul"
@@ -250,16 +250,16 @@ let rec list_item config x =
   match x.number with
   | None ->
     let block = match x.name with
-      | None -> (Xml.block
+      | [] -> (Xml.block
                    ~attr:[("checked", string_of_bool checked)]
                    "li"
                    [Xml.block "p" (checked_html :: content);
                     items])
-      | Some name ->
+      | inlines ->
         (Xml.block
            ~attr:[("checked", string_of_bool checked)]
            "dl"
-           [Xml.block "dt" [(Xml.data name)];
+           [Xml.block "dt" (map_inline config inlines);
             Xml.block "dd" (content @ [items])])
     in
     [ block ]

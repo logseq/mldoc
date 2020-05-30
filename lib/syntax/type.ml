@@ -18,7 +18,7 @@ and list_item =
   { content: t list  (** The contents of the current item *)
   ; items: list_item list
   ; number: int option  (** Its number *)
-  ; name: string option  (** Definition name *)
+  ; name: Inline.t list  (** Definition name *)
   ; checkbox: bool option  (** Was it checked *)
   ; indent: int (** Indentation of the current item. *)
   ; ordered: bool} [@@deriving yojson]
