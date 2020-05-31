@@ -11,7 +11,7 @@ open Type
 
 let term_definition =
   let non_colon_or_eol = function
-      ':' | '\r' | '\n' -> false
+      ':' | '\r' | '\n' | '#' -> false
     | _ -> true in
   let l = spaces *> satisfy non_colon_or_eol >>=
     fun c ->
