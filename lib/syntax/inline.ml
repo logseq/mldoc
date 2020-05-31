@@ -511,7 +511,7 @@ let link_inline _config =
            ; url= Complex {protocol; link= "//" ^ link}
            ; title= None} )
       protocol_part link_part in
-  between_char '<' '>' p
+  p <|> (between_char '<' '>' p)
 
 (* Build direct links *)
 let concat_plains config inlines =
