@@ -13,7 +13,7 @@ or you can insert plain LaTeX environment
 : Contents
 : \end{env}
 
-     \begin{equation}greatwork
+     \begin{equation}
      x=\sqrt{b}
      \end{equation}
 
@@ -38,22 +38,10 @@ let env_name_options_parser =
      (take_while1 (fun c -> c <> '}'))
      <* char '}')
     (optional line)
-  <* eol
+  <* end_of_line
 
-let parse config =
-  let p =
-    peek_char_fail >>= function
-    | '\\' ->                      (* block *)
-      env_name_options_parser >>= fun (name, options) ->
-      between_lines (fun line ->
-          let prefix = "\\end{" ^ name ^ "}" in
-          starts_with line prefix) "Latex_environment body"
-      >>= (fun lines ->
-          return [Latex_Environment (String.lowercase_ascii name, options, lines)])
-    | _ ->
-      Inline.latex_fragment config >>= function
-      | Inline.Latex_Fragment x ->
-        return [Latex_Fragment x]
-      | _ ->
-        fail "Latex_env latex_fragment" in
-  optional eols *> spaces *> p <* (end_of_line <|> end_of_input)
+let parse _config =
+  spaces *> env_name_options_parser >>= fun (name, options) ->
+  end_string ("\\end{" ^ name ^ "}") ~ci:true (fun s ->
+      let lines = String.split_on_char '\n' s in
+      [Latex_Environment (String.lowercase_ascii name, options, lines)])

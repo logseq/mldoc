@@ -21,12 +21,12 @@ let list_content_parsers config =
 let interrupt_parsers config =
   [ Directive.parse
   ; Heading.parse config
+  ; Latex_env.parse config
   ; Paragraph.sep
   ; Table.parse config
   ; Lists.parse config (list_content_parsers config)
   ; Drawer.parse
   ; Block.parse config
-  ; Latex_env.parse config
   ; Hr.parse config
   ; Block.results
   ; Comment.parse config
@@ -38,9 +38,9 @@ let parsers config =
   in
   let parse = many choices in
   (Markdown_front_matter.parse >>=
-  fun fm_result ->
-  parse >>= fun result ->
-  return (List.append fm_result result))
+   fun fm_result ->
+   parse >>= fun result ->
+   return (List.append fm_result result))
   <|> parse
 
 let parse config input =
