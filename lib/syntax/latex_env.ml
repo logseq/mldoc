@@ -56,4 +56,4 @@ let parse config =
         return [Latex_Fragment x]
       | _ ->
         fail "Latex_env latex_fragment" in
-  between_eols p
+  optional eols *> spaces *> p <* (end_of_line <|> end_of_input)
