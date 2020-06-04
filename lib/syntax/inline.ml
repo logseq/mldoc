@@ -757,6 +757,7 @@ let inline_choices config =
         | '('  -> block_reference config
         | _ -> plain config) in
   p
+  <|> link_inline config
   <|> email
   <|> plain config
 
