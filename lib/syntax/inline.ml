@@ -169,7 +169,7 @@ let code config =
 
 (* TODO: optimization *)
 let org_plain_delims = [' '; '\\'; '_'; '^'; '[']
-let markdown_plain_delims = [' '; '\\'; '_'; '^'; '['; '*'; '^'; '~']
+let markdown_plain_delims = [' '; '\\'; '_'; '^'; '['; '*'; '^'; '~'; '`']
 (* replace list with a  *)
 let in_plain_delims config c =
   let plain_delims = match config.format with
