@@ -64,7 +64,7 @@ and t =
       DATA
       #+end *)
   | Latex_Fragment of Inline.latex_fragment
-  | Latex_Environment of string * string option * string list
+  | Latex_Environment of string * string option * string
   (** Latex environment. Of the form
       {v \begin{foo}
       bar

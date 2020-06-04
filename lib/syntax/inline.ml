@@ -717,32 +717,75 @@ let block_reference _config =
 
 (* TODO: configurable, re-order *)
 let inline_choices config =
-  let choices =
-    [
-      latex_fragment config            (* '$' '\' *)
-    ; inline_footnote_or_reference config        (* 'f', fn *)
-    ; block_reference config               (* (()) *)
-    ; hard_breakline            (* "\\" *)
-    ; breakline                 (* '\n' *)
-    ; timestamp                 (* '<' '[' 'S' 'C' 'D'*)
-    ; entity                    (* '\' *)
-    ; macro                     (* '{' *)
-    ; statistics_cookie         (* '[' *)
-    ; markdown_image config
-    ; link config                      (* '[' [[]] *)
-    ; link_inline config               (*  *)
-    ; email
-    ; export_snippet
-    ; radio_target              (* "<<<" *)
-    ; target                    (* "<" *)
-    ; verbatim                  (*  *)
-    ; code config                      (* '=' *)
-    ; nested_emphasis config
-    ; subscript config                 (* '_' "_{" *)
-    ; superscript config               (* '^' "^{" *)
-    ; plain config
-    ] in
-  choice choices
+  let is_markdown = String.equal config.format "Markdown" in
+  let p = if is_markdown then
+      (peek_char_fail >>= function
+        | '\n' -> breakline
+        | '*' | '~' -> nested_emphasis config
+        | '_' -> nested_emphasis config <|> subscript config
+        | '^' -> nested_emphasis config <|> superscript config
+        | '$'  -> latex_fragment config
+        | '\\' -> latex_fragment config <|> entity
+        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie
+        | '<'  -> link_inline config <|> timestamp
+        | '{'  -> macro
+        | '!'  -> markdown_image config
+        | '@'  -> export_snippet
+        | '`'  -> code config
+        | 'S' | 'C' | 'D' -> timestamp
+        | '('  -> block_reference config
+        | ' ' ->
+          Markdown_line_breaks.parse >>| fun _ -> Hard_Break_Line
+        | _ -> plain config)
+    else
+      (peek_char_fail >>= function
+        | '\n' -> breakline
+        | '*' | '/' | '+' -> nested_emphasis config
+        | '_' -> nested_emphasis config <|> subscript config
+        | '^' -> nested_emphasis config <|> superscript config
+        | '$'  -> latex_fragment config
+        | '\\' -> (org_hard_breakline >>| fun _ -> Hard_Break_Line)
+                  <|> latex_fragment config <|> entity
+        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie
+        | '<'  -> target <|> radio_target <|> link_inline config <|> timestamp
+        | '{'  -> macro
+        | '!'  -> markdown_image config
+        | '@'  -> export_snippet
+        | '='  -> code config <|> verbatim
+        | '~'  -> code config
+        | 'S' | 'C' | 'D' -> timestamp
+        | '('  -> block_reference config
+        | _ -> plain config) in
+  p
+  <|> email
+  <|> plain config
+
+(* let choices =
+ *   [
+ *     latex_fragment config            (\* '$' '\' *\)
+ *   ; inline_footnote_or_reference config        (\* 'f', fn *\)
+ *   ; block_reference config               (\* (()) *\)
+ *   ; hard_breakline            (\* "\\" *\)
+ *   ; breakline                 (\* '\n' *\)
+ *   ; timestamp                 (\* '<' '[' 'S' 'C' 'D'*\)
+ *   (\* ; entity                    (\\* '\' *\\) *\)
+ *   ; macro                     (\* '{' *\)
+ *   ; statistics_cookie         (\* '[' *\)
+ *   (\* ; markdown_image config *\)
+ *   ; link config                      (\* '[' [[]] *\)
+ *   ; link_inline config               (\*  *\)
+ *   ; email
+ *   ; export_snippet
+ *   ; radio_target              (\* "<<<" *\)
+ *   ; target                    (\* "<" *\)
+ *   ; verbatim                  (\*  *\)
+ *   ; code config                      (\* '=' *\)
+ *   ; nested_emphasis config
+ *   ; subscript config                 (\* '_' "_{" *\)
+ *   ; superscript config               (\* '^' "^{" *\)
+ *   ; plain config
+ *   ] in
+ * choice choices *)
 
 let parse config =
   (many1 (inline_choices config) >>| fun l ->

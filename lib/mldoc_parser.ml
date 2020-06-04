@@ -21,9 +21,9 @@ let list_content_parsers config =
 let interrupt_parsers config =
   [ Directive.parse
   ; Heading.parse config
-  ; Latex_env.parse config
   ; Paragraph.sep
   ; Table.parse config
+  ; Latex_env.parse config
   ; Lists.parse config (list_content_parsers config)
   ; Drawer.parse
   ; Block.parse config

@@ -331,16 +331,16 @@ and block config t =
     Xml.block "blockquote" (blocks config l)
   | Export ("html", options, content) ->
     Xml.raw content
-  | Custom (name, options, _result, content) ->
+  | Custom (name, options, result, _content) ->
     Xml.block "div" ~attr:["class", name]
-      [Xml.data content]
+      (blocks config result)
   | Latex_Fragment l ->
     Xml.block "p" ~attr:["class", "latex-fragment"]
       (inline config (Inline.Latex_Fragment l))
   | Latex_Environment (name, option, content) ->
     let option = match option with | None -> "" | Some s -> s in
     let content = "\n\\begin{" ^ name ^ "} " ^ option ^ "\n"
-                  ^ (String.concat "\n" content)
+                  ^ content
                   ^ "\n\\end{" ^ name ^ "}" in
     Xml.block "div" ~attr:["class", "latex-environment"]
       [Xml.data content]

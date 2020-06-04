@@ -23,6 +23,20 @@ or you can insert plain LaTeX environment
 Whenever possible, you should use [[Custom%20blocks][custom blocks]], that get exported to
 latex environment in LaTeX-based outputs, and are more portable (in
 HTML, they are exported as div that you can style or script).
+
+   (* TODO: *)
+\def\arraystretch{1.5}
+   \begin{array}{c:c:c}
+   a & b & c \\ \hline
+   d & e & f \\
+   \hdashline
+   g & h & i
+\end{array}
+
+   x = \begin{cases}
+   a &\text{if } b \\
+   c &\text{if } d
+\end{cases}
 *)
 open Angstrom
 open Parsers
@@ -43,5 +57,4 @@ let env_name_options_parser =
 let parse _config =
   spaces *> env_name_options_parser >>= fun (name, options) ->
   end_string ("\\end{" ^ name ^ "}") ~ci:true (fun s ->
-      let lines = String.split_on_char '\n' s in
-      [Latex_Environment (String.lowercase_ascii name, options, lines)])
+      [Latex_Environment (String.lowercase_ascii name, options, s)])
