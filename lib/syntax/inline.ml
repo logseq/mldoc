@@ -736,7 +736,7 @@ let inline_choices config =
         | '('  -> block_reference config
         | ' ' ->
           Markdown_line_breaks.parse >>| fun _ -> Hard_Break_Line
-        | _ -> plain config)
+        | _ -> fail "Inline parsing")
     else
       (peek_char_fail >>= function
         | '\n' -> breakline
@@ -755,7 +755,7 @@ let inline_choices config =
         | '~'  -> code config
         | 'S' | 'C' | 'D' -> timestamp
         | '('  -> block_reference config
-        | _ -> plain config) in
+        | _ -> fail "Inline parsing") in
   p
   <|> link_inline config
   <|> email
