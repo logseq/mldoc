@@ -504,14 +504,16 @@ let link_inline _config =
     take_while1 (fun c ->
         non_space c && List.for_all (fun c' -> c <> c') link_delims )
   in
-  let p = lift2
-      (fun protocol link ->
-         Link
-           { label= [Plain (protocol ^ "://" ^ link)]
-           ; url= Complex {protocol; link= "//" ^ link}
-           ; title= None} )
-      protocol_part link_part in
-  p <|> (between_char '<' '>' p)
+  lift2
+    (fun protocol link ->
+       Link
+         { label= [Plain (protocol ^ "://" ^ link)]
+         ; url= Complex {protocol; link= "//" ^ link}
+         ; title= None} )
+    protocol_part link_part
+
+let quick_link config =
+  between_char '<' '>' (link_inline config)
 
 (* Build direct links *)
 let concat_plains config inlines =
@@ -727,7 +729,7 @@ let inline_choices config =
         | '$'  -> latex_fragment config
         | '\\' -> latex_fragment config <|> entity
         | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie
-        | '<'  -> link_inline config <|> timestamp
+        | '<'  -> quick_link config <|> timestamp <|> email
         | '{'  -> macro
         | '!'  -> markdown_image config
         | '@'  -> export_snippet
@@ -736,7 +738,8 @@ let inline_choices config =
         | '('  -> block_reference config
         | ' ' ->
           Markdown_line_breaks.parse >>| fun _ -> Hard_Break_Line
-        | _ -> fail "Inline parsing")
+        | _ ->
+          link_inline config)
     else
       (peek_char_fail >>= function
         | '\n' -> breakline
@@ -747,7 +750,7 @@ let inline_choices config =
         | '\\' -> (org_hard_breakline >>| fun _ -> Hard_Break_Line)
                   <|> latex_fragment config <|> entity
         | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie
-        | '<'  -> target <|> radio_target <|> link_inline config <|> timestamp
+        | '<'  -> target <|> radio_target <|> timestamp <|> email
         | '{'  -> macro
         | '!'  -> markdown_image config
         | '@'  -> export_snippet
@@ -755,11 +758,9 @@ let inline_choices config =
         | '~'  -> code config
         | 'S' | 'C' | 'D' -> timestamp
         | '('  -> block_reference config
-        | _ -> fail "Inline parsing") in
-  p
-  <|> link_inline config
-  <|> email
-  <|> plain config
+        | _ ->
+          link_inline config) in
+  p <|> plain config
 
 (* let choices =
  *   [
