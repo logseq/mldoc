@@ -2,7 +2,7 @@ open Mldoc.Parser
 open Mldoc.Conf
 
 open Core
-open Core_bench.Std
+open Core_bench
 
 let text_org = load_file "./examples/syntax.org"
 let text_md = load_file "./examples/syntax.md"
