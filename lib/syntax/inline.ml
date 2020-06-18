@@ -662,7 +662,9 @@ let incr_id id =
 let footnote_inline_definition config ?(break = false) definition =
   let choices =
     [(markdown_image config); (link config); email; (link_inline config); radio_target; target; latex_fragment config; (nested_emphasis config); entity;
-     (code config); (subscript config); (superscript config); plain config; whitespaces] in
+     (code config); (subscript config); (superscript config); plain config; whitespaces;] in
+  let choices = if break then
+      List.cons hard_breakline choices else choices in
   let parser = (many1 (choice choices)) in
   match parse_string parser definition with
   | Ok result ->

@@ -29,24 +29,6 @@ great I like it very much
 
 (* https://orgmode.org/manual/Footnotes.html *)
 (* It ends at the next footnote definition, headline, or after two consecutive empty lines. *)
-let footnote_definition lines =
-  fix (fun footnote_definition ->
-      line <* optional eol >>= fun line ->
-      lines := line :: !lines;
-      two_eols (List.rev !lines)
-      <|>
-      (peek_string 4 >>= function
-        | "[fn:" ->                            (* org *)
-          return (List.rev !lines)
-        | s when s.[0] = '[' && s.[1] = '^' -> (* markdown *)
-          return (List.rev !lines)
-        | s when s.[0] = '*' && (List.for_all (fun c -> c = '*' || is_space c) (Prelude.explode s)) ->
-          return (List.rev !lines)
-        | _ ->
-          footnote_definition)
-      <|>
-      return (List.rev !lines))
-
 let name_part config = match config.format with
   | "Org" ->
     string "[fn:" *> take_while1 (fun c -> c <> ']' && non_eol c)
@@ -54,11 +36,28 @@ let name_part config = match config.format with
   | "Markdown" ->
     Markdown_footnote.reference <* char ':' <* spaces
 
-let footnote_reference config lines =
+let footnote_definition =
+  let non_eol = function
+      '\r' | '\n' | '*' | '#' -> false
+    | _ -> true in
+  let l = spaces *> satisfy non_eol >>=
+    fun c ->
+    line <* (end_of_input <|> end_of_line)
+    >>| fun s ->
+    Char.escaped c ^ s
+  in
+  many1 l
+
+let definition_parse config =
   let name_part = name_part config in
-  let definition_part = footnote_definition lines in
   lift2
-    (fun name definition ->
-       let definition = Inline.footnote_inline_definition config ~break:true (String.concat "\n" definition) in
+    (fun name lines ->
+       let definition_content = String.concat "\n" lines in
+       let definition = match parse_string (Inline.parse config) definition_content with
+         | Ok inlines -> inlines
+         | Error _e -> [Inline.Plain definition_content] in
        Footnote_Definition (name, definition))
-    name_part definition_part
+    name_part footnote_definition
+
+let parse config =
+  many1 (definition_parse config <* (optional eols))

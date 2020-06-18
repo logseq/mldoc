@@ -29,6 +29,7 @@ let interrupt_parsers config =
   ; Latex_env.parse config
   ; Hr.parse config
   ; Block.results
+  ; Footnote.parse config
   ; Comment.parse config
   ]
 

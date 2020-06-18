@@ -55,14 +55,6 @@ let parse config interrupt_parsers =
   let lines = ref [] in
   let p = parse_paragraph config interrupt_parsers lines in
   optional eols *>
-  (* check for footer reference first *)
-  peek_char_fail >>= fun c ->
-  let p = match c with
-    | '[' ->
-      let lines = ref [] in
-      (Footnote.footnote_reference config lines >>| fun f -> [f])
-      <|> p
-    | _ -> p in
   p >>= fun result ->
   let _ = lines := [] in
   return result
