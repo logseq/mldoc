@@ -66,6 +66,7 @@ and t =
   | Paragraph_Sep
   | Verbatim of string
   | Code of string
+  | Tag of string
   | Spaces of string
   | Plain of string
   | Link of link
@@ -719,12 +720,16 @@ let block_reference _config =
   Block_reference.parse
   >>= fun s -> return @@ Block_reference s
 
+let hash_tag =
+  Hash_tag.parse >>| fun s -> Tag s
+
 (* TODO: configurable, re-order *)
 let inline_choices config =
   let is_markdown = String.equal config.format "Markdown" in
   let p = if is_markdown then
       (peek_char_fail >>= function
         | '\n' -> breakline
+        | '#' -> hash_tag
         | '*' | '~' -> nested_emphasis config
         | '_' -> nested_emphasis config <|> subscript config
         | '^' -> nested_emphasis config <|> superscript config
@@ -745,6 +750,7 @@ let inline_choices config =
     else
       (peek_char_fail >>= function
         | '\n' -> breakline
+        | '#' -> hash_tag
         | '*' | '/' | '+' -> nested_emphasis config
         | '_' -> nested_emphasis config <|> subscript config
         | '^' -> nested_emphasis config <|> superscript config

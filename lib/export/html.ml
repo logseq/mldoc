@@ -87,6 +87,9 @@ and inline config t =
     [Xml.block (assoc kind l) (map_inline config data)]
   | Entity e ->
     [Xml.raw e.html]
+  | Tag t ->
+    [Xml.block "a" ~attr: ["class", "tag"]
+         [Xml.data t]]
   | Latex_Fragment (Displayed s) ->
     [Xml.data ("\\["^s^"\\]")]
   | Latex_Fragment (Inline s) ->
