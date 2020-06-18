@@ -17,7 +17,6 @@ let parse_paragraph config interrupt_parsers lines =
   let inline_parse () =
     let lines = List.map (fun (s, b) -> if b then s else s ^ " ") (rev !lines) in
     let content = String.concat "" lines in
-    let content = String.trim content in
     match parse_string (Inline.parse config) content with
     | Ok result -> Paragraph result
     | Error _e -> Paragraph [Inline.Plain content] in
