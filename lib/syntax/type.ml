@@ -58,13 +58,13 @@ and t =
   | Quote of t list  (** Quoted text *)
   | Export of string * string list option * string
   | CommentBlock of string list
-  | Custom of string * string option * string
+  | Custom of string * string option * t list * string
   (** Custom block of the form
       #+begin_name opts
       DATA
       #+end *)
   | Latex_Fragment of Inline.latex_fragment
-  | Latex_Environment of string * string option * string list
+  | Latex_Environment of string * string option * string
   (** Latex environment. Of the form
       {v \begin{foo}
       bar

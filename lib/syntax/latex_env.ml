@@ -13,7 +13,7 @@ or you can insert plain LaTeX environment
 : Contents
 : \end{env}
 
-     \begin{equation}greatwork
+     \begin{equation}
      x=\sqrt{b}
      \end{equation}
 
@@ -23,6 +23,20 @@ or you can insert plain LaTeX environment
 Whenever possible, you should use [[Custom%20blocks][custom blocks]], that get exported to
 latex environment in LaTeX-based outputs, and are more portable (in
 HTML, they are exported as div that you can style or script).
+
+   (* TODO: *)
+\def\arraystretch{1.5}
+   \begin{array}{c:c:c}
+   a & b & c \\ \hline
+   d & e & f \\
+   \hdashline
+   g & h & i
+\end{array}
+
+   x = \begin{cases}
+   a &\text{if } b \\
+   c &\text{if } d
+\end{cases}
 *)
 open Angstrom
 open Parsers
@@ -38,22 +52,9 @@ let env_name_options_parser =
      (take_while1 (fun c -> c <> '}'))
      <* char '}')
     (optional line)
-  <* eol
+  <* end_of_line
 
-let parse config =
-  let p =
-    peek_char_fail >>= function
-    | '\\' ->                      (* block *)
-      env_name_options_parser >>= fun (name, options) ->
-      between_lines (fun line ->
-          let prefix = "\\end{" ^ name ^ "}" in
-          starts_with line prefix) "Latex_environment body"
-      >>= (fun lines ->
-          return [Latex_Environment (String.lowercase_ascii name, options, lines)])
-    | _ ->
-      Inline.latex_fragment config >>= function
-      | Inline.Latex_Fragment x ->
-        return [Latex_Fragment x]
-      | _ ->
-        fail "Latex_env latex_fragment" in
-  between_eols p
+let parse _config =
+  spaces *> env_name_options_parser >>= fun (name, options) ->
+  end_string ("\\end{" ^ name ^ "}") ~ci:true (fun s ->
+      [Latex_Environment (String.lowercase_ascii name, options, s)])

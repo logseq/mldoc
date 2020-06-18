@@ -1,7 +1,7 @@
 DUNE ?= dune
 
 all:
-	$(DUNE) build --profile=release @install @JS @main
+	$(DUNE) build --profile=release @install @JS @main @bench
 
 check: tests
 

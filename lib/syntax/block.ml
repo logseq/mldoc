@@ -165,7 +165,10 @@ let block_parse config = fix (fun parse ->
            [CommentBlock lines]
          | _ ->
            let content = String.concat "\n" lines in
-           [Custom (name, options, content)]
+           let result = match parse_string (block_content_parsers config parse) content with
+             | Ok result -> List.concat result
+             | Error _e -> [] in
+           [Custom (name, options, result, content)]
         )
       | ':' ->                      (* verbatim block *)
         begin match config.format with
