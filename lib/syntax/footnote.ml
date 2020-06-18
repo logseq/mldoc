@@ -38,7 +38,7 @@ let name_part config = match config.format with
 
 let footnote_definition =
   let non_eol = function
-      '\r' | '\n' | '*' | '#' -> false
+      '\r' | '\n' | '*' | '#' | '[' -> false
     | _ -> true in
   let l = spaces *> satisfy non_eol >>=
     fun c ->
