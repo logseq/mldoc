@@ -12,11 +12,19 @@ let sep =
   else
     fail "only 1 eol"
 
+let trim_last_space s =
+  let n = String.length s in
+  if n > 0 && s.[n-1] = ' ' then
+    String.sub s 0 (n-1)
+  else
+    s
+
 let parse_paragraph config interrupt_parsers lines =
   let open List in
   let inline_parse () =
     let lines = List.map (fun (s, b) -> if b then s else s ^ " ") (rev !lines) in
     let content = String.concat "" lines in
+    let content = trim_last_space content in
     match parse_string (Inline.parse config) content with
     | Ok result -> Paragraph result
     | Error _e -> Paragraph [Inline.Plain content] in

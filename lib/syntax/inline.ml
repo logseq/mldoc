@@ -88,75 +88,44 @@ and t =
 
 let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
 
-let prev = ref None
-
 let email = Email_address.email >>| fun email -> Email email
 
-let emphasis_token c =
-  let blank_before_delimiter = ref false in
-  peek_char_fail
-  >>= fun x ->
-  if is_space x then fail "space before token"
-  else
-    take_while1 (function
-        | x when x = c -> (
-            match !prev with
-            | Some x ->
-              if x = ' ' then blank_before_delimiter := true ;
-              false
-            | None -> false )
-        | '\r' | '\n' -> false
-        | x ->
-          prev := Some x ;
-          true )
-    >>= fun s ->
-    let blank_before = !blank_before_delimiter in
-    blank_before_delimiter := false ;
-    if blank_before then fail "emphasis_token" else return s
-
-let between c =
-  between_char c c (emphasis_token c)
-  >>= fun s ->
-  peek_char
-  >>= function
-  | None -> return s
-  | Some c -> (
-      match c with
-      | '\n' | '\r' | ' ' | '\t' | '.' | ',' | '!' | '?' | '"' | '\'' | ')' | '-' | ':' | ';' | '[' | '}'
-        -> return s
-      | _ -> fail "between" )
+let between s =
+  let c = String.get s 0 in
+    let not_match_chars = [c; '\r'; '\n'] in
+  between_string s s
+    ( take_while1 (fun c ->
+          if List.exists (fun d -> c = d) not_match_chars then
+            false
+          else
+            true) )
+  >>= fun s -> return s
 
 let bold =
-  between '*'
+  between "*"
   >>= fun s -> return (Emphasis (`Bold, [Plain s])) <?> "Inline bold"
 
 let underline =
-  between '_'
+  between "_"
   >>= fun s -> return (Emphasis (`Underline, [Plain s])) <?> "Inline underline"
 
 let italic =
-  between '/'
+  between "/"
   >>= fun s -> return (Emphasis (`Italic, [Plain s])) <?> "Inline italic"
 
 let strike_through =
-  between '+'
+  between "+"
   >>= fun s ->
   return (Emphasis (`Strike_through, [Plain s])) <?> "Inline strike_through"
 
 (* ^^highlight^^ *)
 let highlight =
-  between_string "^^" "^^"
-    ( take_while1 (fun c ->
-          if List.exists (fun d -> c = d) ['^'; '\r'; '\n'] then
-            false
-          else
-            true)
-      >>= fun s -> return (Emphasis (`Highlight, [Plain s])))
-  <?> "Inline highlight"
+  between "^^"
+  >>= fun s -> return (Emphasis (`Highlight, [Plain s])) <?> "Inline highlight"
 
 (* '=', '~' verbatim *)
 let verbatim =
-  between '=' >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
+  between "=" >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
 
 let markdown_escape_backticks =
   string "``" *>
@@ -164,7 +133,7 @@ let markdown_escape_backticks =
 
 let code config =
   let is_markdown = String.equal config.format "Markdown" in
-  let c = if is_markdown then '`' else '~' in
+  let c = if is_markdown then "`" else "~" in
   let p = between c >>= fun s -> return (Code s) <?> "Inline code" in
   if is_markdown then p <|> markdown_escape_backticks else p
 
