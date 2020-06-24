@@ -11,9 +11,10 @@ open Conf
 (* todo keywords *)
 let marker = ws *>
              (string "TODO" <|> string "DOING" <|> string "WAITING"
-             <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
-             <|> string "STARTED" <|> string "IN-PROGRESS"
-)
+              <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
+              <|> string "STARTED" <|> string "IN-PROGRESS"
+              <|> string "NOW" <|> string "LATER"
+             )
 let org_level = take_while1 (fun c -> c = '*')
 
 let level config =
