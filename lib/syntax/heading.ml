@@ -24,7 +24,7 @@ let level config =
 
 let priority = ws *> (string "[#" *> any_char <* char ']')
 
-let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':' && non_eol x))
+let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':' && non_space_eol x))
 
 let tags = char ':' *> seperated_tags <* char ':'
 
