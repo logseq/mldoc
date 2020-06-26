@@ -101,6 +101,7 @@ let peek_spaces = ws |> unsafe_lookahead
 let take_till1 f = take_while1 (fun c -> not (f c))
 
 let line = take_till1 is_eol
+let optional_line = take_till is_eol
 
 let line_without_spaces = take_till1 (fun c -> c = '\r' || c = '\n' || c = ' ')
 
@@ -140,3 +141,13 @@ let limits n m p =
   lift2 (fun xs ys -> xs @ ys)
     (count   n p)
     (at_most m p)
+
+let lines_while p =
+  let line = p <* optional eol in
+  many1 line
+
+let lines_starts_with p =
+  lines_while ((spaces *> p <* spaces) *> optional_line)
+
+let lines_till p =
+  many_till (line <* optional eol) p

@@ -17,31 +17,11 @@ open Conf
 let results =
   spaces *> string "#+RESULTS:" >>= fun _ -> return [Results]
 
-(* TODO: replace with many1  *)
-let verbatim lines =
-  fix (fun verbatim ->
-      (spaces *> char ':' <* (optional spaces)) *> take_till is_eol <* optional eol
-      >>= fun line ->
-      lines := line :: !lines;
-      verbatim
-      <|>
-      (if !lines = [] then
-         fail "verbatim"
-       else
-         return (List.rev !lines)))
+let verbatim =
+  lines_starts_with (char ':') <?> "verbatim"
 
-(* TODO: nested blockquote *)
-let md_blockquote lines =
-  fix (fun md_blockquote ->
-      (spaces *> char '>' <* (optional spaces)) *> take_till is_eol <* optional eol
-      >>= fun line ->
-      lines := line :: !lines;
-      md_blockquote
-      <|>
-      (if !lines = [] then
-         fail "Markdown blockquote"
-       else
-         return (List.rev !lines)))
+let md_blockquote =
+  lines_starts_with (char '>') <?> "markdown blockquote"
 
 (* ``` json
  * {
@@ -173,13 +153,13 @@ let block_parse config = fix (fun parse ->
       | ':' ->                      (* verbatim block *)
         begin match config.format with
           | "Org" ->
-            verbatim (ref []) >>|
+            verbatim >>|
             fun lines -> [Example lines]
           | "Markdown" ->
             fail "block"
         end
       | '>' ->
-        md_blockquote (ref []) >>|
+        md_blockquote >>|
         fun lines ->
         let content = String.concat "\n" lines in
         let result = match parse_string (block_content_parsers config parse) content with

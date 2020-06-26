@@ -58,6 +58,7 @@ let parse_paragraph config interrupt_parsers lines =
       return [inline_parse ()]
     )
 
+(* TODO: Optimization: remove interrupt_parsers *)
 let parse config interrupt_parsers =
   let lines = ref [] in
   let p = parse_paragraph config interrupt_parsers lines in
