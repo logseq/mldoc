@@ -45,11 +45,11 @@ let parse =
     between_lines (fun line -> line = end_mark) "drawer body" in
   (* anything but a headline and another drawer *)
   let p =
-    lift2 (fun name body ->
+    lift4 (fun start_pos name body end_pos ->
         let drawer = match name with
             "PROPERTIES" ->
             let properties = parse_properties body in
-            Property_Drawer (List.rev properties)
+            Property_Drawer ((List.rev properties), start_pos, end_pos)
           | _ -> Drawer (name, body) in
-        [drawer]) drawer_name drawer_body in
+        [drawer]) pos drawer_name drawer_body pos in
   between_eols p

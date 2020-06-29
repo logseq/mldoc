@@ -122,7 +122,7 @@ let from_ast filename ast =
 
           ) in
         aut directives blocks toc tl
-      | Property_Drawer properties ->
+      | Property_Drawer (properties, _start_pos, _end_pos) ->
         let blocks = update_meta (fun heading ->
             {heading with meta =
                             {heading.meta with

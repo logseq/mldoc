@@ -71,7 +71,7 @@ and t =
       \end{foo} v}
   *)
   | Drawer of string * string list  (** A drawer *)
-  | Property_Drawer of (string * string) list  (** A property drawer *)
+  | Property_Drawer of (string * string) list * int * int  (** A property drawer *)
   | Footnote_Definition of string * Inline.t list
   (** The definition of a footnote : name and contents *)
   | Horizontal_Rule  (** Horizontal rule *)
