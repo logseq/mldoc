@@ -604,7 +604,7 @@ let link config =
   | "Markdown" -> markdown_link config <|> org_link config (* page reference *)
 
 let export_snippet =
-  let name = take_while1 (fun c -> non_space_eol c && c <> ':') <* char ':' in
+  let name = take_while1 (fun c -> non_space_eol c && c <> ':') in
   let content = take_while1 (function
       | '@' -> false
       | '\r' | '\n' -> false
@@ -612,8 +612,9 @@ let export_snippet =
     ) in
   between_string "@@" "@@"
     (lift2 (fun name content ->
+         let content = String.sub content 0 ((String.length content) - (String.length name)) in
          Export_Snippet (name, content))
-        name content)
+        (name <* string ": ") content)
 
 (* src_LANG[headers]{your code} *)
 let inline_source_code =
