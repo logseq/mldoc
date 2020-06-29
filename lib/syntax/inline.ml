@@ -612,7 +612,6 @@ let export_snippet =
     ) in
   between_string "@@" "@@"
     (lift2 (fun name content ->
-         let content = String.sub content 0 ((String.length content) - (String.length name)) in
          Export_Snippet (name, content))
         (name <* string ": ") content)
 
