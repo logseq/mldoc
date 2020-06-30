@@ -204,3 +204,9 @@ let split_first c s =
     String.sub s 0 k, String.sub s (k + 1) (n - k - 1)
   with _ ->
     s, ""
+
+let safe_sub s ofs len =
+  if String.length s > ofs && len >= 0 then
+    String.sub s ofs len
+  else
+    s

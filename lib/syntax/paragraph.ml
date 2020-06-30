@@ -35,7 +35,8 @@ let parse_paragraph config interrupt_parsers lines =
         | Inline.Plain s ->
           let hard_break = Prelude.ends_with s "\\" in
           let item = if hard_break then
-              (String.sub s 0 (String.length s - 2), false)
+              let line = Prelude.safe_sub s 0 (String.length s - 2) in
+              (line, false)
             else (s, false) in
           lines := item :: !lines;
           if hard_break then
