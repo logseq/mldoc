@@ -45,7 +45,7 @@ let fenced_code_block =
       let indent = get_indent (List.hd lines) in
       if indent = 0 then lines else
         List.map (fun line ->
-            safe_sub line indent (String.length line - indent)
+            Prelude.safe_sub line indent (String.length line - indent)
           ) lines in
   [Src {language; options=None; lines}]
 
@@ -124,7 +124,7 @@ let block_parse config = fix (fun parse ->
             let indent = get_indent (List.hd lines) in
             if indent = 0 then lines else
               List.map (fun line ->
-                  safe_sub line indent (String.length line - indent)g
+                  Prelude.safe_sub line indent (String.length line - indent)
                 ) lines in
         let name = String.lowercase_ascii name in
         (match name with
