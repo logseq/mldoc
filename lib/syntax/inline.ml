@@ -92,7 +92,7 @@ let email = Email_address.email >>| fun email -> Email email
 
 let between s =
   let c = String.get s 0 in
-    let not_match_chars = [c; '\r'; '\n'] in
+  let not_match_chars = [c; '\r'; '\n'] in
   between_string s s
     ( take_while1 (fun c ->
           if List.exists (fun d -> c = d) not_match_chars then
@@ -134,7 +134,13 @@ let markdown_escape_backticks =
 let code config =
   let is_markdown = String.equal config.format "Markdown" in
   let c = if is_markdown then "`" else "~" in
-  let p = between c >>= fun s -> return (Code s) <?> "Inline code" in
+
+  let p = between c >>= fun s ->
+    if String.length s > 0 then
+      return (Code s)
+    else
+      fail "Empty code"
+      <?> "Inline code" in
   if is_markdown then p <|> markdown_escape_backticks else p
 
 (* TODO: optimization *)
