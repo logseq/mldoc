@@ -523,7 +523,7 @@ let concat_plains config inlines =
 *)
 (* TODO: URI encode *)
 let markdown_link config =
-  let label_part = char '[' *> take_while1 (fun c -> c <> ']' ) <* (string "](") in
+  let label_part = char '[' *> take_while (fun c -> c <> ']' ) <* (string "](") in
   let url_part =
     take_while (fun c -> c <> ')') <* string ")"
   in
