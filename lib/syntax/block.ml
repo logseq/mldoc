@@ -31,14 +31,14 @@ let md_blockquote =
  * }
  * ``` *)
 let fenced_language =
-  string "```" *> spaces *> optional line
+  (string "```" <|> string "~~~") *> spaces *> optional line
 
 let fenced_code_block =
   fenced_language
   >>= fun language ->
   between_lines ~trim:false (fun line ->
-      let prefix = "```" in
-      starts_with (String.trim line) prefix) "fenced_code_block"
+      (starts_with (String.trim line) "```") || (starts_with (String.trim line) "~~~")
+    ) "fenced_code_block"
   >>| fun lines ->
   (* clear indents *)
   let lines = if lines = [] then [] else
@@ -168,7 +168,7 @@ let block_parse config = fix (fun parse ->
           | Ok result -> result
           | Error _e -> [] in
         [Quote (List.concat result)]
-      | '`' ->
+      | '`' | '~' ->
         fenced_code_block
       | _ -> fail "block" in
     between_eols p)
