@@ -170,6 +170,8 @@ let block_parse config = fix (fun parse ->
         [Quote (List.concat result)]
       | '`' | '~' ->
         fenced_code_block
+      | '<' ->
+        Raw_html.parse >>| fun s -> [RawHtml s]
       | _ -> fail "block" in
     between_eols p)
 

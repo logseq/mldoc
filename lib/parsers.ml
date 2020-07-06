@@ -93,6 +93,40 @@ let end_string s ?ci:(ci=false) f =
     else
       fail "end_string"
 
+let end_string_2 s ?ci:(ci=false) f =
+  let open String in
+  let last_s = sub s (length s - 1) 1 in
+  let prev = ref None in
+  let string_equal x y = if ci then lowercase_ascii x = lowercase_ascii y else x = y in
+  take_while1 (fun c ->
+      let p = (match !prev with
+            None -> (make 1 c)
+          | Some s' -> let s' = s' ^ (make 1 c) in
+            if length s' > length s then
+              sub s' 1 (length s)
+            else s'
+        ) in
+      prev := Some p;
+      if (string_equal p s) then false
+      else true) <* (string last_s)
+  >>= fun s' ->
+  let p = !prev in
+  prev := None;
+  match p with
+  | None -> fail "end string"
+  | Some x ->
+    if string_equal x s then
+      let s' = sub s' 0 (length s' - length s + 1) in
+      f s'
+    else
+      fail "end_string"
+
+let between_string_strict begin' end' ?ci:(ci=false) f =
+  string begin' *> end_string end' ~ci:ci f
+
+let between_string_strict_wrapper ?ci:(ci=false) begin' end' =
+  string begin' *> end_string end' ~ci:ci (fun s -> String.concat "" [begin'; s; end'])
+
 let peek_line = take_till (fun c -> c = '\r' || c = '\n')
                 |> unsafe_lookahead
 
