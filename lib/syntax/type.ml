@@ -77,7 +77,7 @@ and t =
   | Horizontal_Rule  (** Horizontal rule *)
   | Table of table  (** A block *)
   | Comment of string           (** Comment *)
-  | RawHtml of string
+  | Raw_Html of string
 [@@deriving yojson]
 
 and blocks = t list [@@deriving yojson]

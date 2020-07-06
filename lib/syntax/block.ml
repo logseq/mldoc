@@ -171,7 +171,7 @@ let block_parse config = fix (fun parse ->
       | '`' | '~' ->
         fenced_code_block
       | '<' ->
-        Raw_html.parse >>| fun s -> [RawHtml s]
+        Raw_html.parse >>| fun s -> [Raw_Html s]
       | _ -> fail "block" in
     between_eols p)
 

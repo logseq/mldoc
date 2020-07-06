@@ -334,6 +334,8 @@ and block config t =
     Xml.block "blockquote" (blocks config l)
   | Export ("html", options, content) ->
     Xml.raw content
+  | Raw_Html content ->
+    Xml.raw content
   | Custom (name, options, result, _content) ->
     Xml.block "div" ~attr:["class", name]
       (blocks config result)
