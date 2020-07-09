@@ -32,19 +32,19 @@ let known_tag s =
   let s = String.lowercase_ascii s in
   List.mem s known_tags
 
-let match_tag tag open_tag close_tag =
+let match_tag tag open_tag close_tag left_char =
   let level_ref = ref (1) in
   let s_ref = ref "" in
   fix (fun parse ->
-      end_string_2 (close_tag) ~ci:true (fun s ->
+      end_string_2 close_tag ~ci:true (fun s ->
           let level_without_attrs = count_substring s open_tag in
-          let level_with_attrs = count_substring s ("<" ^ tag ^ " ") in
+          let level_with_attrs = count_substring s (left_char ^ tag ^ " ") in
           let level = level_without_attrs + level_with_attrs in
-          (* let _ = Printf.printf "Html tag level: %d, tag: %s, content: %s\n" level tag s in *)
+          let _ = Printf.printf "Html tag level: %d, tag: %s, content: %s\n" level tag s in
           let _ = level_ref := !level_ref + level - 1 in
           let _ = s_ref := !s_ref ^ s ^ close_tag in
           if !level_ref <= 0 then
-            return ("<" ^ tag ^ !s_ref)
+            return (left_char ^ tag ^ !s_ref)
           else
             parse))
 
@@ -62,7 +62,7 @@ let tag_wrapper =
   >>= fun tag ->
   let open_tag = "<" ^ tag ^ ">" in
   let close_tag = "</" ^ tag ^ ">" in
-  match_tag tag open_tag close_tag
+  match_tag tag open_tag close_tag "<"
   <|>
   self_close_tag tag
 

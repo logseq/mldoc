@@ -98,7 +98,7 @@ let end_string_2 s ?ci:(ci=false) f =
   let last_s = sub s (length s - 1) 1 in
   let prev = ref None in
   let string_equal x y = if ci then lowercase_ascii x = lowercase_ascii y else x = y in
-  take_while1 (fun c ->
+  take_while (fun c ->
       let p = (match !prev with
             None -> (make 1 c)
           | Some s' -> let s' = s' ^ (make 1 c) in

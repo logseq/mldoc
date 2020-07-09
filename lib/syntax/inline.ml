@@ -84,6 +84,7 @@ and t =
   | Inline_Source_Block of inline_source_block
   | Email of Email_address.t
   | Block_reference of string   (** Block reference *)
+  | Inline_Hiccup of string
 [@@deriving yojson]
 
 let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
@@ -698,6 +699,9 @@ let block_reference _config =
 let hash_tag =
   Hash_tag.parse >>| fun s -> Tag s
 
+let inline_hiccup =
+  Hiccup.parse >>| fun s -> Inline_Hiccup s
+
 (* TODO: configurable, re-order *)
 let inline_choices config =
   let is_markdown = String.equal config.format "Markdown" in
@@ -710,7 +714,7 @@ let inline_choices config =
         | '^' -> nested_emphasis config <|> superscript config
         | '$'  -> latex_fragment config
         | '\\' -> latex_fragment config <|> entity
-        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie
+        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie <|> inline_hiccup
         | '<'  -> quick_link config <|> timestamp <|> email
         | '{'  -> macro
         | '!'  -> markdown_image config

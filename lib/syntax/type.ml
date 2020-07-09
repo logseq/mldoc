@@ -78,6 +78,7 @@ and t =
   | Table of table  (** A block *)
   | Comment of string           (** Comment *)
   | Raw_Html of string
+  | Hiccup of string
 [@@deriving yojson]
 
 and blocks = t list [@@deriving yojson]
