@@ -26,7 +26,7 @@ let match_tag tag open_tag close_tag =
             parse))
 
 let element =
-  string "[:" *> take_till1 (fun c -> is_space c || c == ']')
+  string "[:" *> take_till1 (fun c -> is_space c || c == ']' || c == '.' || c == '#')
   >>= fun tag ->
   (if Raw_html.known_tag tag then
      return tag
