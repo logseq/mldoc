@@ -736,7 +736,7 @@ let inline_choices config =
         | '$'  -> latex_fragment config
         | '\\' -> (org_hard_breakline >>| fun _ -> Hard_Break_Line)
                   <|> latex_fragment config <|> entity
-        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie
+        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie <|> inline_hiccup
         | '<'  -> target <|> radio_target <|> timestamp <|> email
         | '{'  -> macro
         | '!'  -> markdown_image config
