@@ -24,8 +24,8 @@ let interrupt_parsers config =
   ; Paragraph.sep
   ; Table.parse config
   ; Latex_env.parse config
-  ; Lists.parse config (list_content_parsers config)
   ; Drawer.parse
+  ; Lists.parse config (list_content_parsers config)
   ; Block.parse config
   ; Hr.parse config
   ; Block.results
