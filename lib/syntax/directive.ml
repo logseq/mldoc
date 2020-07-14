@@ -18,5 +18,5 @@ let parse =
   let p =
     lift2 (fun name value -> [Directive (name, value)])
       (between_string "#+" ":" (take_while1 (fun c -> c <> ':' && non_eol c)))
-      (spaces *> line) in
+      (spaces *> optional_line) in
   between_eols p
