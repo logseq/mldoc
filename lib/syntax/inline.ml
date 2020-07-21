@@ -354,15 +354,35 @@ let latex_fragment config =
 (*
    Define: #+MACRO: demo =$1= ($1)
    Usage:  {{{demo(arg1, arg2, ..., argn)}}}
+   or
+   {{{demo arg1, arg2, ..., argn}}}
 *)
+let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
+
 let macro =
-  lift2
-    (fun name arguments ->
-       let arguments = String.split_on_char ',' arguments in
-       let arguments = List.map String.trim arguments in
-       Macro {name; arguments} )
-    (string "{{{" *> take_while1 (fun c -> c <> '(') <* char '(')
-    (take_while1 (fun c -> c <> ')') <* string ")}}}")
+  between_string "{{{" "}}}"
+    ( take_while1 (function '}' | '\r' | '\n' -> false | _ -> true)
+      >>= fun s ->
+      match parse_string macro_name s with
+      | Ok name ->
+        let l = String.length s in
+        let args = String.sub s (String.length name) (l - String.length name) in
+        let l = String.length args in
+        if String.length args == 0 then
+          return (Macro {name; arguments = []})
+        else
+          let args = if String.get args 0 == '(' then
+              safe_sub args 1 (l - 2)
+            else if String.get args 0 == ' ' then
+              safe_sub args 1 (l - 1)
+            else
+              args in
+          let arguments = String.split_on_char ',' args in
+          let arguments = List.map String.trim arguments in
+          return (Macro {name; arguments})
+      | Error _e ->
+        fail "macro name"
+    )
 
 let date_time close_char ~active typ =
   let open Timestamp in
