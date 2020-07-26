@@ -253,11 +253,17 @@ let entity =
 (* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
 let gen_script config s f =
+  let is_markdown = match config.format with
+    | "Markdown" -> true
+    | _ -> false in
+  let p1 = if is_markdown then
+      fail "markdown subscript with only _" else
+      (string s *> take_while1 (fun c -> non_space c)) in
   let p = many1 (choice [(emphasis config); plain config; whitespaces; entity]) in
   (string (s ^ "{") *> take_while1 (fun c -> non_eol c && c <> '}')
    <* char '}')
   <|>
-  (string s *> take_while1 (fun c -> non_space c))
+  p1
   >>| fun s ->
   match parse_string p s with
   | Ok result -> f result
