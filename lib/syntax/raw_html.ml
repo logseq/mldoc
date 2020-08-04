@@ -25,7 +25,7 @@ let known_tags =
    "s"; "samp"; "script"; "section"; "select"; "small"; "source"; "span"; "strong"; "style"; "sub"; "sup";
    "table"; "tbody"; "td"; "template"; "textarea"; "tfoot"; "th"; "thead"; "time"; "title"; "tr"; "track";
    "u"; "ul";
-   "var"; "video";
+   "var"; "video"; "details"; "summary"
    "wbr"]
 
 let known_tag s =
