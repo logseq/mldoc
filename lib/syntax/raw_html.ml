@@ -40,7 +40,6 @@ let match_tag tag open_tag close_tag left_char =
           let level_without_attrs = count_substring s open_tag in
           let level_with_attrs = count_substring s (left_char ^ tag ^ " ") in
           let level = level_without_attrs + level_with_attrs in
-          let _ = Printf.printf "Html tag level: %d, tag: %s, content: %s\n" level tag s in
           let _ = level_ref := !level_ref + level - 1 in
           let _ = s_ref := !s_ref ^ s ^ close_tag in
           if !level_ref <= 0 then
