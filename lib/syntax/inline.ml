@@ -618,9 +618,6 @@ let org_link config =
   let label_part = take_while (fun c -> c <> ']') <* string "]]" in
   lift2
     (fun url label ->
-       print_endline url;
-       print_bool (String.length url > 5);
-       print_bool (String.sub url 0 5 == "file:");
        let url =
          if (String.length url > 5) && (String.sub url 0 5 = "file:") then File url
          else if label = "" then Search url
