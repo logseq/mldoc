@@ -543,6 +543,7 @@ let concat_plains config inlines =
     ) [] inlines in
   List.rev l
 
+
 (* link *)
 (* 1. [label](url)
    2. [label](url "title"), for example:
@@ -557,8 +558,9 @@ let markdown_link config =
   lift2
     (fun label url ->
        let (url, title) = split_first '"' url in
+       let lowercased_url = String.lowercase url in
        let url =
-         if (not (String.equal url "")) && (url.[0] = '/' || url.[0] = '.') then File url
+         if (String.length url > 3) && (ends_with lowercased_url ".md" || ends_with lowercased_url ".markdown") then File url
          else
            try
              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
@@ -588,7 +590,9 @@ let markdown_image config =
   lift2
     (fun label url ->
        let url =
-         if url.[0] = '/' || url.[0] = '.' then File url
+         if List.exists (ends_with (String.lowercase_ascii url))
+             [".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp"]
+         then File url
          else
            try
              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
@@ -614,9 +618,12 @@ let org_link config =
   let label_part = take_while (fun c -> c <> ']') <* string "]]" in
   lift2
     (fun url label ->
+       print_endline url;
+       print_bool (String.length url > 5);
+       print_bool (String.sub url 0 5 == "file:");
        let url =
-         if label = "" then Search url
-         else if url.[0] = '/' || url.[0] = '.' then File url
+         if (String.length url > 5) && (String.sub url 0 5 = "file:") then File url
+         else if label = "" then Search url
          else
            try
              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->

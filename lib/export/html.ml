@@ -99,7 +99,7 @@ and inline config t =
     let href = Inline.string_of_url url in
     (* If it is an image *)
     if List.exists (ends_with href)
-        [".png"; ".jpg"; ".jpeg"; "svg"; "ico"; ".gif"; ".bmp"] then
+        [".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp"] then
       handle_image_link url href label
     else
       let href = match url with
