@@ -9,12 +9,20 @@ open Conf
 *)
 
 (* todo keywords *)
-let marker = ws *>
-             (string "TODO" <|> string "DOING" <|> string "WAITING"
-              <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
-              <|> string "STARTED" <|> string "IN-PROGRESS"
-              <|> string "NOW" <|> string "LATER"
-             ) <* ws
+let marker =
+  string "TODO" <|> string "DOING" <|> string "WAITING"
+  <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
+  <|> string "STARTED" <|> string "IN-PROGRESS"
+  <|> string "NOW" <|> string "LATER"
+  >>= fun s ->
+  peek_char >>= function
+  | None -> return s
+  | Some c ->
+    if c == ' ' then
+      return s
+    else
+      fail "Marker should followed by some spaces"
+
 let org_level = take_while1 (fun c -> c = '*')
 
 let level config =
@@ -22,7 +30,7 @@ let level config =
   | "Org" -> org_level
   | "Markdown" -> Markdown_level.parse
 
-let priority = (string "[#" *> any_char <* char ']') <* ws
+let priority = string "[#" *> any_char <* char ']'
 
 let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':' && non_space_eol x))
 
@@ -84,9 +92,9 @@ let parse config =
          [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
       pos
       (level config <?> "Heading level")
-      (optional (marker <?> "Heading marker"))
-      (optional (priority <?> "Heading priority"))
-      (optional (title <?> "Heading title")) in
+      (optional (ws *> marker <?> "Heading marker"))
+      (optional (ws *> priority <?> "Heading priority"))
+      (optional (ws *> title <?> "Heading title")) in
   optional eols *> p <* (end_of_line <|> end_of_input) <* optional eols
 
 (*
