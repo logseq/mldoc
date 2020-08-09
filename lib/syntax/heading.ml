@@ -22,14 +22,14 @@ let level config =
   | "Org" -> org_level
   | "Markdown" -> Markdown_level.parse
 
-let priority = ws *> (string "[#" *> any_char <* char ']')
+let priority = (string "[#" *> any_char <* char ']') <* ws
 
 let seperated_tags = sep_by (char ':') (take_while1 (fun x -> x <> ':' && non_space_eol x))
 
 let tags = char ':' *> seperated_tags <* char ':'
 
 (* not priority, tags, marker *)
-let title = ws *> take_while (function | '\r' | '\n' -> false | _ -> true)
+let title = take_while (function | '\r' | '\n' -> false | _ -> true)
 
 let is_blank s =
   let n = String.length s in
