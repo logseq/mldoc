@@ -14,7 +14,7 @@ let marker = ws *>
               <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
               <|> string "STARTED" <|> string "IN-PROGRESS"
               <|> string "NOW" <|> string "LATER"
-             )
+             ) <* ws
 let org_level = take_while1 (fun c -> c = '*')
 
 let level config =
