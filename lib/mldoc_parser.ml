@@ -3,7 +3,7 @@ open Type
 open Prelude
 
 let list_content_parsers config =
-  many1 (choice [
+  let p = (choice [
       Table.parse config
     ; Block.parse config
     ; Latex_env.parse config
@@ -11,7 +11,9 @@ let list_content_parsers config =
     ; Block.results
     ; Comment.parse config
     ; Paragraph.parse
-    ])
+    ]) in
+  let p = Helper.with_pos_meta p in
+  many1 p
 
 (* Orders care *)
 let parsers config =
@@ -30,13 +32,7 @@ let parsers config =
   ; Paragraph.parse
   ]
 
-let with_pos_meta p =
-  lift3 (fun start_pos t end_pos ->
-      (t, {start_pos; end_pos}))
-    pos p pos
-
 let md_front_matter_parse parse =
-  (* with_pos_meta Markdown_front_matter.parse >>= *)
   Markdown_front_matter.parse >>=
   fun fm_result ->
   parse >>= fun result ->
@@ -44,9 +40,9 @@ let md_front_matter_parse parse =
 
 let parsers config =
   let parsers = parsers config in
-  let choices = choice parsers
-  in
-  let parse = many choices in
+  let choice = choice parsers in
+  let p = Helper.with_pos_meta choice in
+  let parse = many p in
   md_front_matter_parse parse
   <|> parse
 

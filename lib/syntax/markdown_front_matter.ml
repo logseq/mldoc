@@ -17,9 +17,11 @@ let kv_parse =
     char ':' <* spaces in
   let value_parser =
     ((take_till is_eol) <|> (end_of_input >>| fun _ -> "")) in
-  lift3 (fun key _sep value ->
+  let p = lift3 (fun key _sep value ->
       Directive (key, value))
-    key_parser sep_parser value_parser
+      key_parser sep_parser value_parser in
+  Helper.with_pos_meta p
+
 
 let parse =
   string "---" *> end_of_line *>

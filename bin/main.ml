@@ -24,7 +24,7 @@ let generate backend output opts filename =
   lines >>= function lines ->
     let config = {toc = true; heading_number = true; keep_line_break = false; format; } in
     let ast = parse config (String.concat "\n" lines) in
-    let document = Document.from_ast None ast in
+    let document = Document.from_as t None ast in
     let export = Exporters.find backend in
     let module E = (val export : Exporter.Exporter) in
     let output = if output = "" then E.default_filename filename else output in

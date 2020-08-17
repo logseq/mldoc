@@ -2,20 +2,20 @@ open Type
 
 type toc = toc_item list [@@deriving yojson]
 and toc_item =
-    { title: Inline.t list
-    ; level: int
-    ; anchor: string
-    ; numbering: int list
-    ; items: toc}
+  { title: Inline.t list
+  ; level: int
+  ; anchor: string
+  ; numbering: int list
+  ; items: toc}
 
 type directives = (string * string) list [@@deriving yojson]
 
 (**
     A document is:
-    - some content before the first heading
-    - a list of top-level headings
-    - a list of directive
-    - the footnotes inside the beginning of the file.
+   - some content before the first heading
+   - a list of top-level headings
+   - a list of directive
+   - the footnotes inside the beginning of the file.
 *)
 type t =
   { filename: string option (** The filename the document was parsed from *)
@@ -95,13 +95,11 @@ let from_ast filename ast =
     with Not_found -> None in
   let rec aut directives blocks toc = function
     | [] -> (List.rev directives, List.rev blocks, List.rev toc)
-    (* | (h, _pos_meta) :: tl -> *)
-    | h :: tl ->
+    | (h, pos_meta) :: tl ->
       let update_meta f =
         match blocks with
-        | [] -> h :: blocks
-        | Heading heading :: _tl -> Heading (f heading) :: List.tl blocks
-        | _ -> h :: blocks in
+        | (Heading heading, pos_meta) :: _tl -> (Heading (f heading), pos_meta) :: List.tl blocks
+        | _ -> (h, pos_meta) :: blocks in
       match h with
       | Directive (k, v) ->
         let directives = (k, v) :: directives in
@@ -110,10 +108,10 @@ let from_ast filename ast =
         let numbering = compute_heading_numbering level toc in
         let h = Heading {title; tags; marker; level; priority; anchor; meta; numbering=(Some numbering)} in
         let toc_item = {title; level; anchor; numbering; items = []} in
-        aut directives (h :: blocks) (toc_item :: toc) tl
+        aut directives ((h, pos_meta) :: blocks) (toc_item :: toc) tl
       | Paragraph inlines ->
         let blocks = (match get_timestamps inlines with
-            | [] -> (h :: blocks)
+            | [] -> ((h, pos_meta) :: blocks)
             | timestamps ->
               update_meta (fun heading ->
                   let timestamps' = List.append timestamps heading.meta.timestamps in
@@ -130,7 +128,7 @@ let from_ast filename ast =
                              properties = properties}}) in
         aut directives blocks toc tl
       | _ ->
-        aut directives (h :: blocks) toc tl
+        aut directives ((h, pos_meta) :: blocks) toc tl
   in
   let (directives, blocks, toc) = aut [] [] [] ast in
   { filename

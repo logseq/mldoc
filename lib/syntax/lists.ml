@@ -108,8 +108,8 @@ let definition config s =
       match name with
       | Some name -> begin
           let name = match parse_string (Inline.parse config) name with
-          | Ok inlines -> inlines
-          | Error _e -> [Inline.Plain name] in
+            | Ok inlines -> inlines
+            | Error _e -> [Inline.Plain name] in
           (name, description)
         end
       | None -> ([], description)
@@ -132,8 +132,11 @@ let rec list_parser config content_parsers items last_indent =
            let content = String.concat "\n" content in
            let (name, content) = if ordered then ([], content) else (definition config content) in
            let content = match parse_string content_parsers content with
-             | Ok result -> Paragraph.concat_paragraph_lines config result
-             | Error _e -> [Paragraph [Inline.Plain content]]
+             | Ok result ->
+               let result = Paragraph.concat_paragraph_lines config result in
+               List.map fst result
+             | Error _e ->
+               [Paragraph [Inline.Plain content]]
            in
            let item = {content; name; items=children; number; checkbox; indent; ordered} in
            items := item :: !items;
@@ -154,9 +157,9 @@ let parse_aux config content_parsers =
   optional eols *> p >>= fun result ->
   r := [];
   return @@ List result
-  <|>
-  let _ = r := [] in
-  fail "list"
+            <|>
+            let _ = r := [] in
+            fail "list"
 
 let md_definition config =
   Markdown_definition.parse config >>= fun result ->

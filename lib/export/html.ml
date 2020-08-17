@@ -429,7 +429,8 @@ module HtmlExporter = struct
      *   | Some s -> Xml.block "h1" ~attr:["class", "title"]
      *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
 
-    let blocks = blocks config doc.blocks in
+    let doc_blocks = List.map fst doc.blocks in
+    let blocks = blocks config doc_blocks in
     let blocks = if Conf.(config.toc) then ((toc config doc.toc) :: blocks) else blocks in
     let body = [Xml.raw ("<!-- directives: " ^ (directives_to_string doc.directives) ^ " -->\n");
                 Xml.block "div" ~attr:[("id", "content")] blocks] in
