@@ -124,4 +124,4 @@ let parse config =
         extract_col_row (Some h1) groups
     in
     let col_groups = build_col_groups col_groups in
-    return [Table {header; groups; col_groups}]
+    return @@ Table {header; groups; col_groups}

@@ -8,7 +8,7 @@ open Conf
 let sep =
   eols >>= fun s ->
   if String.length s >= 2 then
-    return [Paragraph_Sep]
+    return Paragraph_Sep
   else
     fail "only 1 eol"
 

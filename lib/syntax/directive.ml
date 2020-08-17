@@ -25,7 +25,7 @@ let name =
 
 let parse =
   let p =
-    lift2 (fun name value -> [Directive (name, value)])
+    lift2 (fun name value -> Directive (name, value))
       name
       (spaces *> optional_line) in
   between_eols p

@@ -153,14 +153,14 @@ let parse_aux config content_parsers =
   let p = list_parser config content_parsers r 0 in
   optional eols *> p >>= fun result ->
   r := [];
-  return [List result]
+  return @@ List result
   <|>
   let _ = r := [] in
   fail "list"
 
 let md_definition config =
   Markdown_definition.parse config >>= fun result ->
-  return [List result]
+  return @@ List result
 
 let parse config content_parsers =
   match config.format with

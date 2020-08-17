@@ -15,7 +15,7 @@ open Conf
 *)
 
 let results =
-  spaces *> string "#+RESULTS:" >>= fun _ -> return [Results]
+  spaces *> string "#+RESULTS:" >>= fun _ -> return Results
 
 let verbatim =
   lines_starts_with (char ':') <?> "verbatim"
@@ -47,7 +47,7 @@ let fenced_code_block =
         List.map (fun line ->
             Prelude.safe_sub line indent (String.length line - indent)
           ) lines in
-  [Src {language; options=None; lines}]
+  Src {language; options=None; lines}
 
 let block_name_options_parser =
   lift2 (fun name options ->
@@ -130,33 +130,33 @@ let block_parse config = fix (fun parse ->
         (match name with
          | "src" ->
            let (language, options) = separate_name_options options in
-           [Src {language; options; lines}]
-         | "example" -> [Example lines]
+           Src {language; options; lines}
+         | "example" -> Example lines
          | "quote" ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers config parse) content with
              | Ok result -> result
              | Error _e -> [] in
-           [Quote (List.concat result)]
+           Quote (List.concat result)
          | "export" ->          (* export html, etc *)
            let (name, options) = separate_name_options options in
            let name = match name with None -> "" | Some s -> s in
            let content = String.concat "\n" lines in
-           [Export (name, options, content)]
+           Export (name, options, content)
          | "comment" ->
-           [CommentBlock lines]
+           CommentBlock lines
          | _ ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers config parse) content with
              | Ok result -> List.concat result
              | Error _e -> [] in
-           [Custom (name, options, result, content)]
+           Custom (name, options, result, content)
         )
       | ':' ->                      (* verbatim block *)
         begin match config.format with
           | "Org" ->
             verbatim >>|
-            fun lines -> [Example lines]
+            fun lines -> Example lines
           | "Markdown" ->
             fail "block"
         end
@@ -167,13 +167,13 @@ let block_parse config = fix (fun parse ->
         let result = match parse_string (block_content_parsers config parse) content with
           | Ok result -> result
           | Error _e -> [] in
-        [Quote (List.concat result)]
+        Quote (List.concat result)
       | '`' | '~' ->
         fenced_code_block
       | '<' ->
-        Raw_html.parse >>| fun s -> [Raw_Html s]
+        Raw_html.parse >>| fun s -> Raw_Html s
       | '[' ->
-        Hiccup.parse >>| fun s -> [Hiccup s]
+        Hiccup.parse >>| fun s -> Hiccup s
       | _ -> fail "block" in
     between_eols p)
 

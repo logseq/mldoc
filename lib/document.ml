@@ -95,7 +95,7 @@ let from_ast filename ast =
     with Not_found -> None in
   let rec aut directives blocks toc = function
     | [] -> (List.rev directives, List.rev blocks, List.rev toc)
-    | h :: tl ->
+    | (h, _pos_meta) :: tl ->
       let update_meta f =
         match blocks with
         | [] -> h :: blocks
@@ -122,7 +122,7 @@ let from_ast filename ast =
 
           ) in
         aut directives blocks toc tl
-      | Property_Drawer (properties, _start_pos, _end_pos) ->
+      | Property_Drawer (properties) ->
         let blocks = update_meta (fun heading ->
             {heading with meta =
                             {heading.meta with

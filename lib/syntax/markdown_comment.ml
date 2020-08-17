@@ -20,11 +20,11 @@ let html_comment =
         String.equal (String.trim line) prefix) "markdown_comment"
     >>= fun lines ->
     let content = String.concat "\n" lines in
-    return [Comment content]
+    return @@ Comment content
 
 (* [//]: #  *)
 let comment =
   let prefix = optional spaces *> string "[//]: #" <* optional spaces in
-  lift2 (fun _ s -> [Comment s] ) prefix line
+  lift2 (fun _ s -> Comment s) prefix line
 
 let parse = choice [html_comment; comment]

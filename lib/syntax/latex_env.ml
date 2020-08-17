@@ -57,4 +57,4 @@ let env_name_options_parser =
 let parse _config =
   spaces *> env_name_options_parser >>= fun (name, options) ->
   end_string ("\\end{" ^ name ^ "}") ~ci:true (fun s ->
-      [Latex_Environment (String.lowercase_ascii name, options, s)])
+      Latex_Environment (String.lowercase_ascii name, options, s))

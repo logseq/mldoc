@@ -7,7 +7,7 @@ let org_parse =
   let p =
     (char '#' <* ws) *>
     line >>= function s ->
-      return [Comment s]
+      return @@ Comment s
   in between_eols p
 
 let parse config =

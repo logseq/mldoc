@@ -1,4 +1,7 @@
 type inline_list = Inline.t list [@@deriving yojson]
+type pos_meta = { start_pos: int
+                ; end_pos: int} [@@deriving yojson]
+
 type heading =
   { title: inline_list  (** The title as inline formatted content *)
   ; tags: string list  (** The tags set by the user *)
@@ -10,8 +13,7 @@ type heading =
   ; meta: meta
   } [@@deriving yojson]
 and meta =
-  { pos: int
-  ; timestamps: Inline.timestamp list
+  { timestamps: Inline.timestamp list
   ; properties: (string * string) list  (** The properties of the heading *)} [@@deriving yojson]
 
 and list_item =
@@ -71,7 +73,7 @@ and t =
       \end{foo} v}
   *)
   | Drawer of string * string list  (** A drawer *)
-  | Property_Drawer of (string * string) list * int * int  (** A property drawer *)
+  | Property_Drawer of (string * string) list (** A property drawer *)
   | Footnote_Definition of string * Inline.t list
   (** The definition of a footnote : name and contents *)
   | Horizontal_Rule  (** Horizontal rule *)
@@ -81,4 +83,5 @@ and t =
   | Hiccup of string
 [@@deriving yojson]
 
-and blocks = t list [@@deriving yojson]
+and t_with_pos_meta = t * pos_meta [@@deriving yojson]
+and blocks = t_with_pos_meta list [@@deriving yojson]

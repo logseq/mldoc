@@ -58,8 +58,8 @@ let anchor_link s =
   Prelude.explode (String.trim s) |> List.map map_char |> String.concat ""
 
 let parse config =
-  let p = lift5
-      (fun pos level marker priority title ->
+  let p = lift4
+      (fun level marker priority title ->
          let level = String.length level in
          let title = match title with
            | None -> []
@@ -88,9 +88,8 @@ let parse config =
 
              | _ -> (title, []) in
          let anchor = anchor_link (Inline.asciis title) in
-         let meta = { timestamps = []; properties = []; pos} in
-         [Heading {level; marker; priority; title; tags; anchor; meta; numbering=None}] )
-      pos
+         let meta = { timestamps = []; properties = []} in
+         Heading {level; marker; priority; title; tags; anchor; meta; numbering=None} )
       (level config <?> "Heading level")
       (optional (ws *> marker <?> "Heading marker"))
       (optional (ws *> priority <?> "Heading priority"))
