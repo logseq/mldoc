@@ -10,3 +10,4 @@ _tags
 *.merlin
 *.install
 /dune-workspace
+examples/syntax.html

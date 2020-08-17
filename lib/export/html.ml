@@ -224,7 +224,7 @@ let heading config {title; tags; marker; level; priority; anchor; meta; numberin
            tags)
   in
   Xml.block (Printf.sprintf "h%d" level)
-    ~attr:["id", anchor; "start-pos", (string_of_int meta.pos)]
+    ~attr:["id", anchor;]
     (numbering :: marker :: priority :: map_inline config title @ [tags])
 
 let rec list_item config x =

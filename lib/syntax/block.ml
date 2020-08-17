@@ -68,14 +68,7 @@ let list_content_parsers config block_parse =
     ; Hr.parse config
     ; results
     ; Comment.parse config
-    ; Paragraph.parse config [ Table.parse config
-                             ; Drawer.parse
-                             ; block_parse
-                             ; Directive.parse
-                             ; Latex_env.parse config
-                             ; Hr.parse config
-                             ; results
-                             ; Comment.parse config]
+    ; Paragraph.parse
     ])
 
 let block_content_parsers config block_parse =
@@ -90,15 +83,7 @@ let block_content_parsers config block_parse =
     ; Hr.parse config
     ; results
     ; Comment.parse config
-    ; Paragraph.parse config [ Table.parse config
-                             ; Lists.parse config list_content_parser
-                             ; Drawer.parse
-                             ; block_parse
-                             ; Directive.parse
-                             ; Latex_env.parse config
-                             ; Hr.parse config
-                             ; results
-                             ; Comment.parse config]
+    ; Paragraph.parse
     ])
 
 let separate_name_options = function
@@ -135,9 +120,9 @@ let block_parse config = fix (fun parse ->
          | "quote" ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers config parse) content with
-             | Ok result -> result
+             | Ok result -> Paragraph.concat_paragraph_lines config result
              | Error _e -> [] in
-           Quote (List.concat result)
+           Quote result
          | "export" ->          (* export html, etc *)
            let (name, options) = separate_name_options options in
            let name = match name with None -> "" | Some s -> s in
@@ -148,7 +133,7 @@ let block_parse config = fix (fun parse ->
          | _ ->
            let content = String.concat "\n" lines in
            let result = match parse_string (block_content_parsers config parse) content with
-             | Ok result -> List.concat result
+             | Ok result -> Paragraph.concat_paragraph_lines config result
              | Error _e -> [] in
            Custom (name, options, result, content)
         )
@@ -165,9 +150,9 @@ let block_parse config = fix (fun parse ->
         fun lines ->
         let content = String.concat "\n" lines in
         let result = match parse_string (block_content_parsers config parse) content with
-          | Ok result -> result
+          | Ok result -> Paragraph.concat_paragraph_lines config result
           | Error _e -> [] in
-        Quote (List.concat result)
+        Quote result
       | '`' | '~' ->
         fenced_code_block
       | '<' ->

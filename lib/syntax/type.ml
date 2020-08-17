@@ -45,6 +45,7 @@ and code_block =
 
 and t =
     Paragraph of Inline.t list  (** A paragraph containing only inline text *)
+  | Paragraph_line of string    (** Internal usage *)
   | Paragraph_Sep
   | Heading of heading  (** A heading *)
   | List of list_item list  (** A list [item] *)
@@ -84,4 +85,5 @@ and t =
 [@@deriving yojson]
 
 and t_with_pos_meta = t * pos_meta [@@deriving yojson]
-and blocks = t_with_pos_meta list [@@deriving yojson]
+(* and blocks = t_with_pos_meta list [@@deriving yojson] *)
+and blocks = t list [@@deriving yojson]

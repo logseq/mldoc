@@ -31,4 +31,4 @@ let parse = many1 (single_line <* (end_of_line <|> end_of_input) <* optional eol
       else
         c
     ) lines in
-  return [Example lines]
+  return @@ Example lines

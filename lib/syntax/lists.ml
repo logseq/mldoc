@@ -132,7 +132,7 @@ let rec list_parser config content_parsers items last_indent =
            let content = String.concat "\n" content in
            let (name, content) = if ordered then ([], content) else (definition config content) in
            let content = match parse_string content_parsers content with
-             | Ok result -> List.concat result
+             | Ok result -> Paragraph.concat_paragraph_lines config result
              | Error _e -> [Paragraph [Inline.Plain content]]
            in
            let item = {content; name; items=children; number; checkbox; indent; ordered} in

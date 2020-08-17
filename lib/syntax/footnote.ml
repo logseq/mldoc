@@ -60,4 +60,4 @@ let definition_parse config =
     name_part footnote_definition
 
 let parse config =
-  many1 (definition_parse config <* (optional eols))
+  definition_parse config <* (optional eols)

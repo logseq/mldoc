@@ -18,7 +18,7 @@ let kv_parse =
   let value_parser =
     ((take_till is_eol) <|> (end_of_input >>| fun _ -> "")) in
   lift3 (fun key _sep value ->
-      [Directive (key, value)])
+      Directive (key, value))
     key_parser sep_parser value_parser
 
 let parse =

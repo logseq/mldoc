@@ -1,5 +1,6 @@
 open Angstrom
 open Type
+open Prelude
 
 let list_content_parsers config =
   many1 (choice [
@@ -9,17 +10,11 @@ let list_content_parsers config =
     ; Hr.parse config
     ; Block.results
     ; Comment.parse config
-    ; Paragraph.parse config [ Paragraph.sep
-                             ; Table.parse config
-                             ; Block.parse config
-                             ; Block.results
-                             ; Latex_env.parse config
-                             ; Hr.parse config
-                             ; Comment.parse config]
+    ; Paragraph.parse
     ])
 
 (* Orders care *)
-let interrupt_parsers config =
+let parsers config =
   [ Directive.parse
   ; Heading.parse config
   ; Paragraph.sep
@@ -32,6 +27,7 @@ let interrupt_parsers config =
   ; Block.results
   ; Footnote.parse config
   ; Comment.parse config
+  ; Paragraph.parse
   ]
 
 let with_pos_meta p =
@@ -47,7 +43,7 @@ let md_front_matter_parse parse =
   return (List.append fm_result result)
 
 let parsers config =
-  let parsers = List.append (interrupt_parsers config) [Paragraph.parse config (interrupt_parsers config)] in
+  let parsers = parsers config in
   let choices = choice parsers
   in
   let parse = many choices in
@@ -56,7 +52,8 @@ let parsers config =
 
 let parse config input =
   match parse_string (parsers config) input with
-  | Ok result -> List.concat result
+  | Ok result ->
+    Paragraph.concat_paragraph_lines config result
   | Error err -> failwith err
 
 let load_file f =

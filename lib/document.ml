@@ -95,7 +95,8 @@ let from_ast filename ast =
     with Not_found -> None in
   let rec aut directives blocks toc = function
     | [] -> (List.rev directives, List.rev blocks, List.rev toc)
-    | (h, _pos_meta) :: tl ->
+    (* | (h, _pos_meta) :: tl -> *)
+    | h :: tl ->
       let update_meta f =
         match blocks with
         | [] -> h :: blocks

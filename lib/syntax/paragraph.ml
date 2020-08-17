@@ -2,6 +2,7 @@ open Angstrom
 open Parsers
 open Type
 open Conf
+open Prelude
 
 (* inline and footnotes *)
 
@@ -19,54 +20,26 @@ let trim_last_space s =
   else
     s
 
-let parse_paragraph config interrupt_parsers lines =
-  let open List in
-  let inline_parse () =
-    let lines = List.map (fun (s, b) -> if b then s else s ^ " ") (rev !lines) in
-    let content = String.concat "" lines in
-    let content = trim_last_space content in
-    match parse_string (Inline.parse config) content with
-    | Ok result -> Paragraph result
-    | Error _e -> Paragraph [Inline.Plain content] in
-  fix (fun parse ->
-      Inline.break_or_line >>= fun line ->
-      let hard_break_inline = "\\\n" in
-      let () = match line with
-        | Inline.Plain s ->
-          let hard_break = Prelude.ends_with s "\\" in
-          let item = if hard_break then
-              let line = Prelude.safe_sub s 0 (String.length s - 2) in
-              (line, false)
-            else (s, false) in
-          lines := item :: !lines;
-          if hard_break then
-            lines := (hard_break_inline, true) :: !lines
-        | Inline.Hard_Break_Line ->
-          lines := (hard_break_inline, true) :: !lines
-        | Inline.Break_Line ->
-          if config.keep_line_break then
-            lines := ("\n", true) :: !lines
-          else
-            ()
-        | _ ->
-          () in
-      (* parse plain lines *)
-      (choice interrupt_parsers >>= fun blocks ->
-       return [inline_parse () ; hd blocks])
-      <|>
-      parse
-      <|>
-      return [inline_parse ()]
-    )
+let parse =
+  (line <* optional eols) >>| fun l -> Paragraph_line l
 
-(* TODO: Optimization: remove interrupt_parsers *)
-let parse config interrupt_parsers =
-  let lines = ref [] in
-  let p = parse_paragraph config interrupt_parsers lines in
-  optional eols *>
-  p >>= fun result ->
-  let _ = lines := [] in
-  return result
-  <|>
-  let _ = lines := [] in
-  fail "paragraph parse"
+let concat_paragraph_lines config l =
+  let l = List.append l [Horizontal_Rule] in
+  let (l, _) = List.fold_left (fun (acc, lines) item ->
+      match item with
+      | Paragraph_line line ->
+        (acc, line :: lines)
+      | other ->
+        if List.length lines > 0 then
+          let lines = List.rev lines in
+          let content = (String.concat "\n" lines) in
+          let paragraph = match parse_string (Inline.parse config) content with
+            | Ok result -> Paragraph result
+            | Error _ -> Paragraph [Inline.Plain content] in
+          let acc = other :: paragraph :: acc in
+          (acc, [])
+        else
+          (other :: acc, [])
+    ) ([], []) l in
+  let l = List.rev l in
+  drop_last 1 l
