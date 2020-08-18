@@ -7,11 +7,7 @@ open Prelude
 (* inline and footnotes *)
 
 let sep =
-  eols >>= fun s ->
-  if String.length s >= 2 then
-    return Paragraph_Sep
-  else
-    fail "only 1 eol"
+  take_while1 is_eol >>| fun _ -> Paragraph_Sep
 
 let trim_last_space s =
   let n = String.length s in
