@@ -70,6 +70,7 @@ and t =
   | Spaces of string
   | Plain of string
   | Link of link
+  | Nested_link of Nested_link.t
   | Target of string
   | Subscript of t list
   | Superscript of t list
@@ -611,6 +612,8 @@ let markdown_image config =
 
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
+(* 3. [[ecosystem [[great]] [[Questions]]]] *)
+
 let org_link config =
   let url_part =
     string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
@@ -639,6 +642,9 @@ let link config =
   match config.format with
   | "Org" -> org_link config
   | "Markdown" -> markdown_link config <|> org_link config (* page reference *)
+
+let nested_link _config =
+  Nested_link.parse >>| fun s -> Nested_link s
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') in
@@ -670,7 +676,7 @@ let incr_id id =
 
 let footnote_inline_definition config ?(break = false) definition =
   let choices =
-    [(markdown_image config); (link config); email; (link_inline config); radio_target; target; latex_fragment config; (nested_emphasis config); entity;
+    [(markdown_image config); (nested_link config); (link config); email; (link_inline config); radio_target; target; latex_fragment config; (nested_emphasis config); entity;
      (code config); (subscript config); (superscript config); plain config; whitespaces;] in
   let choices = if break then
       List.cons hard_breakline choices else choices in
@@ -744,7 +750,7 @@ let inline_choices config =
         | '^' -> nested_emphasis config <|> superscript config
         | '$'  -> latex_fragment config
         | '\\' -> latex_fragment config <|> entity
-        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie <|> inline_hiccup
+        | '['  -> nested_link config <|> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie <|> inline_hiccup
         | '<'  -> quick_link config <|> timestamp <|> email
         | '{'  -> macro
         | '!'  -> markdown_image config
@@ -766,7 +772,7 @@ let inline_choices config =
         | '$'  -> latex_fragment config
         | '\\' -> (org_hard_breakline >>| fun _ -> Hard_Break_Line)
                   <|> latex_fragment config <|> entity
-        | '['  -> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie <|> inline_hiccup
+        | '['  -> nested_link config <|> link config <|> timestamp <|> inline_footnote_or_reference config <|> statistics_cookie <|> inline_hiccup
         | '<'  -> target <|> radio_target <|> timestamp <|> email
         | '{'  -> macro
         | '!'  -> markdown_image config
