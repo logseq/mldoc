@@ -50,5 +50,9 @@ let parse =
         | Ok result -> result
         | Error _e -> [Label inner_s] in
       return @@ Nested_link {content = s; children = result}) >>= function
-  | Label l -> return {content = l; children = []}
-  | Nested_link l -> return l
+  | Label _l -> fail "nested link"
+  | Nested_link {content; children} ->
+    if List.length children <= 1 then
+      fail "nested link"
+    else
+      return @@ {content; children}
