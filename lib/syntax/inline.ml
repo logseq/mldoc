@@ -63,7 +63,6 @@ and t =
     Emphasis of emphasis
   | Break_Line
   | Hard_Break_Line
-  | Paragraph_Sep
   | Verbatim of string
   | Code of string
   | Tag of string

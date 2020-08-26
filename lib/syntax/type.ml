@@ -46,7 +46,7 @@ and code_block =
 and t =
     Paragraph of Inline.t list  (** A paragraph containing only inline text *)
   | Paragraph_line of string    (** Internal usage *)
-  | Paragraph_Sep
+  | Paragraph_Sep of int
   | Heading of heading  (** A heading *)
   | List of list_item list  (** A list [item] *)
   | Directive of string * string  (** A directive [name, value] *)

@@ -69,6 +69,7 @@ let list_content_parsers config block_parse =
     ; results
     ; Comment.parse config
     ; Paragraph.parse
+    ; Paragraph.sep
     ]) in
   let p = Helper.with_pos_meta p in
   many1 p
@@ -86,6 +87,7 @@ let block_content_parsers config block_parse =
     ; results
     ; Comment.parse config
     ; Paragraph.parse
+    ; Paragraph.sep
     ]) in
   let p = Helper.with_pos_meta p in
   many1 p
@@ -122,7 +124,7 @@ let block_parse config = fix (fun parse ->
            Src {language; options; lines}
          | "example" -> Example lines
          | "quote" ->
-           let content = String.concat "\n" lines in
+           let content = String.concat "" lines in
            let result = match parse_string (block_content_parsers config parse) content with
              | Ok result ->
                let result = Paragraph.concat_paragraph_lines config result in
@@ -132,12 +134,12 @@ let block_parse config = fix (fun parse ->
          | "export" ->          (* export html, etc *)
            let (name, options) = separate_name_options options in
            let name = match name with None -> "" | Some s -> s in
-           let content = String.concat "\n" lines in
+           let content = String.concat "" lines in
            Export (name, options, content)
          | "comment" ->
            CommentBlock lines
          | _ ->
-           let content = String.concat "\n" lines in
+           let content = String.concat "" lines in
            let result = match parse_string (block_content_parsers config parse) content with
              | Ok result ->
                let result =  Paragraph.concat_paragraph_lines config result in
@@ -156,7 +158,7 @@ let block_parse config = fix (fun parse ->
       | '>' ->
         md_blockquote >>|
         fun lines ->
-        let content = String.concat "\n" lines in
+        let content = String.concat "" lines in
         let result = match parse_string (block_content_parsers config parse) content with
           | Ok result ->
             let result = Paragraph.concat_paragraph_lines config result in

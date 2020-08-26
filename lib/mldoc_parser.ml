@@ -11,6 +11,7 @@ let list_content_parsers config =
     ; Block.results
     ; Comment.parse config
     ; Paragraph.parse
+    ; Paragraph.sep
     ]) in
   let p = Helper.with_pos_meta p in
   many1 p

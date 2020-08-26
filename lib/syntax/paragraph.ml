@@ -7,7 +7,7 @@ open Prelude
 (* inline and footnotes *)
 
 let sep =
-  take_while1 is_eol >>| fun _ -> Paragraph_Sep
+  take_while1 is_eol >>| fun s -> Paragraph_Sep (String.length s)
 
 let trim_last_space s =
   let n = String.length s in
@@ -17,19 +17,25 @@ let trim_last_space s =
     s
 
 let parse =
-  (line <* optional eols) >>| fun l -> Paragraph_line l
+  line >>| fun l -> Paragraph_line l
 
 let concat_paragraph_lines config l =
+  (* let s = Type.blocks_to_yojson l |> Yojson.Safe.to_string in *)
+  (* let _ = print_endline s in *)
   let l = List.append l [(Horizontal_Rule, {start_pos = 0; end_pos = 0})] in
   let (l, _, _, _) = List.fold_left (fun (acc, lines, pos1, pos2) item ->
       match item with
       | (Paragraph_line line, {start_pos; end_pos}) ->
         let start_pos = if pos1 = 0 then start_pos else pos1 in
         (acc, line :: lines, start_pos, end_pos)
+      | (Paragraph_Sep n, {start_pos; end_pos}) ->
+        let line = repeat n "\n" in
+        let line = String.concat "" line in
+        (acc, line :: lines, start_pos, end_pos)
       | (other, pos_meta) ->
         if List.length lines > 0 then
           let lines = List.rev lines in
-          let content = (String.concat "\n" lines) in
+          let content = (String.concat "" lines) in
           let paragraph = match parse_string (Inline.parse config) content with
             | Ok result -> Paragraph result
             | Error _ -> Paragraph [Inline.Plain content] in

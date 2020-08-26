@@ -152,10 +152,11 @@ let clear_parser_resource p r error =
 let between_lines ?trim:(trim=true) end_check error =
   let p lines =
     fix (fun body_parser ->
-        optional eols *> take_till1 is_eol <* optional eols >>= fun line ->
+        (line <|> (eol >>| fun _ -> "\n")) >>= fun line ->
         let line = if trim then String.trim line else line in
         if end_check line then
-          return (List.rev !lines)
+          let lines = (List.rev !lines) in
+          return lines
         else
           let _ = lines := line :: !lines in
           body_parser) in
