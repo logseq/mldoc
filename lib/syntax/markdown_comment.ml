@@ -19,7 +19,7 @@ let html_comment =
         let prefix = "-->" in
         String.equal (String.trim line) prefix) "markdown_comment"
     >>= fun lines ->
-    let content = String.concat "\n" lines in
+    let content = String.concat "" lines in
     return @@ Comment content
 
 (* [//]: #  *)
