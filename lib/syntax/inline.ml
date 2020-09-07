@@ -145,8 +145,8 @@ let code config =
   if is_markdown then p <|> markdown_escape_backticks else p
 
 (* TODO: optimization *)
-let org_plain_delims = [' '; '\\'; '_'; '^'; '[']
-let markdown_plain_delims = [' '; '\\'; '_'; '^'; '['; '*'; '^'; '~'; '`']
+let org_plain_delims = [' '; '\\'; '_'; '^'; '['; '$']
+let markdown_plain_delims = [' '; '\\'; '_'; '^'; '['; '*'; '^'; '~'; '`'; '$']
 (* replace list with a  *)
 let in_plain_delims config c =
   let plain_delims = match config.format with
