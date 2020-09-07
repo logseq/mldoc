@@ -343,7 +343,7 @@ let latex_fragment config =
       (* inline math *)
       take_while1 (fun x -> x <> '$' && x <> '\r' && x <> '\n')
       <* char '$'
-      >>| fun s -> Latex_Fragment (Inline (Char.escaped c ^ s))
+      >>| fun s -> Latex_Fragment (Inline (String.make 1 c ^ s))
   | '\\' ->
     (
       any_char
