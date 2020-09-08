@@ -3,6 +3,7 @@ open Parsers
 open Prelude
 open Type
 open Conf
+open Helper
 
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
@@ -123,8 +124,10 @@ let rec list_parser config content_parsers items last_indent =
        if last_indent > indent then
          terminator items       (* breakout *)
        else
-         let content_parser number checkbox =
-           content_parser config (list_parser config) content_parsers indent (ref []) >>= fun (content, children) ->
+         let content_parser number checkbox start_pos =
+           let p = content_parser config (list_parser config) content_parsers indent (ref []) in
+           let p = Helper.with_end_pos_meta p in
+           p >>= fun ((content, children), end_pos) ->
            let ordered =
              match number with Some _ -> true | None -> false
            in
@@ -139,14 +142,16 @@ let rec list_parser config content_parsers items last_indent =
                [Paragraph [Inline.Plain content]]
            in
            let item = {content; name; items=children; number; checkbox; indent; ordered} in
-           items := item :: !items;
+           let item_with_pos_meta = (item, {start_pos; end_pos}) in
+           items := item_with_pos_meta :: !items;
            list in
          Angstrom.take indent *> (* skip indent *)
+         pos >>= fun start_pos ->
          (format_checkbox_parser config indent >>= fun (number, checkbox) ->
           match number with
-          | None -> content_parser None checkbox
+          | None -> content_parser None checkbox start_pos
           | Some number ->
-            content_parser (Some (int_of_string number)) checkbox)
+            content_parser (Some (int_of_string number)) checkbox start_pos)
          <|>
          terminator items       (* breakout *)
       ))

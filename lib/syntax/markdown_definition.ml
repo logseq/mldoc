@@ -54,4 +54,5 @@ let definition_parse config =
   return list
 
 let parse config =
-  many1 (definition_parse config <* optional eols)
+  let p = Helper.with_pos_meta (definition_parse config <* optional eols) in
+  many1 p

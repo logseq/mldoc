@@ -249,7 +249,9 @@ let rec list_item config x =
     | _ -> (false, Xml.empty)
   in
   let items = if List.length x.items = 0 then Xml.empty
-    else Xml.block (list_element x.items) (concatmap (list_item config) x.items) in
+    else
+      let items = List.map fst x.items in
+      Xml.block (list_element items) (concatmap (list_item config) items) in
   match x.number with
   | None ->
     let block = match x.name with
@@ -317,7 +319,9 @@ and block config t =
   | Horizontal_Rule -> Xml.block "hr" []
   | Heading h ->
     heading config h
-  | List l -> Xml.block (list_element l) (concatmap (list_item config) l)
+  | List l ->
+    let l = List.map fst l in
+    Xml.block (list_element l) (concatmap (list_item config) l)
   | Table t -> table config t
   | Math s ->
     Xml.block "div" ~attr:["class", "mathblock"]

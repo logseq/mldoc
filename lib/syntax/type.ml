@@ -18,12 +18,15 @@ and meta =
 
 and list_item =
   { content: t list  (** The contents of the current item *)
-  ; items: list_item list
+  ; items: list_item_with_pos_meta list
   ; number: int option  (** Its number *)
   ; name: Inline.t list  (** Definition name *)
   ; checkbox: bool option  (** Was it checked *)
   ; indent: int (** Indentation of the current item. *)
   ; ordered: bool} [@@deriving yojson]
+
+and list_item_with_pos_meta =
+  list_item * pos_meta [@@deriving yojson]
 
 and table = { header: row option
             ; groups: group list (* rows groups *)
@@ -48,7 +51,7 @@ and t =
   | Paragraph_line of string    (** Internal usage *)
   | Paragraph_Sep of int
   | Heading of heading  (** A heading *)
-  | List of list_item list  (** A list [item] *)
+  | List of list_item_with_pos_meta list  (** A list [item] *)
   | Directive of string * string  (** A directive [name, value] *)
   | Math of string  (** Math, enclosed by $$ ... $$ *)
   | With_Keywords of (string * string) list * t  (** Keywords for a block *)
