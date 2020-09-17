@@ -1,6 +1,7 @@
 open Mldoc
 open Mldoc.Parser
 open Mldoc.Conf
+open Angstrom
 
 let ast_to_json ast =
   Type.blocks_to_yojson ast |> Yojson.Safe.to_string
@@ -23,6 +24,21 @@ let _ =
               parse config str |> ast_to_json |> Js.string
             with error ->
               print_endline (Printexc.to_string error);
+              input
+          end
+        | Error e ->
+          Js_of_ocaml.Js.string ("Config error: " ^ e)
+
+      method parseInlineJson input config_json =
+        let config_json = Js.to_string config_json in
+        let config_json = Yojson.Safe.from_string config_json in
+        match Conf.of_yojson config_json with
+        | Ok config -> begin
+            let str = Js.to_string input in
+            match parse_string (Mldoc.Inline.parse config) str with
+            | Ok result -> Mldoc.Type.inline_list_to_yojson result |> Yojson.Safe.to_string |> Js.string
+            | Error e ->
+              print_endline e;
               input
           end
         | Error e ->

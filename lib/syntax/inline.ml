@@ -366,8 +366,7 @@ let latex_fragment config =
 let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 
 let macro =
-  between_string "{{{" "}}}"
-    ( take_while1 (function '}' | '\r' | '\n' -> false | _ -> true)
+  let p = ( take_while1 (function '}' | '\r' | '\n' -> false | _ -> true)
       >>= fun s ->
       match parse_string macro_name s with
       | Ok name ->
@@ -388,7 +387,8 @@ let macro =
           return (Macro {name; arguments})
       | Error _e ->
         fail "macro name"
-    )
+    ) in
+  (between_string "{{{" "}}}" p) <|> (between_string "{{" "}}" p)
 
 let date_time close_char ~active typ =
   let open Timestamp in
