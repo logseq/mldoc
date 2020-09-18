@@ -11,7 +11,7 @@ open Conf
 (* todo keywords *)
 let marker =
   string "TODO" <|> string "DOING" <|> string "WAITING"
-  <|> string "WAIT" <|> string "DONE" <|> string "CANCELED"
+  <|> string "WAIT" <|> string "DONE" <|> string "CANCELED" <|> string "CANCELLED"
   <|> string "STARTED" <|> string "IN-PROGRESS"
   <|> string "NOW" <|> string "LATER"
   >>= fun s ->
