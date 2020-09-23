@@ -23,6 +23,10 @@ let verbatim =
 let md_blockquote =
   lines_starts_with (char '>') <?> "markdown blockquote"
 
+let displayed_math =
+  string "$$" *>
+  end_string "$$" (fun s -> Displayed_Math s)
+
 (* ``` json
  * {
  *   "firstName": "John",
@@ -167,6 +171,8 @@ let block_parse config = fix (fun parse ->
         Quote result
       | '`' | '~' ->
         fenced_code_block
+      | '$' ->
+        displayed_math
       | '<' ->
         Raw_html.parse >>| fun s -> Raw_Html s
       | '[' ->
