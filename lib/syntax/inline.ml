@@ -275,41 +275,6 @@ let subscript config =
 let superscript config =
   gen_script config "^" (fun x -> Superscript x)
 
-let nested_emphasis config =
-  let rec aux_nested_emphasis = function
-    | Plain s ->
-      Plain s
-    | Emphasis (typ, [Plain s]) as e ->
-      let parser = (many1 (choice [(emphasis config); (subscript config); (superscript config); plain config])) in
-      (match parse_string parser s with
-       | Ok [Plain _] -> e
-       | Ok result -> Emphasis (typ,
-                                List.map aux_nested_emphasis result)
-       | Error _error -> e)
-    | Emphasis (`Italic, [Emphasis (`Bold, _)]) as e ->
-      e
-    | Subscript _ as s ->
-      s
-    | Superscript _ as s ->
-      s
-    | _ ->
-      failwith "nested_emphasis" in
-  (emphasis config) >>= fun e ->
-  return (aux_nested_emphasis e)
-
-let statistics_cookie =
-  between_char '[' ']'
-    (take_while1 (fun c ->
-         if c = '/' || c = '%' || is_digit c then true else false ))
-  >>= fun s ->
-  try let cookie = Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) in
-    return (Cookie cookie)
-  with _ ->
-  try let cookie = Scanf.sscanf s "%d%%" (fun n -> Percent n) in
-    return (Cookie cookie)
-  with _ ->
-    fail "statistics_cookie"
-
 (*
    1. $content$, TeX delimiters for inline math.
    2. \( content \), LaTeX delimiters for inline math.
@@ -356,6 +321,162 @@ let latex_fragment config =
         end_string "\\)" (fun s -> Latex_Fragment (Inline s))
       | _ -> fail "latex fragment \\" )
   | _ -> fail "latex fragment"
+
+(* complex link, or auto link *)
+(* :// *)
+let link_inline _config =
+  let protocol_part = take_while1 is_letter <* string "://" in
+  let link_part =
+    take_while1 (fun c ->
+        non_space c && List.for_all (fun c' -> c <> c') link_delims )
+  in
+  lift2
+    (fun protocol link ->
+       Link
+         { label= [Plain (protocol ^ "://" ^ link)]
+         ; url= Complex {protocol; link= "//" ^ link}
+         ; title= None} )
+    protocol_part link_part
+
+let quick_link config =
+  between_char '<' '>' (link_inline config)
+
+(* Build direct links *)
+let concat_plains config inlines =
+  let l = List.fold_left (fun acc inline ->
+      match inline with
+      | Plain s ->
+        (match acc with
+         | [] -> [Plain s]
+         | (Plain s') :: tl ->
+           if starts_with s "//" then (* might be a direct link *)
+             let (l, r) = splitr non_space s' in
+             let (l', r') = splitl non_space s in
+             let link = r ^ l' in
+             match parse_string (link_inline config) link with
+             | Ok result ->
+               (Plain r') :: result :: (Plain l) :: tl
+             | Error _e ->
+               (Plain (s' ^ s)) :: tl
+           else
+             (Plain (s' ^ s)) :: tl
+         | _ ->
+           Plain s :: acc)
+      | other -> other :: acc
+    ) [] inlines in
+  List.rev l
+
+(* 1. [[url][label]] *)
+(* 2. [[search]] *)
+(* 3. [[ecosystem [[great]] [[Questions]]]] *)
+
+let org_link config =
+  let url_part =
+    string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
+  in
+  let label_part = take_while (fun c -> c <> ']') <* string "]]" in
+  lift2
+    (fun url label ->
+       let url =
+         if (String.length url > 5) && (String.sub url 0 5 = "file:") then File url
+         else if label = "" then Search url
+         else
+           try
+             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                 Complex {protocol; link} )
+           with _ -> Search url
+       in
+       let parser = (many1 (choice [(emphasis config); latex_fragment config; entity; (code config); (subscript config); (superscript config); plain config; whitespaces])) in
+       let label = match parse_string parser label with
+           Ok result -> concat_plains config result
+         | Error _e -> [Plain label] in
+       let title = None in
+       Link {label; url; title} )
+    url_part label_part
+
+(* link *)
+(* 1. [label](url)
+   2. [label](url "title"), for example:
+      My favorite search engine is [Duck Duck Go](https://duckduckgo.com "The best search engine for privacy").
+*)
+(* TODO: URI encode *)
+let markdown_link config =
+  let label_part = char '[' *> take_while (fun c -> c <> ']' ) <* (string "](") in
+  let url_part =
+    take_while (fun c -> c <> ')') <* string ")"
+  in
+  lift2
+    (fun label url ->
+       let (url, title) = split_first '"' url in
+       let lowercased_url = String.lowercase url in
+       let url =
+         if (String.length url > 3) && (ends_with lowercased_url ".md" || ends_with lowercased_url ".markdown") then File url
+         else
+           try
+             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                 Complex {protocol; link})
+           with _ -> Search url
+       in
+       let parser = (many1 (choice [(emphasis config); latex_fragment config;
+                                    entity; (code config); (subscript config);
+                                    (superscript config); plain config; whitespaces])) in
+       let label = match parse_string parser label with
+           Ok result -> concat_plains config result
+         | Error _e -> [Plain label] in
+       let title = if String.equal title "" || String.equal title "\"" then
+           None
+         else
+           Some (String.sub title 0 (String.length title - 1))
+       in
+       Link {label; url; title})
+    label_part url_part
+
+let link config =
+  match config.format with
+  | "Org" -> org_link config
+  | "Markdown" -> markdown_link config <|> org_link config (* page reference *)
+
+let nested_link _config =
+  Nested_link.parse >>| fun s -> Nested_link s
+
+let nested_emphasis config =
+  let rec aux_nested_emphasis = function
+    | Plain s ->
+      Plain s
+    | Emphasis (typ, [Plain s]) as e ->
+      let parser = (many1 (choice [(emphasis config); (subscript config); (superscript config); (link config); (nested_link config); plain config])) in
+      (match parse_string parser s with
+       | Ok [Plain _] -> e
+       | Ok result -> Emphasis (typ,
+                                List.map aux_nested_emphasis result)
+       | Error _error -> e)
+    | Emphasis (`Italic, [Emphasis (`Bold, _)]) as e ->
+      e
+    | Subscript _ as s ->
+      s
+    | Superscript _ as s ->
+      s
+    | Link _ as l  ->
+      l
+    | Nested_link _ as nl ->
+      nl
+    | _ ->
+      failwith "nested_emphasis" in
+  (emphasis config) >>= fun e ->
+  return (aux_nested_emphasis e)
+
+let statistics_cookie =
+  between_char '[' ']'
+    (take_while1 (fun c ->
+         if c = '/' || c = '%' || is_digit c then true else false ))
+  >>= fun s ->
+  try let cookie = Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) in
+    return (Cookie cookie)
+  with _ ->
+  try let cookie = Scanf.sscanf s "%d%%" (fun n -> Percent n) in
+    return (Cookie cookie)
+  with _ ->
+    fail "statistics_cookie"
 
 (*
    Define: #+MACRO: demo =$1= ($1)
@@ -499,88 +620,6 @@ let range =
 let timestamp =
   range <|> general_timestamp
 
-(* complex link, or auto link *)
-(* :// *)
-let link_inline _config =
-  let protocol_part = take_while1 is_letter <* string "://" in
-  let link_part =
-    take_while1 (fun c ->
-        non_space c && List.for_all (fun c' -> c <> c') link_delims )
-  in
-  lift2
-    (fun protocol link ->
-       Link
-         { label= [Plain (protocol ^ "://" ^ link)]
-         ; url= Complex {protocol; link= "//" ^ link}
-         ; title= None} )
-    protocol_part link_part
-
-let quick_link config =
-  between_char '<' '>' (link_inline config)
-
-(* Build direct links *)
-let concat_plains config inlines =
-  let l = List.fold_left (fun acc inline ->
-      match inline with
-      | Plain s ->
-        (match acc with
-         | [] -> [Plain s]
-         | (Plain s') :: tl ->
-           if starts_with s "//" then (* might be a direct link *)
-             let (l, r) = splitr non_space s' in
-             let (l', r') = splitl non_space s in
-             let link = r ^ l' in
-             match parse_string (link_inline config) link with
-             | Ok result ->
-               (Plain r') :: result :: (Plain l) :: tl
-             | Error _e ->
-               (Plain (s' ^ s)) :: tl
-           else
-             (Plain (s' ^ s)) :: tl
-         | _ ->
-           Plain s :: acc)
-      | other -> other :: acc
-    ) [] inlines in
-  List.rev l
-
-
-(* link *)
-(* 1. [label](url)
-   2. [label](url "title"), for example:
-      My favorite search engine is [Duck Duck Go](https://duckduckgo.com "The best search engine for privacy").
-*)
-(* TODO: URI encode *)
-let markdown_link config =
-  let label_part = char '[' *> take_while (fun c -> c <> ']' ) <* (string "](") in
-  let url_part =
-    take_while (fun c -> c <> ')') <* string ")"
-  in
-  lift2
-    (fun label url ->
-       let (url, title) = split_first '"' url in
-       let lowercased_url = String.lowercase url in
-       let url =
-         if (String.length url > 3) && (ends_with lowercased_url ".md" || ends_with lowercased_url ".markdown") then File url
-         else
-           try
-             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                 Complex {protocol; link})
-           with _ -> Search url
-       in
-       let parser = (many1 (choice [(nested_emphasis config); latex_fragment config;
-                                    entity; (code config); (subscript config);
-                                    (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label with
-           Ok result -> concat_plains config result
-         | Error _e -> [Plain label] in
-       let title = if String.equal title "" || String.equal title "\"" then
-           None
-         else
-           Some (String.sub title 0 (String.length title - 1))
-       in
-       Link {label; url; title})
-    label_part url_part
-
 (* TODO: make sure it's a proper image format. *)
 let markdown_image config =
   let label_part = string "![" *> take_while (fun c -> c <> ']') <* optional (string "](") in
@@ -608,42 +647,6 @@ let markdown_image config =
        let title = None in
        Link {label; url; title} )
     label_part url_part
-
-(* 1. [[url][label]] *)
-(* 2. [[search]] *)
-(* 3. [[ecosystem [[great]] [[Questions]]]] *)
-
-let org_link config =
-  let url_part =
-    string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
-  in
-  let label_part = take_while (fun c -> c <> ']') <* string "]]" in
-  lift2
-    (fun url label ->
-       let url =
-         if (String.length url > 5) && (String.sub url 0 5 = "file:") then File url
-         else if label = "" then Search url
-         else
-           try
-             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                 Complex {protocol; link} )
-           with _ -> Search url
-       in
-       let parser = (many1 (choice [(nested_emphasis config); latex_fragment config; entity; (code config); (subscript config); (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label with
-           Ok result -> concat_plains config result
-         | Error _e -> [Plain label] in
-       let title = None in
-       Link {label; url; title} )
-    url_part label_part
-
-let link config =
-  match config.format with
-  | "Org" -> org_link config
-  | "Markdown" -> markdown_link config <|> org_link config (* page reference *)
-
-let nested_link _config =
-  Nested_link.parse >>| fun s -> Nested_link s
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') in
