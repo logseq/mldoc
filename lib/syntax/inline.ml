@@ -301,12 +301,12 @@ let latex_fragment config =
     >>= fun c ->
     if c == '$' then
       (* displayed math *)
-      take_while1 (fun x -> x <> '$' && x <> '\r' && x <> '\n')
+      take_while (fun x -> x <> '$' && x <> '\r' && x <> '\n')
       <* string "$$"
       >>| fun s -> Latex_Fragment (Displayed s)
     else
       (* inline math *)
-      take_while1 (fun x -> x <> '$' && x <> '\r' && x <> '\n')
+      take_while (fun x -> x <> '$' && x <> '\r' && x <> '\n')
       <* char '$'
       >>| fun s -> Latex_Fragment (Inline (String.make 1 c ^ s))
   | '\\' ->
