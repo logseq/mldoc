@@ -3,6 +3,7 @@ open Parsers
 open Prelude
 open Type
 open Conf
+open Helper
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`
@@ -40,10 +41,11 @@ let fenced_language =
 let fenced_code_block =
   fenced_language
   >>= fun language ->
-  between_lines ~trim:false (fun line ->
+  let p = between_lines ~trim:false (fun line ->
       (starts_with (String.trim line) "```") || (starts_with (String.trim line) "~~~")
-    ) "fenced_code_block"
-  >>| fun lines ->
+    ) "fenced_code_block" in
+  let p' = with_pos_meta p in
+  p' >>| fun (lines, {start_pos; end_pos}) ->
   (* clear indents *)
   let lines = if lines = [] then [] else
       let indent = get_indent (List.hd lines) in
@@ -51,7 +53,8 @@ let fenced_code_block =
         List.map (fun line ->
             Prelude.safe_sub line indent (String.length line - indent)
           ) lines in
-  Src {language; options=None; lines}
+  let pos_meta = {start_pos; end_pos = end_pos - 3} in
+  Src {language; options=None; lines; pos_meta}
 
 let block_name_options_parser =
   lift2 (fun name options ->
@@ -110,10 +113,13 @@ let block_parse config = fix (fun parse ->
       | '#' ->
         block_name_options_parser
         >>= fun (name, options) ->
-        between_lines ~trim:false (fun line ->
-            let prefix = "#+end_" ^ name in
-            starts_with (String.trim line) prefix) "block"
-        >>| fun lines ->
+        let p =
+          between_lines ~trim:false (fun line ->
+              let prefix = "#+end_" ^ name in
+              starts_with (String.trim line) prefix) "block"
+        in
+        let p' = with_pos_meta p in
+        p' >>| fun (lines, {start_pos; end_pos}) ->
         (* clear indents *)
         let lines = if lines = [] then [] else
             let indent = get_indent (List.hd lines) in
@@ -125,7 +131,8 @@ let block_parse config = fix (fun parse ->
         (match name with
          | "src" ->
            let (language, options) = separate_name_options options in
-           Src {language; options; lines}
+           let pos_meta = {start_pos; end_pos = end_pos - 9} in
+           Src {language; options; lines; pos_meta}
          | "example" -> Example lines
          | "quote" ->
            let content = String.concat "" lines in
