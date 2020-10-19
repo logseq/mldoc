@@ -568,14 +568,16 @@ let general_timestamp =
   let closed_parser typ = date_time ']' ~active:false typ in
   let parse rest typ =
     (* scheduled *)
-    string rest *> ws *> any_char
+    string_ci rest *> ws *> any_char
     >>= function
     | '<' -> active_parser typ
     | '[' -> closed_parser typ
     | _ -> fail "general_timestamp"
   in
   spaces *> any_char
-  >>= function
+  >>= fun c ->
+  let c = Char.uppercase_ascii c in
+  match c with
   | '<' -> active_parser "Date"
   | '[' -> closed_parser "Date"
   | 'S' -> parse "CHEDULED:" "Scheduled"
@@ -758,7 +760,7 @@ let inline_choices config =
         | '!'  -> markdown_image config
         | '@'  -> export_snippet
         | '`'  -> code config
-        | 'S' | 'C' | 'D' -> timestamp
+        | 'S' | 'C' | 'D' | 's' | 'c' | 'd' -> timestamp
         | '('  -> block_reference config
         | ' ' ->
           Markdown_line_breaks.parse >>| fun _ -> Hard_Break_Line
@@ -781,7 +783,7 @@ let inline_choices config =
         | '@'  -> export_snippet
         | '='  -> code config <|> verbatim
         | '~'  -> code config
-        | 'S' | 'C' | 'D' -> timestamp
+        | 'S' | 'C' | 'D' | 's' | 'c' | 'd' -> timestamp
         | '('  -> block_reference config
         | _ ->
           link_inline config) in
