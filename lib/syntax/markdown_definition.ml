@@ -22,7 +22,7 @@ let term_definition =
   many1 l
 
 let definition_content_item =
-  spaces *> char ':' *> term_definition
+  spaces *> char ':' *> ws *> term_definition
   >>| function lines ->
     String.concat "\n" lines
 
