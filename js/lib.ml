@@ -64,4 +64,22 @@ let _ =
       method anchorLink s =
         let s = Js.to_string s in
         Js_of_ocaml.Js.string (Heading.anchor_link s)
+
+      method timestampToString input =
+        let str = Js.to_string input in
+        let json = Yojson.Safe.from_string str in
+        match Timestamp.of_yojson json with
+        | Ok t ->
+          Timestamp.to_string t |> Js.string
+        | Error error ->
+          Js_of_ocaml.Js.string error
+
+      method rangeToString input =
+        let str = Js.to_string input in
+        let json = Yojson.Safe.from_string str in
+        match Range.of_yojson json with
+        | Ok t ->
+          Range.to_string t |> Js.string
+        | Error error ->
+          Js_of_ocaml.Js.string error
     end)

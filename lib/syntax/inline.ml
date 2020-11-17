@@ -33,7 +33,7 @@ and stats_cookie =
 
 and latex_fragment = Inline of string | Displayed of string [@@deriving yojson]
 
-and clock_item = Started of Timestamp.t | Stopped of Timestamp.range
+and clock_item = Started of Timestamp.t | Stopped of Range.t
 
 and timestamp =
     Scheduled of Timestamp.t
@@ -41,7 +41,7 @@ and timestamp =
   | Date of Timestamp.t
   | Closed of Timestamp.t
   | Clock of clock_item
-  | Range of Timestamp.range
+  | Range of Range.t
 [@@deriving yojson]
 
 (** {2 Inline call} *)

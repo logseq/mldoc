@@ -41,7 +41,9 @@ let handle_image_link url href label =
         ~attr:[("src", href); ("title", Inline.asciis label)]
         [] ]
 
-let rec range {start; stop} stopped =
+let rec range t stopped =
+  let open Range in
+  let {start; stop} = t in
   Xml.block "div"
     ~attr:
       [("class", "timestamp-range"); ("stopped", string_of_bool stopped)]
@@ -89,7 +91,7 @@ and inline config t =
     [Xml.raw e.html]
   | Tag t ->
     [Xml.block "a" ~attr: ["class", "tag"]
-         [Xml.data t]]
+       [Xml.data t]]
   | Latex_Fragment (Displayed s) ->
     [Xml.data ("\\["^s^"\\]")]
   | Latex_Fragment (Inline s) ->
@@ -254,10 +256,10 @@ let rec list_item config x =
   | None ->
     let block = match x.name with
       | [] -> (Xml.block
-                   ~attr:[("checked", string_of_bool checked)]
-                   "li"
-                   [Xml.block "p" (checked_html :: content);
-                    items])
+                 ~attr:[("checked", string_of_bool checked)]
+                 "li"
+                 [Xml.block "p" (checked_html :: content);
+                  items])
       | inlines ->
         (Xml.block
            ~attr:[("checked", string_of_bool checked)]

@@ -11,9 +11,6 @@ type repetition_duration = Hour | Day | Week | Month | Year
 
 type t = {date: date; wday: string; time: time option; repetition: (repetition_kind * repetition_duration * int) option; active: bool} [@@deriving yojson]
 
-
-type range = {start: t; stop: t} [@@deriving yojson]
-
 let year t = t.date.year
 
 let month t = t.date.month
@@ -82,9 +79,6 @@ let to_string t =
       ; Option.map repetition_to_string t.repetition ]
       |> filter_map identity |> String.concat " " )
     (if t.active then '>' else ']')
-
-let range_to_string {start; stop} =
-  Printf.sprintf "%s--%s" (to_string start) (to_string stop)
 
 let sub d d' =
   {year= d'.year - d.year; month= d'.month - d.month; day= d'.day - d.day}
