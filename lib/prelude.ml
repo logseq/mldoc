@@ -159,13 +159,17 @@ let is_number s =
   List.for_all (fun c -> is_digit c) chars
 
 let last_char s =
-  String.get s (String.length s - 1)
+  if String.length s > 0 then
+    let c = String.get s (String.length s - 1) in
+    Some c
+  else
+    None
 
 let is_ordered s =
   let chars = explode s in
   List.for_all (fun c -> is_digit c) (drop_last 1 chars)
   &&
-  (last_char s) = '.'
+  (last_char s) = Some '.'
 
 let get_ordered_number s =
   try Scanf.sscanf s "%d. " (fun i -> Some i) with _ -> None

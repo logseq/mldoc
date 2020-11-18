@@ -311,10 +311,11 @@ let latex_fragment config =
       take_while (fun x -> x <> '$' && x <> '\r' && x <> '\n')
       <* char '$'
       >>= fun s ->
-      if last_char s = ' ' then
-        fail "inline math shouldn't end with a space"
-      else
-        return @@ Latex_Fragment (Inline (String.make 1 c ^ s))
+      (match last_char s with
+       | Some ' ' ->
+         fail "inline math shouldn't end with a space"
+       | None ->
+         return @@ Latex_Fragment (Inline (String.make 1 c ^ s)))
   | '\\' ->
     (
       any_char
