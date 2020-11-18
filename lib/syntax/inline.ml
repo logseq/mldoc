@@ -314,7 +314,7 @@ let latex_fragment config =
       (match last_char s with
        | Some ' ' ->
          fail "inline math shouldn't end with a space"
-       | None ->
+       | _ ->
          return @@ Latex_Fragment (Inline (String.make 1 c ^ s)))
   | '\\' ->
     (
