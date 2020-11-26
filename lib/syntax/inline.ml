@@ -168,6 +168,9 @@ let plain config =
   <|>
   (word >>= fun s -> return (Plain s))
   <|>
+  (char '\\' *> satisfy non_tab_or_space >>= fun c ->
+   return (Plain (String.make 1 c)))
+  <|>
   (any_char >>= fun c ->
    if (in_plain_delims config c) then
      return (Plain (String.make 1 c))

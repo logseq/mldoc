@@ -13,6 +13,8 @@ let is_tab_or_space = function
   | '\t' | ' ' | '\026' | '\012' | '\009'   -> true
   | _ -> false
 
+let non_tab_or_space = not << is_tab_or_space
+
 let non_space = not << is_space
 
 (* end of line *)
