@@ -146,7 +146,7 @@ let code config =
 
 (* TODO: optimization *)
 let org_plain_delims = [' '; '\\'; '_'; '^'; '['; '$']
-let markdown_plain_delims = [' '; '\\'; '_'; '^'; '['; '*'; '^'; '~'; '`'; '$']
+let markdown_plain_delims = [' '; '\\'; '^'; '['; '*'; '^'; '~'; '`'; '$']
 (* replace list with a  *)
 let in_plain_delims config c =
   let plain_delims = match config.format with
@@ -420,12 +420,12 @@ let markdown_link config =
        let (url, title) = split_first '"' url in
        let lowercased_url = String.lowercase url in
        let url =
-         if (String.length url > 3) && (ends_with lowercased_url ".md" || ends_with lowercased_url ".markdown") then File url
-         else
-           try
-             Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                 Complex {protocol; link})
-           with _ -> Search url
+         try
+           Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+               Complex {protocol; link})
+         with _ ->
+           if (String.length url > 3) && (ends_with lowercased_url ".md" || ends_with lowercased_url ".markdown") then File url
+           else Search url
        in
        let parser = (many1 (choice [(emphasis config); latex_fragment config;
                                     entity; (code config); (subscript config);
