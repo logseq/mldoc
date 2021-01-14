@@ -20,7 +20,7 @@ and url = File of string | Search of string | Complex of complex [@@deriving yoj
 
 and complex = {protocol: string; link: string} [@@deriving yojson]
 
-and link = {url: url; label: t list; title: string option; full_text: string} [@@deriving yojson]
+and link = {url: url; label: t list; title: string option; full_text: string; metadata: string} [@@deriving yojson]
 
 (** {2 Cookies} *)
 
@@ -91,10 +91,15 @@ let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
 
 let email = Email_address.email >>| fun email -> Email email
 
-let between s =
-  let c = String.get s 0 in
+let between ?e:(e=None) s =
+  let end_s = match e with
+    | None ->
+      s
+    | Some s ->
+      s in
+  let c = String.get end_s 0 in
   let not_match_chars = [c; '\r'; '\n'] in
-  between_string s s
+  between_string s end_s
     ( take_while1 (fun c ->
           if List.exists (fun d -> c = d) not_match_chars then
             false
@@ -332,6 +337,13 @@ let latex_fragment config =
       | _ -> fail "latex fragment \\" )
   | _ -> fail "latex fragment"
 
+(* {:width 200 :height 200} *)
+let metadata =
+  (between ~e:(Some "}") "{"
+   >>= fun s -> return ("{" ^ s ^ "}"))
+  <|> string "{}"
+  <|> return ""
+
 (* complex link, or auto link *)
 (* :// *)
 let link_inline _config =
@@ -340,14 +352,15 @@ let link_inline _config =
     take_while1 (fun c ->
         non_space c && List.for_all (fun c' -> c <> c') link_delims )
   in
-  lift2
-    (fun protocol link ->
+  lift3
+    (fun protocol link metadata->
        Link
          { label= [Plain (protocol ^ "://" ^ link)]
          ; url= Complex {protocol; link= "//" ^ link}
          ; title= None
-         ; full_text= (protocol ^ "://" ^ link) } )
-    protocol_part link_part
+         ; full_text= (protocol ^ "://" ^ link ^ metadata)
+         ; metadata} )
+    protocol_part link_part metadata
 
 let quick_link config =
   between_char '<' '>' (link_inline config)
@@ -386,8 +399,8 @@ let org_link config =
     string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
   in
   let label_part = take_while (fun c -> c <> ']') <* string "]]" in
-  lift2
-    (fun url_text label_text ->
+  lift3
+    (fun url_text label_text metadata ->
        let url =
          let url = url_text in
          if (String.length url > 5) && (String.sub url 0 5 = "file:") then File url
@@ -403,9 +416,9 @@ let org_link config =
            Ok result -> concat_plains config result
          | Error _e -> [Plain label_text] in
        let title = None in
-       let full_text = Printf.sprintf "[[%s][%s]]" url_text label_text in
-       Link {label; url; title; full_text} )
-    url_part label_part
+       let full_text = Printf.sprintf "[[%s][%s]]%s" url_text label_text metadata in
+       Link {label; url; title; full_text; metadata} )
+    url_part label_part metadata
 
 (* link *)
 (* 1. [label](url)
@@ -418,8 +431,8 @@ let markdown_link config =
   let url_part =
     take_while (fun c -> c <> ')') <* string ")"
   in
-  lift2
-    (fun label_text url_text ->
+  lift3
+    (fun label_text url_text metadata ->
        let (url, title) = split_first '"' url_text in
        let lowercased_url = String.lowercase url in
        let url =
@@ -441,9 +454,9 @@ let markdown_link config =
          else
            Some (String.sub title 0 (String.length title - 1))
        in
-       let full_text = Printf.sprintf "[%s](%s)" label_text url_text in
-       Link {label; url; title; full_text})
-    label_part url_part
+       let full_text = Printf.sprintf "[%s](%s)%s" label_text url_text metadata in
+       Link {label; url; title; full_text; metadata})
+    label_part url_part metadata
 
 let link config =
   match config.format with
@@ -642,8 +655,8 @@ let markdown_image config =
   let url_part =
     take_while (fun c -> c <> ')') <* string ")"
   in
-  lift2
-    (fun label_text url_text ->
+  lift3
+    (fun label_text url_text metadata ->
        let url =
          let url = url_text in
          if List.exists (ends_with (String.lowercase_ascii url))
@@ -662,9 +675,9 @@ let markdown_image config =
            Ok result -> concat_plains config result
          | Error _e -> [Plain label_text] in
        let title = None in
-       let full_text = Printf.sprintf "![%s](%s)" label_text url_text in
-       Link {label; url; title; full_text} )
-    label_part url_part
+       let full_text = Printf.sprintf "![%s](%s)%s" label_text url_text metadata in
+       Link {label; url; title; full_text; metadata} )
+    label_part url_part metadata
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') in
