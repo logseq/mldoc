@@ -20,7 +20,7 @@ and url = File of string | Search of string | Complex of complex [@@deriving yoj
 
 and complex = {protocol: string; link: string} [@@deriving yojson]
 
-and link = {url: url; label: t list; title: string option} [@@deriving yojson]
+and link = {url: url; label: t list; title: string option; full_text: string} [@@deriving yojson]
 
 (** {2 Cookies} *)
 
@@ -345,7 +345,8 @@ let link_inline _config =
        Link
          { label= [Plain (protocol ^ "://" ^ link)]
          ; url= Complex {protocol; link= "//" ^ link}
-         ; title= None} )
+         ; title= None
+         ; full_text= (protocol ^ "://" ^ link) } )
     protocol_part link_part
 
 let quick_link config =
@@ -386,10 +387,11 @@ let org_link config =
   in
   let label_part = take_while (fun c -> c <> ']') <* string "]]" in
   lift2
-    (fun url label ->
+    (fun url_text label_text ->
        let url =
+         let url = url_text in
          if (String.length url > 5) && (String.sub url 0 5 = "file:") then File url
-         else if label = "" then Search url
+         else if label_text = "" then Search url
          else
            try
              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
@@ -397,11 +399,12 @@ let org_link config =
            with _ -> Search url
        in
        let parser = (many1 (choice [(emphasis config); latex_fragment config; entity; (code config); (subscript config); (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label with
+       let label = match parse_string parser label_text with
            Ok result -> concat_plains config result
-         | Error _e -> [Plain label] in
+         | Error _e -> [Plain label_text] in
        let title = None in
-       Link {label; url; title} )
+       let full_text = Printf.sprintf "[[%s][%s]]" url_text label_text in
+       Link {label; url; title; full_text} )
     url_part label_part
 
 (* link *)
@@ -416,8 +419,8 @@ let markdown_link config =
     take_while (fun c -> c <> ')') <* string ")"
   in
   lift2
-    (fun label url ->
-       let (url, title) = split_first '"' url in
+    (fun label_text url_text ->
+       let (url, title) = split_first '"' url_text in
        let lowercased_url = String.lowercase url in
        let url =
          try
@@ -430,15 +433,16 @@ let markdown_link config =
        let parser = (many1 (choice [(emphasis config); latex_fragment config;
                                     entity; (code config); (subscript config);
                                     (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label with
+       let label = match parse_string parser label_text with
            Ok result -> concat_plains config result
-         | Error _e -> [Plain label] in
+         | Error _e -> [Plain label_text] in
        let title = if String.equal title "" || String.equal title "\"" then
            None
          else
            Some (String.sub title 0 (String.length title - 1))
        in
-       Link {label; url; title})
+       let full_text = Printf.sprintf "[%s](%s)" label_text url_text in
+       Link {label; url; title; full_text})
     label_part url_part
 
 let link config =
@@ -639,8 +643,9 @@ let markdown_image config =
     take_while (fun c -> c <> ')') <* string ")"
   in
   lift2
-    (fun label url ->
+    (fun label_text url_text ->
        let url =
+         let url = url_text in
          if List.exists (ends_with (String.lowercase_ascii url))
              [".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp"]
          then File url
@@ -653,11 +658,12 @@ let markdown_image config =
        let parser = (many1 (choice [(nested_emphasis config); latex_fragment config;
                                     entity; (code config); (subscript config);
                                     (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label with
+       let label = match parse_string parser label_text with
            Ok result -> concat_plains config result
-         | Error _e -> [Plain label] in
+         | Error _e -> [Plain label_text] in
        let title = None in
-       Link {label; url; title} )
+       let full_text = Printf.sprintf "![%s](%s)" label_text url_text in
+       Link {label; url; title; full_text} )
     label_part url_part
 
 let export_snippet =
