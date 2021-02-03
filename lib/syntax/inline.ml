@@ -416,7 +416,7 @@ let org_link config =
            Ok result -> concat_plains config result
          | Error _e -> [Plain label_text] in
        let title = None in
-       let full_text = Printf.sprintf "[[%s][%s]]%s" url_text label_text metadata in
+       let full_text = Printf.sprintf "[[%s]]%s" url_text metadata in
        Link {label; url; title; full_text; metadata} )
     url_part label_part metadata
 
