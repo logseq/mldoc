@@ -192,9 +192,6 @@ let result_default default = function
 
 let lines s = String.split_on_char '\n' s
 
-let clear_indents s =
-  List.map String.trim (lines s)
-
 let change_ext ext file =
   if file = "-" then file
   else Filename.chop_extension file ^ "." ^ ext
@@ -230,3 +227,85 @@ let count_substring str sub =
       with Not_found -> n
   in
   aux 0 0
+
+(* Copied from https://github.com/c-cube/ocaml-containers/blob/master/src/core/CCList.ml *)
+module CCList = struct
+  (* max depth for direct recursion *)
+  let direct_depth_default_ = 1000
+
+  let tail_map f l =
+    (* Unwind the list of tuples, reconstructing the full list front-to-back.
+       @param tail_acc a suffix of the final list; we append tuples' content
+       at the front of it *)
+    let rec rebuild tail_acc = function
+      | [] -> tail_acc
+      | (y0, y1, y2, y3, y4, y5, y6, y7, y8) :: bs ->
+        rebuild (y0 :: y1 :: y2 :: y3 :: y4 :: y5 :: y6 :: y7 :: y8 :: tail_acc) bs
+    in
+    (* Create a compressed reverse-list representation using tuples
+       @param tuple_acc a reverse list of chunks mapped with [f] *)
+    let rec dive tuple_acc = function
+      | x0 :: x1 :: x2 :: x3 :: x4 :: x5 :: x6 :: x7 :: x8 :: xs ->
+        let y0 = f x0 in let y1 = f x1 in let y2 = f x2 in
+        let y3 = f x3 in let y4 = f x4 in let y5 = f x5 in
+        let y6 = f x6 in let y7 = f x7 in let y8 = f x8 in
+        dive ((y0, y1, y2, y3, y4, y5, y6, y7, y8) :: tuple_acc) xs
+      | xs ->
+        (* Reverse direction, finishing off with a direct map *)
+        let tail = List.map f xs in
+        rebuild tail tuple_acc
+    in
+    dive [] l
+
+  let map f l =
+    let rec direct f i l = match l with
+      | [] -> []
+      | [x] -> [f x]
+      | [x1;x2] -> let y1 = f x1 in [y1; f x2]
+      | [x1;x2;x3] -> let y1 = f x1 in let y2 = f x2 in [y1; y2; f x3]
+      | _ when i=0 -> tail_map f l
+      | x1::x2::x3::x4::l' ->
+        let y1 = f x1 in
+        let y2 = f x2 in
+        let y3 = f x3 in
+        let y4 = f x4 in
+        y1 :: y2 :: y3 :: y4 :: direct f (i-1) l'
+    in
+    direct f direct_depth_default_ l
+
+  let direct_depth_append_ = 10_000
+
+  let append l1 l2 =
+    let rec direct i l1 l2 = match l1 with
+      | [] -> l2
+      | _ when i=0 -> safe l1 l2
+      | x::l1' -> x :: direct (i-1) l1' l2
+    and safe l1 l2 =
+      List.rev_append (List.rev l1) l2
+    in
+    match l1 with
+    | [] -> l2
+    | [x] -> x::l2
+    | [x;y] -> x::y::l2
+    | _ -> direct direct_depth_append_ l1 l2
+
+  let direct_depth_filter_ = 10_000
+
+  let filter p l =
+    let rec direct i p l = match l with
+      | [] -> []
+      | _ when i=0 -> safe p l []
+      | x::l' when not (p x) -> direct i p l'
+      | x::l' -> x :: direct (i-1) p l'
+    and safe p l acc = match l with
+      | [] -> List.rev acc
+      | x::l' when not (p x) -> safe p l' acc
+      | x::l' -> safe p l' (x::acc)
+    in
+    direct direct_depth_filter_ p l
+end
+
+let (@) = List.append
+
+let clear_indents s =
+  CCList.map String.trim (lines s)

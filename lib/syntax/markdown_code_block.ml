@@ -25,7 +25,7 @@ let single_line =
 let parse = many1 (single_line <* (end_of_line <|> end_of_input) <* optional eols)
   >>= fun lines ->
   let start_indent, _content = List.hd lines in
-  let lines = List.map (fun (i, c) ->
+  let lines = CCList.map (fun (i, c) ->
       if i > start_indent then
         (String.make (i - start_indent) ' ') ^ c
       else

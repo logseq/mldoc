@@ -475,7 +475,7 @@ let nested_emphasis config =
       (match parse_string parser s with
        | Ok [Plain _] -> e
        | Ok result -> Emphasis (typ,
-                                List.map aux_nested_emphasis result)
+                                CCList.map aux_nested_emphasis result)
        | Error _error -> e)
     | Emphasis (`Italic, [Emphasis (`Bold, _)]) as e ->
       e
@@ -531,7 +531,7 @@ let macro =
             else
               args in
           let arguments = String.split_on_char ',' args in
-          let arguments = List.map String.trim arguments in
+          let arguments = CCList.map String.trim arguments in
           return (Macro {name; arguments})
       | Error _e ->
         fail "macro name"
@@ -864,4 +864,4 @@ let rec ascii = function
   | Entity e -> e.Entity.unicode
   | _ -> ""
 
-and asciis l = String.concat "" (List.map ascii l)
+and asciis l = String.concat "" (CCList.map ascii l)

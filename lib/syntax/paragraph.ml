@@ -19,11 +19,16 @@ let trim_last_space s =
 let parse =
   line >>| fun l -> Paragraph_line l
 
+let parse_lines config lines pos1 pos2 =
+  let lines = List.rev lines in
+  let content = (String.concat "" lines) in
+  let paragraph = match parse_string (Inline.parse config) content with
+    | Ok result -> Paragraph result
+    | Error _ -> Paragraph [Inline.Plain content] in
+  (paragraph, {start_pos = pos1; end_pos = pos2})
+
 let concat_paragraph_lines config l =
-  (* let s = Type.blocks_to_yojson l |> Yojson.Safe.to_string in *)
-  (* let _ = print_endline s in *)
-  let l = List.append l [(Horizontal_Rule, {start_pos = 0; end_pos = 0})] in
-  let (l, _, _, _) = List.fold_left (fun (acc, lines, pos1, pos2) item ->
+  let (acc, lines, pos1, pos2) = List.fold_left (fun (acc, lines, pos1, pos2) item ->
       match item with
       | (Paragraph_line line, {start_pos; end_pos}) ->
         let start_pos = if pos1 = 0 then start_pos else pos1 in
@@ -32,18 +37,18 @@ let concat_paragraph_lines config l =
         let line = repeat n "\n" in
         let line = String.concat "" line in
         (acc, line :: lines, start_pos, end_pos)
-      | (other, pos_meta) ->
+      | (_other, _pos_meta) ->
         if List.length lines > 0 then
-          let lines = List.rev lines in
-          let content = (String.concat "" lines) in
-          let paragraph = match parse_string (Inline.parse config) content with
-            | Ok result -> Paragraph result
-            | Error _ -> Paragraph [Inline.Plain content] in
-          let paragraph_with_meta = (paragraph, {start_pos = pos1; end_pos = pos2}) in
+          let paragraph_with_meta = parse_lines config lines pos1 pos2 in
           let acc = item :: paragraph_with_meta :: acc in
           (acc, [], 0, 0)
         else
           (item :: acc, [], 0, 0)
     ) ([], [], 0, 0) l in
-  let l = List.rev l in
-  drop_last 1 l
+  let acc = if List.length lines > 0 then
+      (* FIXME: wrong meta *)
+      let paragraph_with_meta = parse_lines config lines pos1 pos2 in
+      paragraph_with_meta :: acc
+    else
+      acc in
+  List.rev acc

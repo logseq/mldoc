@@ -128,13 +128,13 @@ let rec list_parser config content_parsers items last_indent =
            let ordered =
              match number with Some _ -> true | None -> false
            in
-           let content = List.map String.trim content in
+           let content = CCList.map String.trim content in
            let content = String.concat "\n" content in
            let (name, content) = if ordered then ([], content) else (definition config content) in
            let content = match parse_string content_parsers content with
              | Ok result ->
                let result = Paragraph.concat_paragraph_lines config result in
-               List.map fst result
+               CCList.map fst result
              | Error _e ->
                [Paragraph [Inline.Plain content]]
            in

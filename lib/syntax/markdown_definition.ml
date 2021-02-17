@@ -1,6 +1,7 @@
 open Angstrom
 open Parsers
 open Type
+open Prelude
 
 (* First Term
  * : This is the definition of the first term.
@@ -37,7 +38,7 @@ let definition_parse config =
   let name = match parse_string (Inline.parse config) name with
     | Ok inlines -> inlines
     | Error _e -> [Inline.Plain name] in
-  let content = List.map (fun line ->
+  let content = CCList.map (fun line ->
       match parse_string (Inline.parse config) (String.trim line) with
       | Ok content -> Paragraph content
       | Error _e -> Paragraph [Inline.Plain line]

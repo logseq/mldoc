@@ -50,7 +50,7 @@ let fenced_code_block =
   let lines = if lines = [] then [] else
       let indent = get_indent (List.hd lines) in
       if indent = 0 then lines else
-        List.map (fun line ->
+        CCList.map (fun line ->
             Prelude.safe_sub line indent (String.length line - indent)
           ) lines in
   let pos_meta = {start_pos; end_pos = end_pos - 3} in
@@ -124,7 +124,7 @@ let block_parse config = fix (fun parse ->
         let lines = if lines = [] then [] else
             let indent = get_indent (List.hd lines) in
             if indent = 0 then lines else
-              List.map (fun line ->
+              CCList.map (fun line ->
                   Prelude.safe_sub line indent (String.length line - indent)
                 ) lines in
         let name = String.lowercase_ascii name in
@@ -139,7 +139,7 @@ let block_parse config = fix (fun parse ->
            let result = match parse_string (block_content_parsers config parse) content with
              | Ok result ->
                let result = Paragraph.concat_paragraph_lines config result in
-               List.map fst result
+               CCList.map fst result
              | Error _e -> [] in
            Quote result
          | "export" ->          (* export html, etc *)
@@ -154,7 +154,7 @@ let block_parse config = fix (fun parse ->
            let result = match parse_string (block_content_parsers config parse) content with
              | Ok result ->
                let result =  Paragraph.concat_paragraph_lines config result in
-               List.map fst result
+               CCList.map fst result
              | Error _e -> [] in
            Custom (name, options, result, content)
         )
@@ -173,7 +173,7 @@ let block_parse config = fix (fun parse ->
         let result = match parse_string (block_content_parsers config parse) content with
           | Ok result ->
             let result = Paragraph.concat_paragraph_lines config result in
-            List.map fst result
+            CCList.map fst result
           | Error _e -> [] in
         Quote result
       | '`' | '~' ->

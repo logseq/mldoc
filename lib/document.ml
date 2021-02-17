@@ -111,7 +111,8 @@ let from_ast filename ast =
         aut directives ((h, pos_meta) :: blocks) (toc_item :: toc) tl
       | Paragraph inlines ->
         let blocks = (match get_timestamps inlines with
-            | [] -> ((h, pos_meta) :: blocks)
+            | [] ->
+              ((h, pos_meta) :: blocks)
             | timestamps ->
               update_meta (fun heading ->
                   let timestamps' = List.append timestamps heading.meta.timestamps in

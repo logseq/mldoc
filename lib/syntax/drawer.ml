@@ -44,4 +44,4 @@ let parse =
           Property_Drawer properties
         | _ -> Drawer (name, properties))
       drawer_name drawer_properties in
-  p <* string_ci end_mark
+  p <* string_ci end_mark <* optional eol

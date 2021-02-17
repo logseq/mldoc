@@ -55,7 +55,7 @@ let anchor_link s =
     | ' ' | '_' | '-' -> "_"
     | c -> Printf.sprintf "-%x-" (int_of_char c)
   in
-  Prelude.explode (String.trim s) |> List.map map_char |> String.concat ""
+  Prelude.explode (String.trim s) |> CCList.map map_char |> String.concat ""
 
 let parse config =
   let p = lift4

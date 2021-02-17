@@ -12,7 +12,7 @@ let macros = ref []
 (* #+OPTIONS:   num:nil toc:2 *)
 let options = ref []
 
-let concatmap f l = List.concat (List.map f l)
+let concatmap f l = List.concat (CCList.map f l)
 
 let list_element = function
   | [] -> "ul"
@@ -175,7 +175,7 @@ let construct_numbering config ?(toc=false) level numbering =
       match numbering with
       | Some l ->
         let numbering =
-          List.map string_of_int l |> String.concat "." in
+          CCList.map string_of_int l |> String.concat "." in
         if toc then
           Xml.data (numbering ^ ". ")
         else
@@ -283,14 +283,14 @@ let rec list_item config x =
 and table config { header; groups; col_groups} =
   let tr elm cols =
     Xml.block "tr"
-      (List.map (fun col ->
+      (CCList.map (fun col ->
            (Xml.block elm ~attr:[("scope", "col");
                                  ("class", "org-left")]
               (map_inline config col)))
           cols) in
   let col_groups =
     try
-      List.map (fun number ->
+      CCList.map (fun number ->
           let col_elem = Xml.block "col" ~attr:[("class", "org-left")] [] in
           Xml.block "colgroup"
             (repeat number col_elem)
@@ -301,8 +301,8 @@ and table config { header; groups; col_groups} =
     | None -> Xml.empty
     | Some cols ->
       Xml.block "thead" [tr "th" cols] in
-  let groups = List.map (fun group ->
-      Xml.block "tbody" (List.map (tr "td") group)
+  let groups = CCList.map (fun group ->
+      Xml.block "tbody" (CCList.map (tr "td") group)
     ) groups in
   Xml.block ~attr:[("border", "2");
                    ("cellspacing", "0");
@@ -311,7 +311,7 @@ and table config { header; groups; col_groups} =
                    ("frame", "hsides")] "table"
     (col_groups @ (head :: groups))
 
-and blocks config l = List.map (block config) l
+and blocks config l = CCList.map (block config) l
 and block config t =
   let open List in
   match t with
@@ -324,14 +324,14 @@ and block config t =
   | Math s ->
     Xml.block "div" ~attr:["class", "mathblock"]
       [Xml.data ("$$" ^ s ^ "$$")]
-  | Example l -> Xml.block "pre" [Xml.data (String.concat "\n" l)]
+  | Example l -> Xml.block "pre" [Xml.data (String.concat "" l)]
   | Src {language; options; lines; pos_meta} ->
     let attr = match language with
       | None -> []
       | Some l -> ["data-lang", l; "class", l] in
     Xml.block "pre"
       [Xml.block "code" ~attr
-         [Xml.data (String.concat "\n" lines)]]
+         [Xml.data (String.concat "" lines)]]
   | Quote l ->
     Xml.block "blockquote" (blocks config l)
   | Export ("html", options, content) ->
@@ -373,7 +373,7 @@ let toc config content =
       if level > toc_option then
         Xml.empty
       else
-        let items = (List.map (fun { title; level; anchor; numbering; items } ->
+        let items = (CCList.map (fun { title; level; anchor; numbering; items } ->
             let numbering = construct_numbering config ~toc:true level (Some numbering) in
             let link = Xml.block "a" ~attr: ["href", "#" ^ anchor]
                 (numbering :: map_inline config title) in
@@ -393,7 +393,7 @@ let toc config content =
 let collect_macros directives =
   let collected = directives
                   |> List.filter (fun (name, _) -> (String.uppercase_ascii name) = "MACRO")
-                  |> List.map (fun (_, df) ->
+                  |> CCList.map (fun (_, df) ->
                       let (name, definition) = splitl (fun c -> c <> ' ') df in
                       (name, String.trim definition)) in
   macros := collected
@@ -402,7 +402,7 @@ let collect_options directives =
   let collected = try
       let options = List.find (fun (name, _) -> (String.uppercase_ascii name) = "OPTIONS") directives in
       snd options |> String.split_on_char ' '
-      |> List.map (fun s ->
+      |> CCList.map (fun s ->
           match String.split_on_char ':' s with
           | [] -> ("", "")
           | [k; v] -> (k, v)
@@ -431,7 +431,7 @@ module HtmlExporter = struct
      *   | Some s -> Xml.block "h1" ~attr:["class", "title"]
      *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
 
-    let doc_blocks = List.map fst doc.blocks in
+    let doc_blocks = CCList.map fst doc.blocks in
     let blocks = blocks config doc_blocks in
     let blocks = if Conf.(config.toc) then ((toc config doc.toc) :: blocks) else blocks in
     let body = [Xml.raw ("<!-- directives: " ^ (directives_to_string doc.directives) ^ " -->\n");
