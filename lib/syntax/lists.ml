@@ -93,7 +93,7 @@ let format_checkbox_parser config indent =
 (* name :: definition *)
 let definition config s =
   let name_parser = (end_string " ::" (fun s -> s)) in
-  match parse_string name_parser s with
+  match parse_string ~consume:All name_parser s with
   | Ok name ->
     let l = (String.length name + 3) in
     let (name, description) = if String.length s >= l + 1 then
@@ -107,7 +107,7 @@ let definition config s =
     begin
       match name with
       | Some name -> begin
-          let name = match parse_string (Inline.parse config) name with
+          let name = match parse_string ~consume:All (Inline.parse config) name with
             | Ok inlines -> inlines
             | Error _e -> [Inline.Plain name] in
           (name, description)
@@ -131,7 +131,7 @@ let rec list_parser config content_parsers items last_indent =
            let content = CCList.map String.trim content in
            let content = String.concat "\n" content in
            let (name, content) = if ordered then ([], content) else (definition config content) in
-           let content = match parse_string content_parsers content with
+           let content = match parse_string ~consume:All content_parsers content with
              | Ok result ->
                let result = Paragraph.concat_paragraph_lines config result in
                CCList.map fst result

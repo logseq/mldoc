@@ -273,7 +273,7 @@ let gen_script config s f =
   <|>
   p1
   >>| fun s ->
-  match parse_string p s with
+  match parse_string ~consume:All p s with
   | Ok result -> f result
   | Error _e -> f [Plain s]
 
@@ -377,7 +377,7 @@ let concat_plains config inlines =
              let (l, r) = splitr non_space s' in
              let (l', r') = splitl non_space s in
              let link = r ^ l' in
-             match parse_string (link_inline config) link with
+             match parse_string ~consume:All (link_inline config) link with
              | Ok result ->
                (Plain r') :: result :: (Plain l) :: tl
              | Error _e ->
@@ -412,7 +412,7 @@ let org_link config =
            with _ -> Search url
        in
        let parser = (many1 (choice [(emphasis config); latex_fragment config; entity; (code config); (subscript config); (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label_text with
+       let label = match parse_string ~consume:All parser label_text with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label_text] in
        let title = None in
@@ -446,7 +446,7 @@ let markdown_link config =
        let parser = (many1 (choice [(emphasis config); latex_fragment config;
                                     entity; (code config); (subscript config);
                                     (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label_text with
+       let label = match parse_string ~consume:All parser label_text with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label_text] in
        let title = if String.equal title "" || String.equal title "\"" then
@@ -472,7 +472,7 @@ let nested_emphasis config =
       Plain s
     | Emphasis (typ, [Plain s]) as e ->
       let parser = (many1 (choice [(emphasis config); (subscript config); (superscript config); (link config); (nested_link config); plain config])) in
-      (match parse_string parser s with
+      (match parse_string ~consume:All parser s with
        | Ok [Plain _] -> e
        | Ok result -> Emphasis (typ,
                                 CCList.map aux_nested_emphasis result)
@@ -516,7 +516,7 @@ let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 let macro =
   let p = ( take_while1 (function '}' | '\r' | '\n' -> false | _ -> true)
       >>= fun s ->
-      match parse_string macro_name s with
+      match parse_string ~consume:All macro_name s with
       | Ok name ->
         let l = String.length s in
         let args = String.sub s (String.length name) (l - String.length name) in
@@ -671,7 +671,7 @@ let markdown_image config =
        let parser = (many1 (choice [(nested_emphasis config); latex_fragment config;
                                     entity; (code config); (subscript config);
                                     (superscript config); plain config; whitespaces])) in
-       let label = match parse_string parser label_text with
+       let label = match parse_string ~consume:All parser label_text with
            Ok result -> concat_plains config result
          | Error _e -> [Plain label_text] in
        let title = None in
@@ -714,7 +714,7 @@ let footnote_inline_definition config ?(break = false) definition =
   let choices = if break then
       List.cons hard_breakline choices else choices in
   let parser = (many1 (choice choices)) in
-  match parse_string parser definition with
+  match parse_string ~consume:All parser definition with
   | Ok result ->
     let result = concat_plains config result in
     result

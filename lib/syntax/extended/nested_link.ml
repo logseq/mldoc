@@ -46,7 +46,7 @@ let parse =
       match_brackets ()
       >>= fun s ->
       let inner_s = String.sub s 2 (String.length s - 4) in
-      let result = match parse_string children_parse inner_s with
+      let result = match parse_string ~consume:All children_parse inner_s with
         | Ok result -> result
         | Error _e -> [Label inner_s] in
       return @@ Nested_link {content = s; children = result}) >>= function

@@ -35,11 +35,11 @@ let definition_parse config =
   let name = spaces *> line <* eol in
   name >>= fun name ->
   definition_content >>= fun lines ->
-  let name = match parse_string (Inline.parse config) name with
+  let name = match parse_string ~consume:All (Inline.parse config) name with
     | Ok inlines -> inlines
     | Error _e -> [Inline.Plain name] in
   let content = CCList.map (fun line ->
-      match parse_string (Inline.parse config) (String.trim line) with
+      match parse_string ~consume:All (Inline.parse config) (String.trim line) with
       | Ok content -> Paragraph content
       | Error _e -> Paragraph [Inline.Plain line]
     ) lines in

@@ -58,7 +58,7 @@ let group config =
         | None ->               (* new row *)
           row_line >>= fun row ->
           let row = CCList.map (fun col ->
-              result_default [Inline.Plain col] (parse_string (Inline.parse config) col)) row in
+              result_default [Inline.Plain col] (parse_string ~consume:All (Inline.parse config) col)) row in
           rows := row :: !rows;
           p <|> return @@ List.rev !rows
         | Some _ ->             (* separated *)

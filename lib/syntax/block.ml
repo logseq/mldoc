@@ -136,7 +136,7 @@ let block_parse config = fix (fun parse ->
          | "example" -> Example lines
          | "quote" ->
            let content = String.concat "" lines in
-           let result = match parse_string (block_content_parsers config parse) content with
+           let result = match parse_string ~consume:All (block_content_parsers config parse) content with
              | Ok result ->
                let result = Paragraph.concat_paragraph_lines config result in
                CCList.map fst result
@@ -151,7 +151,7 @@ let block_parse config = fix (fun parse ->
            CommentBlock lines
          | _ ->
            let content = String.concat "" lines in
-           let result = match parse_string (block_content_parsers config parse) content with
+           let result = match parse_string ~consume:All (block_content_parsers config parse) content with
              | Ok result ->
                let result =  Paragraph.concat_paragraph_lines config result in
                CCList.map fst result
@@ -170,7 +170,7 @@ let block_parse config = fix (fun parse ->
         md_blockquote >>|
         fun lines ->
         let content = String.concat "" lines in
-        let result = match parse_string (block_content_parsers config parse) content with
+        let result = match parse_string ~consume:All (block_content_parsers config parse) content with
           | Ok result ->
             let result = Paragraph.concat_paragraph_lines config result in
             CCList.map fst result

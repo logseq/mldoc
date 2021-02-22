@@ -22,7 +22,7 @@ let parse =
 let parse_lines config lines pos1 pos2 =
   let lines = List.rev lines in
   let content = (String.concat "" lines) in
-  let paragraph = match parse_string (Inline.parse config) content with
+  let paragraph = match parse_string ~consume:All (Inline.parse config) content with
     | Ok result -> Paragraph result
     | Error _ -> Paragraph [Inline.Plain content] in
   (paragraph, {start_pos = pos1; end_pos = pos2})

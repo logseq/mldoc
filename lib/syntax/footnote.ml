@@ -53,7 +53,7 @@ let definition_parse config =
   lift2
     (fun name lines ->
        let definition_content = String.concat "\n" lines in
-       let definition = match parse_string (Inline.parse config) definition_content with
+       let definition = match parse_string ~consume:All (Inline.parse config) definition_content with
          | Ok inlines -> inlines
          | Error _e -> [Inline.Plain definition_content] in
        Footnote_Definition (name, definition))

@@ -152,7 +152,7 @@ and inline config t =
          (fun v -> try List.nth arguments (int_of_string v - 1) with _ -> v)
          value ;
        let content = (Buffer.contents buff) in
-       match Angstrom.parse_string (Inline.parse config) content with
+       match Angstrom.parse_string ~consume:All (Inline.parse config) content with
        | Ok inlines -> map_inline config inlines
        | Error _e -> [Xml.empty]
      with Not_found ->

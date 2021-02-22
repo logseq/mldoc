@@ -64,7 +64,7 @@ let parse config =
          let title = match title with
            | None -> []
            | Some title ->
-             match (parse_string (Inline.parse config) (String.trim title)) with
+             match (parse_string ~consume:All (Inline.parse config) (String.trim title)) with
              | Ok title -> title
              | Error _e -> [] in
          let (title, tags) = match title with
@@ -76,7 +76,7 @@ let parse config =
                let s = String.trim s in
                if String.length s > 1 && s.[String.length s - 1] = ':' then
                  let (prefix, maybe_tags) = (splitr (fun c -> c <> ' ') s) in
-                 (match parse_string tags maybe_tags with
+                 (match parse_string ~consume:All tags maybe_tags with
                   | Ok tags ->
                     let title = if prefix = "" then (drop_last 1 title) else
                         (drop_last 1 title) @ [Inline.Plain prefix] in
@@ -100,6 +100,6 @@ let parse config =
 
 let _ =
   let input = "* TODO [#A] hello :foo:bar:" in
-  parse_string heading input
+  parse_string ~consume:All heading input
 
 *)

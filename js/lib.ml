@@ -35,7 +35,7 @@ let _ =
         match Conf.of_yojson config_json with
         | Ok config -> begin
             let str = Js.to_string input in
-            match parse_string (Mldoc.Inline.parse config) str with
+            match parse_string ~consume:All (Mldoc.Inline.parse config) str with
             | Ok result -> Mldoc.Type.inline_list_to_yojson result |> Yojson.Safe.to_string |> Js.string
             | Error e ->
               print_endline e;

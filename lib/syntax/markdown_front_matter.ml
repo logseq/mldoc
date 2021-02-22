@@ -27,7 +27,7 @@ let parse =
   string "---" *> end_of_line *>
   end_string "---" (fun s ->
       (* multiple directives *)
-      match parse_string (many1 (kv_parse <* (end_of_line <|> end_of_input)) ) s with
+      match parse_string ~consume:All (many1 (kv_parse <* (end_of_line <|> end_of_input)) ) s with
       | Ok result -> result
       | Error _e -> []
     )
