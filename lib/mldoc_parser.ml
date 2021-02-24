@@ -1,6 +1,5 @@
 open Angstrom
-open Type
-open Prelude
+open! Prelude
 
 let list_content_parsers config =
   let p = (choice [

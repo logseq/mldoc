@@ -41,7 +41,7 @@ HTML, they are exported as div that you can style or script).
 open Angstrom
 open Parsers
 open Type
-open Prelude
+open! Prelude
 
 let env_name_options_parser =
   lift2 (fun name options ->

@@ -1,8 +1,7 @@
 open Angstrom
 open Parsers
 open Type
-open Conf
-open Prelude
+open! Prelude
 
 (* inline and footnotes *)
 

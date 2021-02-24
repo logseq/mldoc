@@ -7,7 +7,6 @@ open Conf
 let indent_parser = (peek_spaces >>| (function s -> String.length s)) <|> return 0
 
 let check_listitem config line =
-  let is_markdown = String.equal config.format "Markdown" in
   let indent = get_indent line in
   let number =
     try
@@ -19,7 +18,7 @@ let check_listitem config line =
   | None ->
     if (String.length line) - indent >= 2 then
       let prefix = String.sub line indent 2 in
-      let star_condition = if is_markdown then
+      let star_condition = if is_markdown config then
           prefix = "* "
         else
           (indent <> 0 && prefix = "* ")
@@ -65,9 +64,8 @@ let content_parser config list_parser content_parsers indent lines =
             return (List.rev !lines, []))))
 
 let format_parser config indent =
-  let is_markdown = String.equal config.format "Markdown" in
   let choices =
-    if is_markdown || indent <> 0 then
+    if is_markdown config || indent <> 0 then
       char '+' <|> char '-' <|> char '*'
     else
       char '+' <|> char '-'
@@ -167,6 +165,6 @@ let md_definition config =
 
 let parse config content_parsers =
   match config.format with
-  | "Org" -> parse_aux config content_parsers
-  | "Markdown" ->
+  | Org -> parse_aux config content_parsers
+  | Markdown ->
     parse_aux config content_parsers <|> md_definition config

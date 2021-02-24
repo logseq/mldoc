@@ -138,7 +138,7 @@ let markdown_escape_backticks =
   end_string "``" (fun s -> Code s)
 
 let code config =
-  let is_markdown = String.equal config.format "Markdown" in
+  let is_markdown = Conf.is_markdown config in
   let c = if is_markdown then "`" else "~" in
 
   let p = between c >>= fun s ->
@@ -155,15 +155,15 @@ let markdown_plain_delims = [' '; '\\'; '^'; '['; '*'; '^'; '~'; '`'; '$']
 (* replace list with a  *)
 let in_plain_delims config c =
   let plain_delims = match config.format with
-    | "Org" -> org_plain_delims
-    | "Markdown" -> markdown_plain_delims
+    | Org -> org_plain_delims
+    | Markdown -> markdown_plain_delims
   in
   List.exists (fun d -> c = d) plain_delims
 
 let whitespaces = ws >>= fun spaces -> return (Plain spaces)
 
 let plain config =
-  (scan1 false (fun state c ->
+  (scan1 false (fun _state c ->
        if (non_eol c && not (in_plain_delims config c)) then
          Some true
        else
@@ -231,8 +231,8 @@ let markdown_emphasis =
 
 let emphasis config =
   match config.format with
-  | "Org" -> org_emphasis
-  | "Markdown" -> markdown_emphasis
+  | Org -> org_emphasis
+  | Markdown -> markdown_emphasis
 
 let org_hard_breakline = string "\\" <* eol
 let hard_breakline = choice [org_hard_breakline; Markdown_line_breaks.parse] >>= fun _ -> return Hard_Break_Line
@@ -261,9 +261,7 @@ let entity =
 (* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
 let gen_script config s f =
-  let is_markdown = match config.format with
-    | "Markdown" -> true
-    | _ -> false in
+  let is_markdown = Conf.is_markdown config in
   let p1 = if is_markdown then
       fail "markdown subscript with only _" else
       (string s *> take_while1 (fun c -> non_space c)) in
@@ -301,7 +299,7 @@ let superscript config =
    \end{equation}
 
 *)
-let latex_fragment config =
+let latex_fragment _config =
   any_char
   >>= function
   | '$' ->
@@ -440,7 +438,7 @@ let markdown_link config =
   lift3
     (fun label_text url_text metadata ->
        let (url, title) = split_first '"' url_text in
-       let lowercased_url = String.lowercase url in
+       let lowercased_url = String.lowercase_ascii url in
        let url =
          try
            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
@@ -466,8 +464,8 @@ let markdown_link config =
 
 let link config =
   match config.format with
-  | "Org" -> org_link config
-  | "Markdown" -> markdown_link config <|> org_link config (* page reference *)
+  | Conf.Org -> org_link config
+  | Conf.Markdown -> markdown_link config <|> org_link config (* page reference *)
 
 let nested_link _config =
   Nested_link.parse >>| fun s -> Nested_link s
@@ -758,8 +756,8 @@ let org_inline_footnote_or_reference config =
 
 let inline_footnote_or_reference config =
   match config.format with
-  | "Org" -> org_inline_footnote_or_reference config
-  | "Markdown" -> markdown_footnote_reference
+  | Conf.Org -> org_inline_footnote_or_reference config
+  | Conf.Markdown -> markdown_footnote_reference
 
 let break_or_line =
   let line = line >>= fun s -> return (Plain s) in
@@ -779,7 +777,7 @@ let inline_hiccup =
 
 (* TODO: configurable, re-order *)
 let inline_choices config =
-  let is_markdown = String.equal config.format "Markdown" in
+  let is_markdown = config.format = Conf.Markdown in
   let p = if is_markdown then
       (peek_char_fail >>= function
         | '\n' -> breakline

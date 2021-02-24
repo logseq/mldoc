@@ -11,13 +11,13 @@ let syntax_md = load_file "./examples/syntax.md"
 let main () =
   Command.run (Bench.make_command [
       Bench.Test.create ~name:"Mldoc Org mode parser (doc)" (fun () ->
-          let config = {toc = true; heading_number = true; keep_line_break = false; format = "Org"; } in
+          let config = {toc = true; heading_number = true; keep_line_break = false; format = Org; } in
           ignore (parse config doc_org));
       Bench.Test.create ~name:"Mldoc Org mode parser (syntax)" (fun () ->
-          let config = {toc = true; heading_number = true; keep_line_break = false; format = "Org"; } in
+          let config = {toc = true; heading_number = true; keep_line_break = false; format = Org; } in
           ignore (parse config syntax_org));
       Bench.Test.create ~name:"Mldoc Markdown parser" (fun () ->
-          let config = {toc = true; heading_number = true; keep_line_break = false; format = "Markdown"; } in
+          let config = {toc = true; heading_number = true; keep_line_break = false; format = Markdown; } in
           ignore (parse config syntax_md));
     ])
 

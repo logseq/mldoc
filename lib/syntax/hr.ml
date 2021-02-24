@@ -15,8 +15,8 @@ let org = count 5 (char '-')
 let parse config =
   let p =
     let parser = match config.format with
-      | "Org" -> org
-      | "Markdown" -> Markdown_hr.parse
+      | Org -> org
+      | Markdown -> Markdown_hr.parse
     in
     parser >>= fun s ->
     if List.length s >= 3 && (List.length (remove_dups s)) == 1 then

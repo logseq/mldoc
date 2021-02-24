@@ -1,6 +1,6 @@
 open Angstrom
 open Type
-open Prelude
+open! Prelude
 
 let with_pos_meta p =
   lift3 (fun start_pos t end_pos ->

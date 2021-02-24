@@ -30,10 +30,10 @@ great I like it very much
 (* https://orgmode.org/manual/Footnotes.html *)
 (* It ends at the next footnote definition, headline, or after two consecutive empty lines. *)
 let name_part config = match config.format with
-  | "Org" ->
+  | Org ->
     string "[fn:" *> take_while1 (fun c -> c <> ']' && non_eol c)
     <* char ']' <* spaces
-  | "Markdown" ->
+  | Markdown ->
     Markdown_footnote.reference <* char ':' <* spaces
 
 let footnote_definition =

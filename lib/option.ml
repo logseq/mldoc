@@ -123,7 +123,7 @@ let map_default_delayed f l = function
   map_default_delayed succ (fun () -> assert false) (Some 3) = 4
 *)
 
-let compare ?(cmp=Pervasives.compare) a b = match a with
+let compare ?(cmp=Stdlib.compare) a b = match a with
     None -> (match b with
         None -> 0
       | Some _ -> -1)
@@ -139,7 +139,6 @@ let compare ?(cmp=Pervasives.compare) a b = match a with
    compare (Some ()) None > 0
    compare ~cmp:(fun _ _ -> 0) (Some (fun x -> x)) (Some (fun y -> y)) = 0
 *)
-
 
 let eq ?(eq=(=)) x y = match x,y with
   | None, None -> true
