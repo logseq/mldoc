@@ -10,7 +10,7 @@ let is_tab = function
   | _ -> false
 
 let is_tab_or_space = function
-  | '\t' | ' ' | '\026' | '\012' | '\009'   -> true
+  | '\t' | ' ' | '\026' | '\012' -> true
   | _ -> false
 
 let non_tab_or_space = not << is_tab_or_space

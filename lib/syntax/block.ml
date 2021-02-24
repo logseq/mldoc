@@ -160,10 +160,10 @@ let block_parse config = fix (fun parse ->
         )
       | ':' ->                      (* verbatim block *)
         begin match config.format with
-          | "Org" ->
+          | Org ->
             verbatim >>|
             fun lines -> Example lines
-          | "Markdown" ->
+          | Markdown ->
             fail "block"
         end
       | '>' ->
@@ -189,7 +189,7 @@ let block_parse config = fix (fun parse ->
 
 let parse config =
   match config.format with
-  | "Org" ->
+  | Org ->
     block_parse config
-  | "Markdown" ->
+  | Markdown ->
     block_parse config <|> Markdown_code_block.parse

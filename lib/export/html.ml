@@ -16,7 +16,7 @@ let concatmap f l = List.concat (CCList.map f l)
 
 let list_element = function
   | [] -> "ul"
-  | { ordered; name } :: tl ->
+  | { ordered; name;_ } :: _tl ->
     let name = if List.length name == 0 then false else true in
     if name then "dl"
     else if ordered then "ol"
@@ -36,7 +36,7 @@ let handle_image_link url href label =
     [ Xml.block "img"
         ~attr:(opts @ [("src", href); ("title", Inline.asciis label)])
         [] ]
-  | Search s | File s ->
+  | Search _ | File _ ->
     [ Xml.block "img"
         ~attr:[("src", href); ("title", Inline.asciis label)]
         [] ]
@@ -49,7 +49,7 @@ let rec range t stopped =
       [("class", "timestamp-range"); ("stopped", string_of_bool stopped)]
     [timestamp start "Start"; timestamp stop "Stop"]
 
-and timestamp ({active; date; time; repetition} as t) kind =
+and timestamp ({active; _} as t) kind =
   let prefix =
     match kind with
     | "Scheduled" ->
@@ -97,7 +97,7 @@ and inline config t =
   | Latex_Fragment (Inline s) ->
     [Xml.data ("\\("^s^"\\)")]
   | Target s -> [Xml.block "a" ~attr:[("id", s)] [Xml.data s]]
-  | Link {url; label} ->
+  | Link {url; label; _} ->
     let href = Inline.string_of_url url in
     (* If it is an image *)
     if List.exists (ends_with href)
@@ -136,7 +136,7 @@ and inline config t =
     [ Xml.block "span"
         ~attr:[("class", "cookie-absolute")]
         [Xml.data ("[" ^ (string_of_int current) ^ "/" ^ (string_of_int total) ^ "]")]]
-  | Footnote_Reference { id; name } ->
+  | Footnote_Reference { name; _ } ->
     let encode_name = Uri.pct_encode name in
     [ Xml.block "sup"
         [ Xml.block "a"
@@ -189,7 +189,7 @@ let construct_numbering config ?(toc=false) level numbering =
   else
     Xml.empty
 
-let heading config {title; tags; marker; level; priority; anchor; meta; numbering} =
+let heading config {title; tags; marker; level; priority; anchor; numbering; _} =
   let numbering = construct_numbering config level numbering in
   let marker =
     match marker with
@@ -325,7 +325,7 @@ and block config t =
     Xml.block "div" ~attr:["class", "mathblock"]
       [Xml.data ("$$" ^ s ^ "$$")]
   | Example l -> Xml.block "pre" [Xml.data (String.concat "" l)]
-  | Src {language; options; lines; pos_meta} ->
+  | Src {language; lines; _} ->
     let attr = match language with
       | None -> []
       | Some l -> ["data-lang", l; "class", l] in
@@ -334,11 +334,11 @@ and block config t =
          [Xml.data (String.concat "" lines)]]
   | Quote l ->
     Xml.block "blockquote" (blocks config l)
-  | Export ("html", options, content) ->
+  | Export ("html", _options, content) ->
     Xml.raw content
   | Raw_Html content ->
     Xml.raw content
-  | Custom (name, options, result, _content) ->
+  | Custom (name, _options, result, _content) ->
     Xml.block "div" ~attr:["class", name]
       (blocks config result)
   | Latex_Fragment l ->
@@ -369,7 +369,7 @@ let toc config content =
   let rec go content =
     match Prelude.hd_opt content with
     | None -> Xml.empty
-    | Some { level } ->
+    | Some { level; _ } ->
       if level > toc_option then
         Xml.empty
       else
