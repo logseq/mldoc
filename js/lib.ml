@@ -1,6 +1,5 @@
 open Mldoc
 open Mldoc.Parser
-open Mldoc.Conf
 open Angstrom
 
 let ast_to_json ast =

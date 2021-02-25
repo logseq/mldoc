@@ -1,6 +1,7 @@
 DUNE ?= dune
 
 all:
+	opam install --deps-only .
 	$(DUNE) build --profile=release @install @JS @main @bench
 
 check: tests
