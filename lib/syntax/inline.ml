@@ -87,7 +87,7 @@ and t =
   | Inline_Hiccup of string
 [@@deriving yojson]
 
-let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '*'; '$']
+let link_delims = ['['; ']'; '<'; '>'; '{'; '}'; '('; ')';]
 
 let email = Email_address.email >>| fun email -> Email email
 
@@ -347,20 +347,26 @@ let metadata =
 (* complex link, or auto link *)
 (* :// *)
 let link_inline _config =
-  let protocol_part = take_while1 is_letter <* string "://" in
-  let link_part =
-    take_while1 (fun c ->
-        non_space c && List.for_all (fun c' -> c <> c') link_delims )
-  in
-  lift3
-    (fun protocol link metadata->
-       Link
-         { label= [Plain (protocol ^ "://" ^ link)]
-         ; url= Complex {protocol; link= "//" ^ link}
-         ; title= None
-         ; full_text= (protocol ^ "://" ^ link ^ metadata)
-         ; metadata} )
-    protocol_part link_part metadata
+  (fun uri metadata -> (uri, metadata)) <$>
+  spaces *>
+  ((take_while (fun c -> (not (is_space c || is_eol c || List.mem c link_delims)))) >>= fun s ->
+   match parse_string ~consume:All Uri.Parser.uri_reference s with
+   | Error _ -> fail "uri parse"
+   | Ok v -> return v) <*>
+  metadata
+  >>= fun (uri, metadata) ->
+  let uri_string = Uri.to_string uri in
+  let link = Uri.(to_string @@ with_scheme uri None) in (* trim uri scheme *)
+  match Uri.scheme uri with
+  | None -> fail "link scheme"
+  | Some protocol ->
+    return @@ Link {
+    label=[Plain uri_string];
+    url= Complex {protocol;link};
+    title=None;
+    full_text=(uri_string ^ metadata);
+    metadata }
+
 
 let quick_link config =
   between_char '<' '>' (link_inline config)
