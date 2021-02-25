@@ -1,0 +1,41 @@
+opam-version: "2.0"
+synopsis:
+  "Another Org-mode and Markdown parser implemented using OCaml and Angstrom"
+description:
+  "Another Org-mode and Markdown parser implemented using OCaml and Angstrom."
+maintainer: ["logseq team"]
+authors: ["tiensonqin <tiensonqin@gmail.com>" "RCmerci <rcmerci@gmail.com>"]
+homepage: "https://github.com/logseq/mldoc"
+bug-reports: "https://github.com/logseq/mldoc/issues"
+depends: [
+  "dune" {>= "2.8"}
+  "ocaml" {>= "4.11.1"}
+  "angstrom"
+  "cmdliner"
+  "core"
+  "core_bench"
+  "js_of_ocaml"
+  "js_of_ocaml-ppx"
+  "ppx_deriving_yojson"
+  "uri"
+  "yojson"
+  "lwt"
+  "odoc" {with-doc}
+]
+build: [
+  ["dune" "subst"] {dev}
+  [
+    "dune"
+    "build"
+    "-p"
+    name
+    "-j"
+    jobs
+    "@install"
+    "@runtest" {with-test}
+    "@doc" {with-doc}
+  ]
+]
+pin-depends: [
+  [ "angstrom.dev" "git://github.com/logseq/angstrom#fork" ]
+]
