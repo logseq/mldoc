@@ -5,6 +5,15 @@
 ** Who's using Mldoc?
    - [[https://logseq.com][Logseq]], a local-first notes app (In development)
 
+** Build
+   #+begin_src sh
+     # compile
+     make
+
+     # run test
+     make test
+   #+end_src
+
 ** Usage
 *** For Javascript users
     #+BEGIN_SRC sh

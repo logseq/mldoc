@@ -90,3 +90,6 @@ and t =
 and t_with_pos_meta = t * pos_meta [@@deriving yojson]
 and blocks = t_with_pos_meta list [@@deriving yojson]
 (* and blocks = t list [@@deriving yojson] *)
+
+
+let pp fmt t = Yojson.Safe.pp fmt @@ to_yojson t

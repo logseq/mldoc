@@ -1,0 +1,19 @@
+(executables
+ (names test_markdown)
+ (modules test_markdown)
+ (libraries alcotest mldoc))
+
+(executables
+ (names test_org)
+ (modules test_org)
+ (libraries alcotest mldoc))
+
+(rule
+ (alias runtest)
+ (deps
+  (:md test_markdown.exe)
+  (:org test_org.exe))
+ (action
+  (progn
+    (run %{md})
+    (run %{org}))))
