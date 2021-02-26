@@ -7,6 +7,7 @@ all:
 check: tests
 
 test:
+	opam install --deps-only -t .
 	$(DUNE) runtest
 
 clean:
