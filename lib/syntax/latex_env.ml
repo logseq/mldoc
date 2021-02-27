@@ -44,17 +44,20 @@ open Type
 open! Prelude
 
 let env_name_options_parser =
-  lift2 (fun name options ->
+  lift2
+    (fun name options ->
       match options with
-      | None | Some "" -> (name, None)
+      | None
+      | Some "" ->
+        (name, None)
       | _ -> (name, options))
-    (string_ci "\\begin{" *>
-     (take_while1 (fun c -> c <> '}'))
-     <* char '}')
+    (string_ci "\\begin{" *> take_while1 (fun c -> c <> '}') <* char '}')
     (optional line)
   <* end_of_line
 
 let parse _config =
   spaces *> env_name_options_parser >>= fun (name, options) ->
-  end_string ("\\end{" ^ name ^ "}") ~ci:true (fun s ->
-      Latex_Environment (String.lowercase_ascii name, options, s))
+  end_string
+    ("\\end{" ^ name ^ "}")
+    ~ci:true
+    (fun s -> Latex_Environment (String.lowercase_ascii name, options, s))

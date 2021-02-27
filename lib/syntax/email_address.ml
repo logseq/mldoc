@@ -11,20 +11,24 @@ type t =
 [@@deriving yojson]
 
 let string_contains = String.contains
+
 let whitespace_chars = " \r\n\t"
 
 let not_address_chars = "<>@," ^ whitespace_chars
+
 let not_domain_chars = not_address_chars ^ "'\""
 
 let address_part =
-  let local_part = take_while1 (fun chr -> not (string_contains not_address_chars chr))
-                   <?> "local_part" in
-  let domain = char '@'
-               *> take_while1 (fun chr -> not (string_contains not_domain_chars chr))
-               <?> "domain" in
-  lift2 (fun local_part domain -> { domain; local_part })
-    local_part domain
+  let local_part =
+    take_while1 (fun chr -> not (string_contains not_address_chars chr))
+    <?> "local_part"
+  in
+  let domain =
+    char '@'
+    *> take_while1 (fun chr -> not (string_contains not_domain_chars chr))
+    <?> "domain"
+  in
+  lift2 (fun local_part domain -> { domain; local_part }) local_part domain
 
 let email =
-  optional (char '<') *> address_part <* optional (char '>')
-  <?> "email"
+  optional (char '<') *> address_part <* optional (char '>') <?> "email"

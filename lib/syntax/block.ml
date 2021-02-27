@@ -15,18 +15,13 @@ open Helper
    2. Verbatim, each line starts with `:`.
 *)
 
-let results =
-  spaces *> string "#+RESULTS:" >>= fun _ -> return Results
+let results = spaces *> string "#+RESULTS:" >>= fun _ -> return Results
 
-let verbatim =
-  lines_starts_with (char ':') <?> "verbatim"
+let verbatim = lines_starts_with (char ':') <?> "verbatim"
 
-let md_blockquote =
-  lines_starts_with (char '>') <?> "markdown blockquote"
+let md_blockquote = lines_starts_with (char '>') <?> "markdown blockquote"
 
-let displayed_math =
-  string "$$" *>
-  end_string "$$" (fun s -> Displayed_Math s)
+let displayed_math = string "$$" *> end_string "$$" (fun s -> Displayed_Math s)
 
 (* ``` json
  * {
@@ -35,161 +30,200 @@ let displayed_math =
  *   "age": 25
  * }
  * ``` *)
-let fenced_language =
-  (string "```" <|> string "~~~") *> spaces *> optional line
+let fenced_language = (string "```" <|> string "~~~") *> spaces *> optional line
 
 let fenced_code_block =
-  fenced_language
-  >>= fun language ->
-  let p = between_lines ~trim:false (fun line ->
-      (starts_with (String.trim line) "```") || (starts_with (String.trim line) "~~~")
-    ) "fenced_code_block" in
+  fenced_language >>= fun language ->
+  let p =
+    between_lines ~trim:false
+      (fun line ->
+        starts_with (String.trim line) "```"
+        || starts_with (String.trim line) "~~~")
+      "fenced_code_block"
+  in
   let p' = with_pos_meta p in
-  p' >>| fun (lines, {start_pos; end_pos}) ->
+  p' >>| fun (lines, { start_pos; end_pos }) ->
   (* clear indents *)
-  let lines = if lines = [] then [] else
+  let lines =
+    if lines = [] then
+      []
+    else
       let indent = get_indent (List.hd lines) in
-      if indent = 0 then lines else
-        CCList.map (fun line ->
-            Prelude.safe_sub line indent (String.length line - indent)
-          ) lines in
-  let pos_meta = {start_pos; end_pos = end_pos - 3} in
-  Src {language; options=None; lines; pos_meta}
+      if indent = 0 then
+        lines
+      else
+        CCList.map
+          (fun line ->
+            Prelude.safe_sub line indent (String.length line - indent))
+          lines
+  in
+  let pos_meta = { start_pos; end_pos = end_pos - 3 } in
+  Src { language; options = None; lines; pos_meta }
 
 let block_name_options_parser =
-  lift2 (fun name options ->
+  lift2
+    (fun name options ->
       match options with
-      | None | Some "" -> (name, None)
+      | None
+      | Some "" ->
+        (name, None)
       | _ -> (name, options))
     (string_ci "#+begin_" *> non_spaces)
     (spaces *> optional line)
-  <* (optional eol)
+  <* optional eol
 
 let list_content_parsers config block_parse =
-  let p = (choice [
-      Table.parse config
-    ; block_parse
-    ; Directive.parse
-    ; Drawer.parse
-    ; Latex_env.parse config
-    ; Hr.parse config
-    ; results
-    ; Comment.parse config
-    ; Paragraph.parse
-    ; Paragraph.sep
-    ]) in
+  let p =
+    choice
+      [ Table.parse config
+      ; block_parse
+      ; Directive.parse
+      ; Drawer.parse
+      ; Latex_env.parse config
+      ; Hr.parse config
+      ; results
+      ; Comment.parse config
+      ; Paragraph.parse
+      ; Paragraph.sep
+      ]
+  in
   let p = Helper.with_pos_meta p in
   many1 p
 
 let block_content_parsers config block_parse =
   let list_content_parser = list_content_parsers config block_parse in
-  let p = (choice [
-      Directive.parse
-    ; Table.parse config
-    ; Lists.parse config list_content_parser
-    ; Drawer.parse
-    ; block_parse
-    ; Latex_env.parse config
-    ; Hr.parse config
-    ; results
-    ; Comment.parse config
-    ; Paragraph.parse
-    ; Paragraph.sep
-    ]) in
+  let p =
+    choice
+      [ Directive.parse
+      ; Table.parse config
+      ; Lists.parse config list_content_parser
+      ; Drawer.parse
+      ; block_parse
+      ; Latex_env.parse config
+      ; Hr.parse config
+      ; results
+      ; Comment.parse config
+      ; Paragraph.parse
+      ; Paragraph.sep
+      ]
+  in
   let p = Helper.with_pos_meta p in
   many1 p
 
 let separate_name_options = function
   | None -> (None, None)
-  | Some s ->
+  | Some s -> (
     match String.split_on_char ' ' s with
     | [] -> (None, None)
-    | name :: [] -> (Some name, None)
-    | name :: options -> (Some name, Some options)
+    | [ name ] -> (Some name, None)
+    | name :: options -> (Some name, Some options))
 
-let block_parse config = fix (fun parse ->
-    let p = peek_char_fail
-      >>= function
-      | '#' ->
-        block_name_options_parser
-        >>= fun (name, options) ->
-        let p =
-          between_lines ~trim:false (fun line ->
-              let prefix = "#+end_" ^ name in
-              starts_with (String.trim line) prefix) "block"
-        in
-        let p' = with_pos_meta p in
-        p' >>| fun (lines, {start_pos; end_pos}) ->
-        (* clear indents *)
-        let lines = if lines = [] then [] else
-            let indent = get_indent (List.hd lines) in
-            if indent = 0 then lines else
-              CCList.map (fun line ->
-                  Prelude.safe_sub line indent (String.length line - indent)
-                ) lines in
-        let name = String.lowercase_ascii name in
-        (match name with
-         | "src" ->
-           let (language, options) = separate_name_options options in
-           let pos_meta = {start_pos; end_pos = end_pos - 9} in
-           Src {language; options; lines; pos_meta}
-         | "example" -> Example lines
-         | "quote" ->
-           let content = String.concat "" lines in
-           let result = match parse_string ~consume:All (block_content_parsers config parse) content with
-             | Ok result ->
-               let result = Paragraph.concat_paragraph_lines config result in
-               CCList.map fst result
-             | Error _e -> [] in
-           Quote result
-         | "export" ->          (* export html, etc *)
-           let (name, options) = separate_name_options options in
-           let name = match name with None -> "" | Some s -> s in
-           let content = String.concat "" lines in
-           Export (name, options, content)
-         | "comment" ->
-           CommentBlock lines
-         | _ ->
-           let content = String.concat "" lines in
-           let result = match parse_string ~consume:All (block_content_parsers config parse) content with
-             | Ok result ->
-               let result =  Paragraph.concat_paragraph_lines config result in
-               CCList.map fst result
-             | Error _e -> [] in
-           Custom (name, options, result, content)
-        )
-      | ':' ->                      (* verbatim block *)
-        begin match config.format with
-          | Org ->
-            verbatim >>|
-            fun lines -> Example lines
-          | Markdown ->
-            fail "block"
-        end
-      | '>' ->
-        md_blockquote >>|
-        fun lines ->
-        let content = String.concat "" lines in
-        let result = match parse_string ~consume:All (block_content_parsers config parse) content with
-          | Ok result ->
-            let result = Paragraph.concat_paragraph_lines config result in
-            CCList.map fst result
-          | Error _e -> [] in
-        Quote result
-      | '`' | '~' ->
-        fenced_code_block
-      | '$' ->
-        displayed_math
-      | '<' ->
-        Raw_html.parse >>| fun s -> Raw_Html s
-      | '[' ->
-        Hiccup.parse >>| fun s -> Hiccup s
-      | _ -> fail "block" in
-    between_eols p)
+let block_parse config =
+  fix (fun parse ->
+      let p =
+        peek_char_fail >>= function
+        | '#' -> (
+          block_name_options_parser >>= fun (name, options) ->
+          let p =
+            between_lines ~trim:false
+              (fun line ->
+                let prefix = "#+end_" ^ name in
+                starts_with (String.trim line) prefix)
+              "block"
+          in
+          let p' = with_pos_meta p in
+          p' >>| fun (lines, { start_pos; end_pos }) ->
+          (* clear indents *)
+          let lines =
+            if lines = [] then
+              []
+            else
+              let indent = get_indent (List.hd lines) in
+              if indent = 0 then
+                lines
+              else
+                CCList.map
+                  (fun line ->
+                    Prelude.safe_sub line indent (String.length line - indent))
+                  lines
+          in
+          let name = String.lowercase_ascii name in
+          match name with
+          | "src" ->
+            let language, options = separate_name_options options in
+            let pos_meta = { start_pos; end_pos = end_pos - 9 } in
+            Src { language; options; lines; pos_meta }
+          | "example" -> Example lines
+          | "quote" ->
+            let content = String.concat "" lines in
+            let result =
+              match
+                parse_string ~consume:All
+                  (block_content_parsers config parse)
+                  content
+              with
+              | Ok result ->
+                let result = Paragraph.concat_paragraph_lines config result in
+                CCList.map fst result
+              | Error _e -> []
+            in
+            Quote result
+          | "export" ->
+            (* export html, etc *)
+            let name, options = separate_name_options options in
+            let name =
+              match name with
+              | None -> ""
+              | Some s -> s
+            in
+            let content = String.concat "" lines in
+            Export (name, options, content)
+          | "comment" -> CommentBlock lines
+          | _ ->
+            let content = String.concat "" lines in
+            let result =
+              match
+                parse_string ~consume:All
+                  (block_content_parsers config parse)
+                  content
+              with
+              | Ok result ->
+                let result = Paragraph.concat_paragraph_lines config result in
+                CCList.map fst result
+              | Error _e -> []
+            in
+            Custom (name, options, result, content))
+        | ':' -> (
+          (* verbatim block *)
+          match config.format with
+          | Org -> verbatim >>| fun lines -> Example lines
+          | Markdown -> fail "block")
+        | '>' ->
+          md_blockquote >>| fun lines ->
+          let content = String.concat "" lines in
+          let result =
+            match
+              parse_string ~consume:All
+                (block_content_parsers config parse)
+                content
+            with
+            | Ok result ->
+              let result = Paragraph.concat_paragraph_lines config result in
+              CCList.map fst result
+            | Error _e -> []
+          in
+          Quote result
+        | '`'
+        | '~' ->
+          fenced_code_block
+        | '$' -> displayed_math
+        | '<' -> Raw_html.parse >>| fun s -> Raw_Html s
+        | '[' -> Hiccup.parse >>| fun s -> Hiccup s
+        | _ -> fail "block"
+      in
+      between_eols p)
 
 let parse config =
   match config.format with
-  | Org ->
-    block_parse config
-  | Markdown ->
-    block_parse config <|> Markdown_code_block.parse
+  | Org -> block_parse config
+  | Markdown -> block_parse config <|> Markdown_code_block.parse

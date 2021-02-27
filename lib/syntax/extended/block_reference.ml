@@ -7,4 +7,6 @@ open Parsers
 
 let parse =
   between_string "((" "))"
-    ( take_while1 (function ')' -> false | _ -> true) )
+    (take_while1 (function
+      | ')' -> false
+      | _ -> true))

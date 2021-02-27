@@ -15,5 +15,5 @@
   (:org test_org.exe))
  (action
   (progn
-    (run %{md})
-    (run %{org}))))
+   (run %{md})
+   (run %{org}))))
