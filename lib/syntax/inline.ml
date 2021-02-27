@@ -346,7 +346,6 @@ let metadata =
 (* :// *)
 let link_inline _config =
   (fun uri metadata -> (uri, metadata)) <$>
-  spaces *>
   ((take_while (fun c -> (not (is_space c || is_eol c || List.mem c link_delims)))) >>= fun s ->
    match parse_string ~consume:All Uri.Parser.uri_reference s with
    | Error _ -> fail "uri parse"
@@ -520,7 +519,7 @@ let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 let macro =
   let p = ( take_while1 (function '}' | '\r' | '\n' -> false | _ -> true)
       >>= fun s ->
-      match parse_string ~consume:All macro_name s with
+      match parse_string ~consume:Prefix macro_name s with
       | Ok name ->
         let l = String.length s in
         let args = String.sub s (String.length name) (l - String.length name) in
