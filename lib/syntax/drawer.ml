@@ -23,7 +23,7 @@ let end_mark = ":END:"
 
 let property =
   let property_key = spaces *> between_char ':' ':' (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n')) in
-  let property_value = spaces *> line <* eol in
+  let property_value = optional spaces *> optional_line <* eol in
   lift2 (fun key value ->
       (key, value)
     )

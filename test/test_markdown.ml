@@ -59,6 +59,11 @@ let inline =
          "inline-embed", `Quick, (fun _ -> check_aux "{{{embed [[page]]}}}"
                                      (Paragraph [I.Macro {I.Macro.name = "embed"; arguments = ["[[page]]"]}]))
        ]);
+    ("drawer", testcases
+       [
+         "empty-property-value", `Quick, (fun _ -> check_aux ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
+                                             (Property_Drawer [("type", "programming_lang"); ("creator", "test")]))
+       ]);
 ]
 
 let () =
