@@ -16,7 +16,7 @@ open Type
 open Prelude
 
 let name =
-  (between_string "#+" ":" (take_while1 (fun c -> c <> ':' && non_eol c)))
+  between_string "#+" ":" (take_while1 (fun c -> c <> ':' && non_eol c))
   >>= fun s ->
   if starts_with s "BEGIN_" || starts_with s "begin_" then
     fail "Directive might be a block"
@@ -25,7 +25,8 @@ let name =
 
 let parse =
   let p =
-    lift2 (fun name value -> Directive (name, value))
-      name
-      (spaces *> optional_line) in
+    lift2
+      (fun name value -> Directive (name, value))
+      name (spaces *> optional_line)
+  in
   between_eols p

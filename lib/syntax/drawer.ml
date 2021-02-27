@@ -22,31 +22,36 @@ open Type
 let end_mark = ":END:"
 
 let property =
-  let property_key = optional spaces *> between_char ':' ':' (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n'))
+  let property_key =
+    optional spaces
+    *> between_char ':' ':'
+         (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n'))
     >>= fun s ->
-    if (String.lowercase_ascii s) = "end" then
+    if String.lowercase_ascii s = "end" then
       fail "property key"
     else
       return s
   in
   let property_value = optional spaces *> optional_line <* eol in
-  lift2 (fun key value ->
-      (key, value))
-    property_key property_value
+  lift2 (fun key value -> (key, value)) property_key property_value
 
 let drawer_properties = many1 property
 
 (* TODO: support other drawers than properties *)
 let parse =
   let drawer_name =
-    spaces *>
-    between_char ':' ':' (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n')) <* eol in
+    spaces
+    *> between_char ':' ':'
+         (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n'))
+    <* eol
+  in
   (* anything but a headline and another drawer *)
   let p =
-    lift2 (fun name properties ->
-        match String.lowercase_ascii(name) with
-          "properties" ->
-          Property_Drawer properties
+    lift2
+      (fun name properties ->
+        match String.lowercase_ascii name with
+        | "properties" -> Property_Drawer properties
         | _ -> Drawer (name, properties))
-      drawer_name drawer_properties in
+      drawer_name drawer_properties
+  in
   p <* spaces <* string_ci end_mark <* optional eol

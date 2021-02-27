@@ -4,7 +4,7 @@ module type Exporter = sig
 
   val default_filename : string -> string
 
-  val export: Conf.t -> Document.t -> out_channel -> unit
+  val export : Conf.t -> Document.t -> out_channel -> unit
 end
 
 type exporter = (module Exporter)
@@ -12,14 +12,14 @@ type exporter = (module Exporter)
 let find name =
   List.find (fun m ->
       let module M = (val m : Exporter) in
-      M.name = name )
+      M.name = name)
 
 module Exporters = struct
   include ExtList.Make (struct
-      type t = exporter
+    type t = exporter
 
-      let base = [(module Html.HtmlExporter : Exporter)]
-    end)
+    let base = [ (module Html.HtmlExporter : Exporter) ]
+  end)
 
   let run exporter config doc output =
     let module M = (val exporter : Exporter) in

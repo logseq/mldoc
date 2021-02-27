@@ -1,7 +1,7 @@
 (executable
- (name        bench)
+ (name bench)
  (libraries angstrom mldoc core core_bench))
 
 (alias
-  (name bench)
-  (deps bench.exe))
+ (name bench)
+ (deps bench.exe))

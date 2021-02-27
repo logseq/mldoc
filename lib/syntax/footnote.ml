@@ -29,22 +29,26 @@ great I like it very much
 
 (* https://orgmode.org/manual/Footnotes.html *)
 (* It ends at the next footnote definition, headline, or after two consecutive empty lines. *)
-let name_part config = match config.format with
+let name_part config =
+  match config.format with
   | Org ->
     string "[fn:" *> take_while1 (fun c -> c <> ']' && non_eol c)
     <* char ']' <* spaces
-  | Markdown ->
-    Markdown_footnote.reference <* char ':' <* spaces
+  | Markdown -> Markdown_footnote.reference <* char ':' <* spaces
 
 let footnote_definition =
   let non_eol = function
-      '\r' | '\n' | '*' | '#' | '[' -> false
-    | _ -> true in
-  let l = spaces *> satisfy non_eol >>=
-    fun c ->
-    line <* (end_of_input <|> end_of_line)
-    >>| fun s ->
-    Char.escaped c ^ s
+    | '\r'
+    | '\n'
+    | '*'
+    | '#'
+    | '[' ->
+      false
+    | _ -> true
+  in
+  let l =
+    spaces *> satisfy non_eol >>= fun c ->
+    line <* (end_of_input <|> end_of_line) >>| fun s -> Char.escaped c ^ s
   in
   many1 l
 
@@ -52,12 +56,15 @@ let definition_parse config =
   let name_part = name_part config in
   lift2
     (fun name lines ->
-       let definition_content = String.concat "\n" lines in
-       let definition = match parse_string ~consume:All (Inline.parse config) definition_content with
-         | Ok inlines -> inlines
-         | Error _e -> [Inline.Plain definition_content] in
-       Footnote_Definition (name, definition))
+      let definition_content = String.concat "\n" lines in
+      let definition =
+        match
+          parse_string ~consume:All (Inline.parse config) definition_content
+        with
+        | Ok inlines -> inlines
+        | Error _e -> [ Inline.Plain definition_content ]
+      in
+      Footnote_Definition (name, definition))
     name_part footnote_definition
 
-let parse config =
-  definition_parse config <* (optional eols)
+let parse config = definition_parse config <* optional eols

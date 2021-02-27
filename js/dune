@@ -1,9 +1,10 @@
 (executable
- (name        lib)
+ (name lib)
  (modes js)
- (preprocess (pps js_of_ocaml-ppx))
+ (preprocess
+  (pps js_of_ocaml-ppx))
  (libraries angstrom js_of_ocaml mldoc))
 
 (alias
-  (name JS)
-  (deps lib.bc.js))
+ (name JS)
+ (deps lib.bc.js))
