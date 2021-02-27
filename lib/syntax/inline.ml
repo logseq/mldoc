@@ -357,13 +357,15 @@ let link_inline _config =
   match Uri.scheme uri with
   | None -> fail "link scheme"
   | Some protocol ->
-    return @@ Link {
-    label=[Plain uri_string];
-    url= Complex {protocol;link};
-    title=None;
-    full_text=(uri_string ^ metadata);
-    metadata }
-
+    if (starts_with uri_string (protocol ^ "://")) then
+      return @@ Link {
+        label=[Plain uri_string];
+        url= Complex {protocol;link};
+        title=None;
+        full_text=(uri_string ^ metadata);
+        metadata }
+    else
+      fail "wrong link"
 
 let quick_link config =
   between_char '<' '>' (link_inline config)
