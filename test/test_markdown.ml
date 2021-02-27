@@ -5,7 +5,7 @@ let check_mldoc_type = Alcotest.check (Alcotest.testable Type.pp (=)) "check mld
 
 let check_aux source expect =
   let result = Mldoc.Parser.parse default_config source |> List.hd |> fst in
-  check_mldoc_type result expect
+  fun _ -> check_mldoc_type expect result
 
 let testcases = List.map (fun (case, level, f) -> Alcotest.test_case case level f)
 
@@ -15,7 +15,7 @@ let inline =
   [
     ("inline-link", testcases
        [
-         "link-inline-normal", `Quick, (fun _ -> check_aux "http://testtest/asdasd"
+         "normal", `Quick, check_aux "http://testtest/asdasd"
                                              (Paragraph [I.Link
                                                            {url=I.Complex
                                                                 {protocol="http";
@@ -23,8 +23,8 @@ let inline =
                                                             label= [Plain "http://testtest/asdasd"];
                                                             title= None;
                                                             full_text= "http://testtest/asdasd";
-                                                            metadata= ""}]));
-         "link-inline-*", `Quick, (fun _ -> check_aux "http://testtest/asd*asd"
+                                                            metadata= ""}]);
+         "with-*", `Quick, check_aux "http://testtest/asd*asd"
                                              (Paragraph [I.Link
                                                            {url=I.Complex
                                                                 {protocol="http";
@@ -32,8 +32,8 @@ let inline =
                                                             label= [Plain "http://testtest/asd*asd"];
                                                             title= None;
                                                             full_text= "http://testtest/asd*asd";
-                                                            metadata= ""}]));
-         "spaces-around-link-line", `Quick, (fun _ -> check_aux " http://testtest/asdasd "
+                                                            metadata= ""}]);
+         "spaces-around-link-line", `Quick, check_aux " http://testtest/asdasd "
                                                (Paragraph [I.Plain " ";
                                                            I.Link
                                                              {url=I.Complex
@@ -43,27 +43,26 @@ let inline =
                                                               title= None;
                                                               full_text= "http://testtest/asdasd";
                                                               metadata= ""};
-                                                           I.Plain " "]))
-       ]);
-    ("inline-code", testcases
-       [
-         "inline-code-normal", `Quick, (fun _ -> check_aux "`codes here`"
-                                           (Paragraph [I.Code "codes here"]))
+                                                           I.Plain " "])
        ]);
     ("inline-macro", testcases
        [
-         "inline-macro-double", `Quick, (fun _ -> check_aux "{{test foo}}"
-                                            (Paragraph [I.Macro {I.Macro.name = "test"; arguments = ["foo"]}]));
-         "inline-macro-three", `Quick, (fun _ -> check_aux "{{{test foo}}}"
-                                           (Paragraph [I.Macro {I.Macro.name = "test"; arguments = ["foo"]}]));
-         "inline-embed", `Quick, (fun _ -> check_aux "{{{embed [[page]]}}}"
-                                     (Paragraph [I.Macro {I.Macro.name = "embed"; arguments = ["[[page]]"]}]))
+         "double", `Quick, check_aux "{{test foo}}"
+                                            (Paragraph [I.Macro {I.Macro.name = "test"; arguments = ["foo"]}]);
+         "three", `Quick, check_aux "{{{test foo}}}"
+                                           (Paragraph [I.Macro {I.Macro.name = "test"; arguments = ["foo"]}]);
+         "embed", `Quick,  check_aux "{{{embed [[page]]}}}"
+                                     (Paragraph [I.Macro {I.Macro.name = "embed"; arguments = ["[[page]]"]}])
        ]);
     ("drawer", testcases
        [
-         "empty-property-value", `Quick, (fun _ -> check_aux ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
-                                             (Property_Drawer [("type", "programming_lang"); ("creator", "test")]))
+         "empty-property-value", `Quick, check_aux ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
+                                             (Property_Drawer [("type", "programming_lang"); ("creator", "test")])
        ]);
+    ("inline-code", testcases
+       [
+         "normal", `Quick, check_aux "`codes here`" (Paragraph [I.Code "codes here"]);
+       ])
 ]
 
 let () =
