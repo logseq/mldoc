@@ -11,12 +11,14 @@ test:
 	$(DUNE) runtest
 
 clean:
-	rm -rf _build
-
+	dune clean
 run:
 	$(DUNE) exec ./bin/main.exe
 
 bench:
 	$(DUNE) exec ./bench/bench.exe
 
-.PHONY: pin test all clean check bench
+fmt:
+	dune build @fmt --auto-promote
+
+.PHONY: pin test all clean check bench fmt
