@@ -24,7 +24,7 @@ let end_mark = ":END:"
 let property =
   let property_key = optional spaces *> between_char ':' ':' (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n'))
     >>= fun s ->
-    if String.lowercase_ascii(s) == "end" then
+    if (String.lowercase_ascii s) = "end" then
       fail "property key"
     else
       return s
