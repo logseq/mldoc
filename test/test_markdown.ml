@@ -57,7 +57,9 @@ let inline =
     ("drawer", testcases
        [
          "empty-property-value", `Quick, check_aux ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
-                                             (Property_Drawer [("type", "programming_lang"); ("creator", "test")])
+           (Property_Drawer [("type", "programming_lang"); ("creator", "test")]);
+         "spaces-before-drawer", `Quick, check_aux " :PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
+           (Property_Drawer [("type", "programming_lang"); ("creator", "test")]);
        ]);
     ("inline-code", testcases
        [

@@ -22,11 +22,16 @@ open Type
 let end_mark = ":END:"
 
 let property =
-  let property_key = spaces *> between_char ':' ':' (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n')) in
+  let property_key = optional spaces *> between_char ':' ':' (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n'))
+    >>= fun s ->
+    if String.lowercase_ascii(s) == "end" then
+      fail "property key"
+    else
+      return s
+  in
   let property_value = optional spaces *> optional_line <* eol in
   lift2 (fun key value ->
-      (key, value)
-    )
+      (key, value))
     property_key property_value
 
 let drawer_properties = many1 property
