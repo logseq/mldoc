@@ -34,6 +34,34 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "normal-2"
+          , `Quick
+          , check_aux "[test  normal](http://testtest/asdasd)"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "//testtest/asdasd" }
+                     ; label = [ Plain "test  normal" ]
+                     ; title = None
+                     ; full_text = "[test  normal](http://testtest/asdasd)"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "inline-code-in-label"
+          , `Quick
+          , check_aux "[test `normal`](http://testtest/asdasd)"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "//testtest/asdasd" }
+                     ; label = [ Plain "test "; Code "normal" ]
+                     ; title = None
+                     ; full_text = "[test `normal`](http://testtest/asdasd)"
+                     ; metadata = ""
+                     }
+                 ]) )
         ; ( "with-*"
           , `Quick
           , check_aux "http://testtest/asd*asd"
@@ -140,6 +168,25 @@ let inline =
         ; ( "overlap-with-emphasis-5"
           , `Quick
           , check_aux "`as*d`*" (Paragraph [ I.Code "as*d"; I.Plain "*" ]) )
+        ; ( "overlap-with-link"
+          , `Quick
+          , check_aux "[as`d](`http://dwdw)"
+              (Paragraph
+                 [ I.Plain "[as"
+                 ; I.Code "d]("
+                 ; I.Link
+                     { url = Complex { protocol = "http"; link = "//dwdw" }
+                     ; label = [ Plain "http://dwdw" ]
+                     ; title = None
+                     ; full_text = "http://dwdw"
+                     ; metadata = ""
+                     }
+                 ; I.Plain ")"
+                 ]) )
+        ; ( "overlap-with-link-2"
+          , `Quick
+          , check_aux "[as`d](http://dwdw)`"
+              (Paragraph [ I.Plain "[as"; I.Code "d](http://dwdw)" ]) )
         ] )
   ; ( "emphasis"
     , testcases
