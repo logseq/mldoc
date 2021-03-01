@@ -125,6 +125,46 @@ let inline =
         [ ( "normal"
           , `Quick
           , check_aux "`codes here`" (Paragraph [ I.Code "codes here" ]) )
+        ; ( "overlap-with-emphasis"
+          , `Quick
+          , check_aux "*aa`*`" (Paragraph [ I.Plain "*aa"; I.Code "*" ]) )
+        ; ( "overlap-with-emphasis-2"
+          , `Quick
+          , check_aux "**aa`**`" (Paragraph [ I.Plain "**aa"; I.Code "**" ]) )
+        ; ( "overlap-with-emphasis-3"
+          , `Quick
+          , check_aux "_a`_`" (Paragraph [ I.Plain "_a"; I.Code "_" ]) )
+        ; ( "overlap-with-emphasis-4"
+          , `Quick
+          , check_aux "__a`__`" (Paragraph [ I.Plain "__a"; I.Code "__" ]) )
+        ; ( "overlap-with-emphasis-5"
+          , `Quick
+          , check_aux "`as*d`*" (Paragraph [ I.Code "as*d"; I.Plain "*" ]) )
+        ] )
+  ; ( "emphasis"
+    , testcases
+        [ ( "normal"
+          , `Quick
+          , check_aux "*abc*"
+              (Paragraph [ I.Emphasis (`Italic, [ Plain "abc" ]) ]) )
+        ; ( "normal-2"
+          , `Quick
+          , check_aux "**abc**"
+              (Paragraph [ I.Emphasis (`Bold, [ Plain "abc" ]) ]) )
+        ; ( "inline-code-inside"
+          , `Quick
+          , check_aux "*asd`qwe`*"
+              (Paragraph
+                 [ I.Emphasis (`Italic, [ I.Plain "asd"; I.Code "qwe" ]) ]) )
+        ; ( "inline-code-inside-2"
+          , `Quick
+          , check_aux "***asd`qwe`***"
+              (Paragraph
+                 [ I.Emphasis
+                     ( `Italic
+                     , [ I.Emphasis (`Bold, [ I.Plain "asd"; I.Code "qwe" ]) ]
+                     )
+                 ]) )
         ] )
   ]
 

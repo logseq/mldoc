@@ -165,26 +165,21 @@ let verbatim =
 
 let markdown_escape_backticks = string "``" *> end_string "``" (fun s -> Code s)
 
-let code config =
-  let is_markdown = Conf.is_markdown config in
-  let c =
-    if is_markdown then
-      "`"
-    else
-      "~"
-  in
-
-  let p =
-    between c >>= fun s ->
-    if String.length s > 0 then
-      return (Code s)
-    else
-      fail "Empty code" <?> "Inline code"
-  in
-  if is_markdown then
-    p <|> markdown_escape_backticks
+let code_aux_p c =
+  between c >>= fun s ->
+  if String.length s > 0 then
+    return (Code s)
   else
-    p
+    fail "Empty code" <?> "Inline code"
+
+let org_code = code_aux_p "~"
+
+let md_code = code_aux_p "`" <|> markdown_escape_backticks
+
+let code config =
+  match config.format with
+  | Org -> org_code
+  | Markdown -> md_code
 
 (* TODO: optimization *)
 let org_plain_delims = [ ' '; '\\'; '_'; '^'; '['; '$' ]
@@ -198,17 +193,13 @@ let in_plain_delims config c =
     | Org -> org_plain_delims
     | Markdown -> markdown_plain_delims
   in
-  List.exists (fun d -> c = d) plain_delims
+  List.mem c plain_delims
 
 let whitespaces = ws >>= fun spaces -> return (Plain spaces)
 
 let plain config =
-  scan1 false (fun _state c ->
-      if non_eol c && not (in_plain_delims config c) then
-        Some true
-      else
-        None)
-  >>= (fun (s, _state) -> return (Plain s))
+  take_while1 (fun c -> non_eol c && not (in_plain_delims config c))
+  >>= (fun s -> return (Plain s))
   <|> (word >>= fun s -> return (Plain s))
   <|> ( char '\\' *> satisfy non_tab_or_space >>= fun c ->
         return (Plain (String.make 1 c)) )
@@ -230,28 +221,51 @@ let org_emphasis =
   | '^' -> highlight
   | _ -> fail "Inline emphasis"
 
+let concat_plains l =
+  List.fold_left
+    (fun r e ->
+      match (r, e) with
+      | Plain h :: t, Plain e -> Plain (h ^ e) :: t
+      | _ -> e :: r)
+    [] l
+  |> List.rev
+
 let md_em_parser pattern typ =
   let pattern_c = pattern.[0] in
   let stop_chars = [ pattern_c; '\r'; '\n' ] in
+  (* inline code has higher precedence than any other inline constructs
+     except HTML tags and autolinks *)
+  let stop_chars_include_inline_code_delim = '`' :: stop_chars in
   between_string pattern pattern
-    ( take_while1 (fun c ->
-          if List.exists (fun d -> c = d) stop_chars then
-            false
-          else
-            true)
-    >>= fun s -> return @@ Emphasis (typ, [ Plain s ]) )
+  @@ many1
+  @@ choice
+       [ ( take_while1 (fun c ->
+               not @@ List.mem c stop_chars_include_inline_code_delim)
+         >>| fun s -> Plain s )
+       ; md_code
+       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
+           Plain s )
+       ]
+  >>= fun l -> return @@ Emphasis (typ, concat_plains l)
 
 let md_em_nested_parser pattern =
   let pattern_c = pattern.[0] in
   let stop_chars = [ pattern_c; '\r'; '\n' ] in
+  (* inline code has higher precedence than any other inline constructs
+     except HTML tags and autolinks *)
+  let stop_chars_include_inline_code_delim = '`' :: stop_chars in
   between_string pattern pattern
-    ( take_while1 (fun c ->
-          if List.exists (fun d -> c = d) stop_chars then
-            false
-          else
-            true)
-    >>= fun s -> return @@ Emphasis (`Italic, [ Emphasis (`Bold, [ Plain s ]) ])
-    )
+  @@ many1
+  @@ choice
+       [ ( take_while1 (fun c ->
+               not @@ List.mem c stop_chars_include_inline_code_delim)
+         >>| fun s -> Plain s )
+       ; md_code
+       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
+           Plain s )
+       ]
+  >>= fun l ->
+  return @@ Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
 
 (* TODO: html tags support *)
 (* <ins></ins> *)
@@ -423,32 +437,6 @@ let link_inline _config =
 
 let quick_link config = between_char '<' '>' (link_inline config)
 
-(* Build direct links *)
-let concat_plains config inlines =
-  let l =
-    List.fold_left
-      (fun acc inline ->
-        match inline with
-        | Plain s -> (
-          match acc with
-          | [] -> [ Plain s ]
-          | Plain s' :: tl ->
-            if starts_with s "//" then
-              (* might be a direct link *)
-              let l, r = splitr non_space s' in
-              let l', r' = splitl non_space s in
-              let link = r ^ l' in
-              match parse_string ~consume:All (link_inline config) link with
-              | Ok result -> Plain r' :: result :: Plain l :: tl
-              | Error _e -> Plain (s' ^ s) :: tl
-            else
-              Plain (s' ^ s) :: tl
-          | _ -> Plain s :: acc)
-        | other -> other :: acc)
-      [] inlines
-  in
-  List.rev l
-
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
 (* 3. [[ecosystem [[great]] [[Questions]]]] *)
@@ -487,7 +475,7 @@ let org_link config =
       in
       let label =
         match parse_string ~consume:All parser label_text with
-        | Ok result -> concat_plains config result
+        | Ok result -> concat_plains result
         | Error _e -> [ Plain label_text ]
       in
       let title = None in
@@ -537,7 +525,7 @@ let markdown_link config =
       in
       let label =
         match parse_string ~consume:All parser label_text with
-        | Ok result -> concat_plains config result
+        | Ok result -> concat_plains result
         | Error _e -> [ Plain label_text ]
       in
       let title =
@@ -564,7 +552,8 @@ let nested_link _config = Nested_link.parse >>| fun s -> Nested_link s
 let nested_emphasis config =
   let rec aux_nested_emphasis = function
     | Plain s -> Plain s
-    | Emphasis (typ, [ Plain s ]) as e -> (
+    | Emphasis (`Italic, [ Emphasis (`Bold, _) ]) as e -> e
+    | Emphasis (typ, l) ->
       let parser =
         many1
           (choice
@@ -576,11 +565,18 @@ let nested_emphasis config =
              ; plain config
              ])
       in
-      match parse_string ~consume:All parser s with
-      | Ok [ Plain _ ] -> e
-      | Ok result -> Emphasis (typ, CCList.map aux_nested_emphasis result)
-      | Error _error -> e)
-    | Emphasis (`Italic, [ Emphasis (`Bold, _) ]) as e -> e
+      Emphasis
+        ( typ
+        , CCList.map
+            (function
+              | Plain s as e -> (
+                match parse_string ~consume:All parser s with
+                | Ok [ Plain _ ] -> [ e ]
+                | Ok result -> CCList.map aux_nested_emphasis result
+                | Error _error -> [ e ])
+              | s -> [ s ])
+            l
+          |> List.concat |> concat_plains )
     | Subscript _ as s -> s
     | Superscript _ as s -> s
     | Link _ as l -> l
@@ -799,7 +795,7 @@ let markdown_image config =
       in
       let label =
         match parse_string ~consume:All parser label_text with
-        | Ok result -> concat_plains config result
+        | Ok result -> concat_plains result
         | Error _e -> [ Plain label_text ]
       in
       let title = None in
@@ -874,7 +870,7 @@ let footnote_inline_definition config ?(break = false) definition =
   let parser = many1 (choice choices) in
   match parse_string ~consume:All parser definition with
   | Ok result ->
-    let result = concat_plains config result in
+    let result = concat_plains result in
     result
   | Error _e -> [ Plain definition ]
 
@@ -1038,9 +1034,7 @@ let inline_choices config =
  * choice choices *)
 
 let parse config =
-  many1 (inline_choices config)
-  >>| (fun l -> concat_plains config l)
-  <?> "inline"
+  many1 (inline_choices config) >>| (fun l -> concat_plains l) <?> "inline"
 
 let string_of_url = function
   | File s
