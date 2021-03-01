@@ -246,7 +246,7 @@ let md_em_parser pattern typ =
        ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
            Plain s )
        ]
-  >>= fun l -> return @@ Emphasis (typ, concat_plains l)
+  >>| fun l -> Emphasis (typ, concat_plains l)
 
 let md_em_nested_parser pattern =
   let pattern_c = pattern.[0] in
@@ -264,8 +264,7 @@ let md_em_nested_parser pattern =
        ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
            Plain s )
        ]
-  >>= fun l ->
-  return @@ Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
+  >>| fun l -> Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
 
 (* TODO: html tags support *)
 (* <ins></ins> *)
@@ -490,10 +489,31 @@ let org_link config =
 *)
 (* TODO: URI encode *)
 let markdown_link config =
-  let label_part = char '[' *> take_while (fun c -> c <> ']') <* string "](" in
+  let label_part_delims = [ '`'; ']' ] in
+  let label_part =
+    string "[]("
+    >>| (fun _ -> ([ Plain "" ], ""))
+    <|> ( between_string "[" "](" @@ many1
+        @@ choice
+             [ ( take_while1 (fun c -> not @@ List.mem c label_part_delims)
+               >>| fun s -> Plain s )
+             ; md_code
+             ; (take_while1 (( <> ) ']') >>| fun s -> Plain s)
+             ]
+        >>| fun l ->
+          ( concat_plains l
+          , CCList.map
+              (function
+                | Plain s -> s
+                | Code s -> "`" ^ s ^ "`"
+                | _ -> "")
+              l
+            |> String.concat "" ) )
+  in
+
   let url_part = take_while (fun c -> c <> ')') <* string ")" in
   lift3
-    (fun label_text url_text metadata ->
+    (fun (label_t, label_text) url_text metadata ->
       let url, title = split_first '"' url_text in
       let lowercased_url = String.lowercase_ascii url in
       let url =
@@ -519,14 +539,20 @@ let markdown_link config =
              ; code config
              ; subscript config
              ; superscript config
-             ; plain config
-             ; whitespaces
+               (* ; plain config
+                * ; whitespaces *)
              ])
       in
       let label =
-        match parse_string ~consume:All parser label_text with
-        | Ok result -> concat_plains result
-        | Error _e -> [ Plain label_text ]
+        CCList.map
+          (function
+            | Plain s as e -> (
+              match parse_string ~consume:All parser s with
+              | Ok r -> r
+              | Error _ -> [ e ])
+            | s -> [ s ])
+          label_t
+        |> List.concat |> concat_plains
       in
       let title =
         if String.equal title "" || String.equal title "\"" then
