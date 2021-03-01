@@ -101,6 +101,24 @@ let inline =
               " :PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
                  [ ("type", "programming_lang"); ("creator", "test") ]) )
+        ; ( "endwith-carriage-return"
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\r\n\
+               :now: 1614485729874\n\
+               :done: 1614485743195\r\n\
+               :END:\n"
+              (Property_Drawer
+                 [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
+        ; ( "endwith-carriage-return-2"
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\r\n\
+               :now: 1614485729874\r\n\
+               :done: 1614485743195\r\n\
+               :END:\r\n"
+              (Property_Drawer
+                 [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
         ] )
   ; ( "inline-code"
     , testcases

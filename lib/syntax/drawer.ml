@@ -25,7 +25,7 @@ let property =
   let property_key =
     optional spaces
     *> between_char ':' ':'
-         (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n'))
+         (take_while1 (fun c -> c <> ':' && c <> ' ' && non_eol c))
     >>= fun s ->
     if String.lowercase_ascii s = "end" then
       fail "property key"
@@ -42,7 +42,7 @@ let parse =
   let drawer_name =
     spaces
     *> between_char ':' ':'
-         (take_while1 (fun c -> c <> ':' && c <> ' ' && c <> '\n'))
+         (take_while1 (fun c -> c <> ':' && c <> ' ' && non_eol c))
     <* eol
   in
   (* anything but a headline and another drawer *)
