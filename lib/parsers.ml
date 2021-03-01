@@ -45,7 +45,7 @@ let is_hex = function
 
 let digits = take_while1 is_digit
 
-let eol = satisfy is_eol
+let eol = string "\n" <|> string "\r\n"
 
 let eols = take_while1 is_eol
 
