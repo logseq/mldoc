@@ -161,6 +161,8 @@ let is_digit = function
   | '0' .. '9' -> true
   | _ -> false
 
+let is_letter_or_digit c = is_letter c || is_digit c
+
 let explode s =
   let rec exp i l =
     if i < 0 then
