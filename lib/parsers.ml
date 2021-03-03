@@ -182,8 +182,6 @@ let optional_line = take_till is_eol
 
 let line_without_spaces = take_till1 (fun c -> c = '\r' || c = '\n' || c = ' ')
 
-let word = take_till1 non_space
-
 let clear_parser_resource p r error =
   p r >>= fun result ->
   r := [];

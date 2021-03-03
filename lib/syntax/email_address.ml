@@ -32,3 +32,5 @@ let address_part =
 
 let email =
   optional (char '<') *> address_part <* optional (char '>') <?> "email"
+
+let to_string { local_part; domain } = local_part ^ "@" ^ domain
