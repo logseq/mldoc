@@ -66,7 +66,7 @@ let parse_date s =
 let repetition_kind_to_string = function
   | Plus -> "+"
   | DoublePlus -> "++"
-  | Dotted -> "."
+  | Dotted -> ".+"
 
 let parse_repetition_marker kind s =
   try

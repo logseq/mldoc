@@ -136,41 +136,47 @@ let between ?(e = None) s =
            false
          else
            true))
-  >>= fun s -> return s
 
 let bold =
-  between "*" >>= fun s ->
-  return (Emphasis (`Bold, [ Plain s ])) <?> "Inline bold"
+  between "*"
+  >>= (fun s -> return (Emphasis (`Bold, [ Plain s ])))
+  <?> "Inline bold"
 
 let underline =
-  between "_" >>= fun s ->
-  return (Emphasis (`Underline, [ Plain s ])) <?> "Inline underline"
+  between "_"
+  >>= (fun s -> return (Emphasis (`Underline, [ Plain s ])))
+  <?> "Inline underline"
 
 let italic =
-  between "/" >>= fun s ->
-  return (Emphasis (`Italic, [ Plain s ])) <?> "Inline italic"
+  between "/"
+  >>= (fun s -> return (Emphasis (`Italic, [ Plain s ])))
+  <?> "Inline italic"
 
 let strike_through =
-  between "+" >>= fun s ->
-  return (Emphasis (`Strike_through, [ Plain s ])) <?> "Inline strike_through"
+  between "+"
+  >>= (fun s -> return (Emphasis (`Strike_through, [ Plain s ])))
+  <?> "Inline strike_through"
 
 (* ^^highlight^^ *)
 let highlight =
-  between "^^" >>= fun s ->
-  return (Emphasis (`Highlight, [ Plain s ])) <?> "Inline highlight"
+  between "^^"
+  >>= (fun s -> return (Emphasis (`Highlight, [ Plain s ])))
+  <?> "Inline highlight"
 
 (* '=', '~' verbatim *)
 let verbatim =
-  between "=" >>= fun s -> return (Verbatim s) <?> "Inline verbatim"
+  between "=" >>= (fun s -> return (Verbatim s)) <?> "Inline verbatim"
 
 let markdown_escape_backticks = string "``" *> end_string "``" (fun s -> Code s)
 
 let code_aux_p c =
-  between c >>= fun s ->
-  if String.length s > 0 then
-    return (Code s)
-  else
-    fail "Empty code" <?> "Inline code"
+  between c
+  >>= (fun s ->
+        if String.length s > 0 then
+          return (Code s)
+        else
+          fail "Empty code")
+  <?> "Inline code"
 
 let org_code = code_aux_p "~"
 
@@ -184,7 +190,7 @@ let code config =
 (* TODO: optimization *)
 let org_plain_delims = [ ' '; '\\'; '_'; '^'; '['; '$' ]
 
-let markdown_plain_delims = [ ' '; '\\'; '^'; '['; '*'; '^'; '~'; '`'; '$' ]
+let markdown_plain_delims = [ ' '; '\\'; '_'; '^'; '['; '*'; '~'; '`'; '$' ]
 
 (* replace list with a  *)
 let in_plain_delims config c =
@@ -195,14 +201,14 @@ let in_plain_delims config c =
   in
   List.mem c plain_delims
 
-let whitespaces = ws >>= fun spaces -> return (Plain spaces)
+let whitespaces = ws >>| fun spaces -> Plain spaces
 
 let plain config =
   take_while1 (fun c -> non_eol c && not (in_plain_delims config c))
-  >>= (fun s -> return (Plain s))
-  <|> (word >>= fun s -> return (Plain s))
-  <|> ( char '\\' *> satisfy non_tab_or_space >>= fun c ->
-        return (Plain (String.make 1 c)) )
+  >>| (fun s -> Plain s)
+  <|> (ws >>| fun s -> Plain s)
+  <|> ( char '\\' *> satisfy non_tab_or_space >>| fun c ->
+        Plain (String.make 1 c) )
   <|> ( any_char >>= fun c ->
         if in_plain_delims config c then
           return (Plain (String.make 1 c))
@@ -346,7 +352,7 @@ let gen_script config s f =
   <* char '}' <|> p1
   >>| fun s ->
   match parse_string ~consume:All p s with
-  | Ok result -> f result
+  | Ok result -> f @@ concat_plains result
   | Error _e -> f [ Plain s ]
 
 let subscript config = gen_script config "_" (fun x -> Subscript x)
@@ -763,11 +769,11 @@ let range =
     (fun clock t1 t2 ->
       let t1 = extract_time t1 in
       let t2 = extract_time t2 in
-      if clock = "CLOCK:" then
+      if clock = Some "CLOCK" then
         Timestamp (Clock (Stopped { start = t1; stop = t2 }))
       else
         Timestamp (Range { start = t1; stop = t2 }))
-    (spaces *> string "CLOCK:" <* spaces)
+    (spaces *> optional (letters <* char ':') <* spaces)
     (general_timestamp <* string "--")
     general_timestamp
 
