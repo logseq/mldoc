@@ -215,4 +215,16 @@ let inline =
         ] )
   ]
 
-let () = Alcotest.run "mldoc" inline
+let block =
+  let open Type in
+  let module I = Inline in
+  [ ( "footnote-definition"
+    , testcases
+        [ ( "normal"
+          , `Quick
+          , check_aux "[^abc]: 中文"
+              (Footnote_Definition ("abc", [ I.Plain "中文" ])) )
+        ] )
+  ]
+
+let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]
