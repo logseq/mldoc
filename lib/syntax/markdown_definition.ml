@@ -21,7 +21,7 @@ let term_definition =
   in
   let l =
     spaces *> satisfy non_colon_or_eol >>= fun c ->
-    line <* (end_of_input <|> end_of_line) >>| fun s -> Char.escaped c ^ s
+    line <* (end_of_input <|> end_of_line) >>| fun s -> String.make 1 c ^ s
   in
   many1 l
 
