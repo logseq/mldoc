@@ -65,8 +65,6 @@ and t =
   | Heading of heading  (** A heading *)
   | List of list_item list  (** A list [item] *)
   | Directive of string * string  (** A directive [name, value] *)
-  | Math of string  (** Math, enclosed by $$ ... $$ *)
-  | With_Keywords of (string * string) list * t  (** Keywords for a block *)
   (* blocks *)
   | Results (* TODO: include content or not? *)
   | Example of string list

@@ -361,7 +361,7 @@ and block config t =
   | Heading h -> heading config h
   | List l -> Xml.block (list_element l) (concatmap (list_item config) l)
   | Table t -> table config t
-  | Math s ->
+  | Displayed_Math s ->
     Xml.block "div" ~attr:[ ("class", "mathblock") ]
       [ Xml.data ("$$" ^ s ^ "$$") ]
   | Example l -> Xml.block "pre" [ Xml.data (String.concat "" l) ]

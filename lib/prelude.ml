@@ -73,6 +73,9 @@ let filter_map f l =
   in
   loop [] l
 
+let unzip l =
+  List.fold_right (fun (a, b) (al, bl) -> (a :: al, b :: bl)) l ([], [])
+
 let print_list l = List.iter print_endline l
 
 let print_bool = function
