@@ -1,6 +1,7 @@
 open Prelude
 open Type
 open Inline
+open Document
 
 type t =
   | RawText of string
@@ -92,10 +93,7 @@ and emphasis state config (typ, tl) =
     in
     List.flatten
       [ [ raw_text s ]
-      ; List.flatten
-        @@ CCList.map
-             (fun e -> Space :: inline { outside_em_symbol } config e)
-             tl
+      ; List.flatten @@ CCList.map (inline { outside_em_symbol } config) tl
       ; [ raw_text s ]
       ]
   in
@@ -144,8 +142,8 @@ and cookie = function
     map_raw_text [ "["; string_of_int current; "/"; string_of_int total; "]" ]
 
 and latex_fragment = function
-  | Inline s -> map_raw_text [ "$"; s; "$" ]
-  | Displayed s -> map_raw_text [ "$$"; s; "$$" ]
+  | Inline s -> [ Space; raw_text "$"; raw_text s; raw_text "$"; Space ]
+  | Displayed s -> [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
 
 and macro { name; arguments } =
   map_raw_text
@@ -179,7 +177,7 @@ let rec block state config t =
   | List l -> list state config l
   | Directive (name, value) -> directive name value
   | Results -> []
-  | Example sl -> src_block "EXAMPLE" (map_raw_text sl)
+  | Example sl -> example sl
   | Src cb -> src cb
   | Quote tl -> quote state config tl
   | Export (name, options, content) ->
@@ -191,17 +189,18 @@ let rec block state config t =
       [ raw_text content ]
   | Latex_Fragment lf -> latex_fragment lf
   | Latex_Environment (name, options, content) -> latex_env name options content
-  | Displayed_Math s -> map_raw_text [ "$$"; s; "$$" ]
+  | Displayed_Math s ->
+    [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
   | Drawer (name, kvs) -> drawer name kvs
   | Property_Drawer kvs -> drawer "PROPERTIES" kvs
   | Footnote_Definition (name, content) ->
     footnote_definition state config name content
-  | Horizontal_Rule -> [ raw_text "---" ]
+  | Horizontal_Rule -> [ raw_text "---"; Newline ]
   | Table t -> table state config t
   | Comment s ->
-    [ raw_text "<!---"; Newline; raw_text s; Newline; raw_text "-->" ]
-  | Raw_Html s -> [ raw_text s ]
-  | Hiccup s -> [ raw_text s ]
+    [ raw_text "<!---"; Newline; raw_text s; Newline; raw_text "-->"; Newline ]
+  | Raw_Html s -> [ raw_text s; Newline ]
+  | Hiccup s -> [ raw_text s; Space ]
 
 and heading state config { title; tags; marker; level; priority; _ } =
   let priority =
@@ -227,6 +226,7 @@ and heading state config { title; tags; marker; level; priority; _ } =
         raw_text @@ ":" ^ String.concat ":" tags ^ ":"
       else
         raw_text "")
+    ; Newline
     ]
 
 and list state config l =
@@ -262,7 +262,7 @@ and list state config l =
            | Some true -> raw_text "[X]"
            | Some false -> raw_text "[ ]"
            | None -> raw_text ""
-         and indent' = raw_text @@ String.make indent '\t'
+         and indent' = raw_text @@ String.make indent ' '
          and items' = list state config items in
          List.flatten
            [ [ indent' ]
@@ -278,18 +278,23 @@ and list state config l =
        l
 
 and directive name value =
-  [ raw_text "#+"; raw_text name; raw_text ":"; Space; raw_text value ]
+  [ raw_text "#+"; raw_text name; raw_text ":"; Space; raw_text value; Newline ]
+
+and example sl =
+  flatten_map (fun l -> [ RawText "    "; RawText l; Newline ]) sl
 
 and src { lines; language; _ } =
   List.flatten
     [ [ raw_text "```"; Space; raw_text @@ Option.default "" language; Newline ]
     ; map_raw_text lines
-    ; [ raw_text "```" ]
+    ; [ raw_text "```"; Newline ]
     ]
 
 and quote state config tl =
-  let content = flatten_map (block state config) tl in
-  src_block "QUOTE" content
+  flatten_map
+    (fun l ->
+      List.flatten [ [ RawText ">"; Space ]; block state config l; [ Newline ] ])
+    tl
 
 and latex_env name options content =
   [ raw_text @@ "\\begin{" ^ name ^ "}"
@@ -298,6 +303,7 @@ and latex_env name options content =
   ; raw_text content
   ; Newline
   ; raw_text @@ "\\end{" ^ name ^ "}"
+  ; Newline
   ]
 
 and drawer name kvs =
@@ -307,12 +313,13 @@ and drawer name kvs =
       @@ CCList.map
            (fun (k, v) -> [ raw_text @@ ":" ^ k ^ ":"; Space; raw_text v ])
            kvs
-    ; [ Newline; raw_text ":END:" ]
+    ; [ Newline; raw_text ":END:"; Newline ]
     ]
 
 and footnote_definition state config name content =
   let content' = flatten_map (inline state config) content in
-  List.flatten [ [ raw_text @@ "[^" ^ name ^ "]"; Space ]; content' ]
+  List.flatten
+    [ [ raw_text @@ "[^" ^ name ^ "]"; Space ]; content'; [ Newline ] ]
 
 and table state config { header; groups; _ } =
   match header with
@@ -348,43 +355,100 @@ and table state config { header; groups; _ } =
       [ header_line
       ; [ Newline; raw_text separated_line; Newline ]
       ; group_lines
+      ; [ Newline ]
       ]
 
 let blocks config tl =
   flatten_map (fun t -> Space :: block default_state config t) tl
 
-let to_string tl =
-  String.concat "" @@ List.rev
-  @@ (fun (r, _, _) -> r)
+(* 1.  [...;space; space]         -> [...;space]
+   2.  [...;newline;newline]      -> [...;newline]
+   3.  [...;space; newline]       -> [...;newline]
+   4.  [...;newline;space]        -> [...;newline]
+   5.  [...;"XXX\n";space]        -> [...;"XXX\n"]
+   6.  [...;space;"\nXXX"]        -> [...;"\nXXX"]
+   7.  [...;"XXX\n";newline]      -> [...;"XXX\n"]
+   8.  [...;newline;"\nXXX"]      -> [...;"\nXXX"]
+   9.  [...;"XXX<space>";space]   -> [...;"XXX<space>"]
+   10. [...;space;"<space>XXX"]   -> [...;"<space>XXX"]
+   11. [...;"XXX<space>";newline] -> [...;"XXX<space>";newline]
+   12. [...;space;"XXX"]          -> [...;space;"XXX"]
+   13. [...;newline;"XXX"]        -> [...;newline;"XXX"]
+**)
+let merge_adjacent_space_newline tl =
+  List.rev
+  @@ (fun (r, _, _, _) -> r)
   @@ List.fold_left
-       (fun (result, prefix_space, prefix_newline) t ->
-         (* Printf.printf "%s, %b, %b\n" (show t) prefix_space prefix_newline; *)
-         match (t, prefix_space, prefix_newline) with
-         | RawText "", _, _ -> (result, prefix_space, prefix_newline)
-         | RawText s, false, false ->
-           ( s :: result
-           , s.[String.length s - 1] = ' '
-           , s.[String.length s - 1] = '\n' )
-         | RawText s, true, false ->
-           let s_h, s_t = (s.[0], String.sub s 1 (String.length s - 1)) in
-           if s_h = ' ' then
-             (s_t :: result, s.[String.length s - 1] = ' ', false)
-           else
-             (s :: result, s.[String.length s - 1] = ' ', false)
-         | RawText s, _, true ->
-           let s_h, s_t = (s.[0], String.sub s 1 (String.length s - 1)) in
-           if s_h = '\n' then
-             ( s_t :: result
-             , s.[String.length s - 1] = ' '
-             , s.[String.length s - 1] = '\n' )
-           else
-             ( s :: result
-             , s.[String.length s - 1] = ' '
-             , s.[String.length s - 1] = '\n' )
-         | Space, false, false when result = [] -> (result, true, false)
-         | Space, false, false -> (" " :: result, true, false)
-         | Space, true, false -> (result, true, false)
-         | Space, _, true -> (result, true, true)
-         | Newline, _, false -> ("\n" :: result, prefix_space, true)
-         | Newline, _, true -> (result, prefix_space, true))
-       ([], false, false) tl
+       (fun (result, before, before_space_text, before_newline_text) e ->
+         match (e, before, before_space_text, before_newline_text) with
+         | Space, _, _, true -> (* 5 *) (result, None, false, true)
+         | Space, _, true, false -> (* 9 *) (result, None, true, false)
+         | Space, Some `Space, false, false ->
+           (* 1 *)
+           (result, Some `Space, false, false)
+         | Space, Some `Newline, false, false ->
+           (* 4 *)
+           (result, Some `Newline, false, false)
+         | Space, None, false, false ->
+           (* 12 *)
+           (result, Some `Space, false, false)
+         | Newline, _, _, true -> (*  7 *) (result, None, false, true)
+         | Newline, _, true, false ->
+           (* 11 *)
+           (result, Some `Newline, true, false)
+         | Newline, Some `Space, false, false ->
+           (* 3 *)
+           (result, Some `Newline, false, false)
+         | Newline, Some `Newline, false, false ->
+           (* 2 *)
+           (result, Some `Newline, false, false)
+         | Newline, None, false, false -> (result, Some `Newline, false, false)
+         | RawText "", _, _, _ ->
+           (result, before, before_space_text, before_newline_text)
+         | RawText s, Some `Space, _, _ when s.[0] = '\n' || s.[0] = ' ' ->
+           (* 6,10 *)
+           let last_char = s.[String.length s - 1] in
+           (e :: result, None, last_char = ' ', last_char = '\n')
+         | RawText s, Some `Space, _, _ ->
+           (* 12 *)
+           let last_char = s.[String.length s - 1] in
+           (e :: Space :: result, None, last_char = ' ', last_char = '\n')
+         | RawText s, Some `Newline, _, _ when s.[0] = '\n' ->
+           (* 8 *)
+           let last_char = s.[String.length s - 1] in
+           (e :: result, None, last_char = ' ', last_char = '\n')
+         | RawText s, Some `Newline, _, _ ->
+           (* 13 *)
+           let last_char = s.[String.length s - 1] in
+           (e :: Newline :: result, None, last_char = ' ', last_char = '\n')
+         | RawText s, None, _, _ ->
+           let last_char = s.[String.length s - 1] in
+           (e :: result, None, last_char = ' ', last_char = '\n'))
+       ([], Some `Space, false, false)
+       tl
+
+let remove_fst_space_newline = function
+  | [] -> []
+  | Space :: t -> t
+  | Newline :: t -> t
+  | l -> l
+
+let to_string tl =
+  String.concat ""
+  @@ CCList.map
+       (function
+         | Space -> " "
+         | Newline -> "\n"
+         | RawText s -> s)
+       (remove_fst_space_newline (merge_adjacent_space_newline tl))
+
+module MarkdownExporter = struct
+  let name = "markdown"
+
+  let default_filename = change_ext "md"
+
+  let export config doc output =
+    let doc_blocks = CCList.map fst doc.blocks in
+    let blocks = blocks config doc_blocks in
+    output_string output (to_string blocks)
+end

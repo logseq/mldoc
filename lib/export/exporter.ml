@@ -18,7 +18,10 @@ module Exporters = struct
   include ExtList.Make (struct
     type t = exporter
 
-    let base = [ (module Html.HtmlExporter : Exporter) ]
+    let base =
+      [ (module Html.HtmlExporter : Exporter)
+      ; (module Markdown.MarkdownExporter : Exporter)
+      ]
   end)
 
   let run exporter config doc output =
