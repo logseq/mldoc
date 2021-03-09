@@ -2,6 +2,7 @@ open Prelude
 open Type
 open Inline
 open Document
+open Reference
 
 type t =
   | RawText of string
@@ -22,6 +23,8 @@ let map_raw_text = List.map raw_text
 
 let flatten_map f l = List.flatten (CCList.map f l)
 
+type refs = Reference.parsed_t
+
 let src_block ?(lang = None) ?(options = None) typ sl =
   let options =
     match options with
@@ -40,15 +43,20 @@ let src_block ?(lang = None) ?(options = None) typ sl =
     ; [ Newline; raw_text @@ "#END_" ^ typ; Newline ]
     ]
 
-type state = { outside_em_symbol : char option }
+type state =
+  { outside_em_symbol : char option
+  ; mutable embed_parent_indent_level : int
+  ; mutable current_level : int
+  }
 
-let default_state = { outside_em_symbol = None }
+let default_state () =
+  { outside_em_symbol = None; embed_parent_indent_level = 0; current_level = 0 }
 
 let default_config = None
 
-let rec inline state config (t : Inline.t) : t list =
+let rec inline refs state config (t : Inline.t) : t list =
   match t with
-  | Emphasis em -> emphasis state config em
+  | Emphasis em -> emphasis refs state config em
   | Break_Line -> [ raw_text "\n" ]
   | Hard_Break_Line -> [ raw_text "  \n" ]
   | Verbatim s -> [ raw_text s ]
@@ -59,12 +67,12 @@ let rec inline state config (t : Inline.t) : t list =
   | Link l -> inline_link l
   | Nested_link l -> inline_nested_link l
   | Target s -> map_raw_text [ "<<"; s; ">>" ]
-  | Subscript tl -> inline_subscript state config tl
-  | Superscript tl -> inline_superscript state config tl
+  | Subscript tl -> inline_subscript refs state config tl
+  | Superscript tl -> inline_superscript refs state config tl
   | Footnote_Reference fr -> footnote_reference fr
   | Cookie c -> cookie c
   | Latex_Fragment lf -> latex_fragment lf
-  | Macro m -> macro m
+  | Macro m -> macro refs state config m
   | Entity e -> entity e
   | Timestamp t -> timestamp t
   | Radio_Target s ->
@@ -80,10 +88,10 @@ let rec inline state config (t : Inline.t) : t list =
   | Inline_Source_Block { language; options; code } ->
     map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
   | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
-  | Block_reference s -> map_raw_text [ "(("; s; "))" ]
+  | Block_reference uuid -> block_reference refs uuid
   | Inline_Hiccup s -> map_raw_text [ s ]
 
-and emphasis state config (typ, tl) =
+and emphasis refs state config (typ, tl) =
   let outside_em_symbol = state.outside_em_symbol in
   let wrap_with tl s =
     let outside_em_symbol =
@@ -93,7 +101,8 @@ and emphasis state config (typ, tl) =
     in
     List.flatten
       [ [ raw_text s ]
-      ; List.flatten @@ CCList.map (inline { outside_em_symbol } config) tl
+      ; List.flatten
+        @@ CCList.map (inline refs { state with outside_em_symbol } config) tl
       ; [ raw_text s ]
       ]
   in
@@ -114,23 +123,26 @@ and emphasis state config (typ, tl) =
         "*")
   | `Underline ->
     List.flatten
-    @@ CCList.map (fun e -> Space :: inline { outside_em_symbol } config e) tl
+    @@ CCList.map
+         (fun e ->
+           Space :: inline refs { state with outside_em_symbol } config e)
+         tl
 
 and inline_link { full_text; _ } = [ raw_text full_text ]
 
 and inline_nested_link { content; _ } = [ raw_text content ]
 
-and inline_subscript state config tl =
+and inline_subscript refs state config tl =
   List.flatten
     [ [ raw_text "_{" ]
-    ; flatten_map (fun e -> Space :: inline state config e) tl
+    ; flatten_map (fun e -> Space :: inline refs state config e) tl
     ; [ raw_text "}" ]
     ]
 
-and inline_superscript state config tl =
+and inline_superscript refs state config tl =
   List.flatten
     [ [ raw_text "^{" ]
-    ; flatten_map (fun e -> Space :: inline state config e) tl
+    ; flatten_map (fun e -> Space :: inline refs state config e) tl
     ; [ raw_text "}" ]
     ]
 
@@ -145,13 +157,47 @@ and latex_fragment = function
   | Inline s -> [ Space; raw_text "$"; raw_text s; raw_text "$"; Space ]
   | Displayed s -> [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
 
-and macro { name; arguments } =
-  map_raw_text
-  @@
-  if List.length arguments > 0 then
-    [ "{{{"; name; "("; String.concat "," arguments; ")}}}" ]
+and macro refs state config m =
+  if m.name <> "embed" then
+    map_raw_text
+    @@
+    if List.length m.arguments > 0 then
+      [ "{{{"; m.name; "("; String.concat "," m.arguments; ")}}}" ]
+    else
+      [ "{{{"; m.name; "}}}" ]
   else
-    [ "{{{"; name; "}}}" ]
+    macro_embed refs state config m
+
+and macro_embed refs state config { arguments; _ } =
+  if List.length arguments <> 1 then
+    []
+  else
+    let arg = String.trim (List.hd arguments) in
+    let value = String.(trim @@ sub arg 2 (length arg - 4)) in
+    let raw_result = map_raw_text [ "{{{embed "; arg; "}}}" ] in
+    let current_level = state.current_level in
+    let origin_embed_parent_indent_level = state.embed_parent_indent_level in
+    state.embed_parent_indent_level <- current_level;
+    if starts_with arg "[[" then
+      (* page embed *)
+      let pagename = value in
+      match List.assoc_opt pagename refs.parsed_embed_pages with
+      | Some ast ->
+        let embed_page = blocks_aux refs state config ast in
+        state.embed_parent_indent_level <- origin_embed_parent_indent_level;
+        Newline :: embed_page
+      | None -> raw_result
+    else if starts_with arg "((" then
+      (* block embed *)
+      let block_uuid = value in
+      match List.assoc_opt block_uuid refs.parsed_embed_blocks with
+      | Some ast ->
+        let embed_block = blocks_aux refs state config ast in
+        state.embed_parent_indent_level <- origin_embed_parent_indent_level;
+        Newline :: embed_block
+      | None -> raw_result
+    else
+      raw_result
 
 and entity { unicode; _ } = [ raw_text unicode ]
 
@@ -167,19 +213,24 @@ and timestamp t =
   | Clock (Stopped rt) -> [ "CLOCK: "; Range.to_string rt ]
   | Range rt -> [ Range.to_string rt ]
 
-let rec block state config t =
+and block_reference (refs : refs) block_uuid =
+  match List.assoc_opt block_uuid refs.refer_blocks with
+  | None -> map_raw_text [ "(("; block_uuid; "))" ]
+  | Some s -> map_raw_text [ "(("; s; "))" ]
+
+and block refs state config t =
   match t with
   | Paragraph l ->
-    flatten_map (fun e -> Space :: inline state config e) l @ [ Newline ]
+    flatten_map (fun e -> Space :: inline refs state config e) l @ [ Newline ]
   | Paragraph_line l -> [ raw_text l; Newline ]
   | Paragraph_Sep n -> [ raw_text @@ String.make n '\n' ]
-  | Heading h -> heading state config h
-  | List l -> list state config l
-  | Directive (name, value) -> directive name value
+  | Heading h -> heading refs state config h
+  | List l -> list refs state config l
+  | Directive _ -> []
   | Results -> []
   | Example sl -> example sl
   | Src cb -> src cb
-  | Quote tl -> quote state config tl
+  | Quote tl -> quote refs state config tl
   | Export (name, options, content) ->
     src_block ~lang:(Some name) ~options "EXPORT" [ raw_text content ]
   | CommentBlock sl -> src_block "COMMENT" (map_raw_text sl)
@@ -194,15 +245,15 @@ let rec block state config t =
   | Drawer (name, kvs) -> drawer name kvs
   | Property_Drawer kvs -> drawer "PROPERTIES" kvs
   | Footnote_Definition (name, content) ->
-    footnote_definition state config name content
+    footnote_definition refs state config name content
   | Horizontal_Rule -> [ raw_text "---"; Newline ]
-  | Table t -> table state config t
+  | Table t -> table refs state config t
   | Comment s ->
     [ raw_text "<!---"; Newline; raw_text s; Newline; raw_text "-->"; Newline ]
   | Raw_Html s -> [ raw_text s; Newline ]
   | Hiccup s -> [ raw_text s; Space ]
 
-and heading state config { title; tags; marker; level; priority; _ } =
+and heading refs state config { title; tags; marker; level; priority; _ } =
   let priority =
     match priority with
     | Some c -> "[#" ^ String.make 1 c ^ "]"
@@ -213,14 +264,16 @@ and heading state config { title; tags; marker; level; priority; _ } =
     | Some s -> s ^ ""
     | None -> ""
   in
-  [ raw_text @@ String.make level '#'
+  let level' = state.embed_parent_indent_level + level in
+  state.current_level <- level';
+  [ raw_text @@ String.make level' '#'
   ; Space
   ; raw_text marker
   ; Space
   ; raw_text priority
   ; Space
   ]
-  @ flatten_map (fun e -> Space :: inline state config e) title
+  @ flatten_map (fun e -> Space :: inline refs state config e) title
   @ [ Space
     ; (if List.length tags > 0 then
         raw_text @@ ":" ^ String.concat ":" tags ^ ":"
@@ -229,12 +282,12 @@ and heading state config { title; tags; marker; level; priority; _ } =
     ; Newline
     ]
 
-and list state config l =
+and list refs state config l =
   List.flatten
   @@ CCList.map
        (fun { content; items; number; name; checkbox; indent; _ } ->
-         let name' = flatten_map (inline state config) name in
-         let content' = flatten_map (block state config) content in
+         let name' = flatten_map (inline refs state config) name in
+         let content' = flatten_map (block refs state config) content in
          (* Definition Lists content if name isn't empty  *)
          let content'' =
            if name' <> [] then
@@ -242,7 +295,10 @@ and list state config l =
              @@ CCList.map
                   (fun l ->
                     List.flatten
-                      [ [ raw_text ": " ]; block state config l; [ Newline ] ])
+                      [ [ raw_text ": " ]
+                      ; block refs state config l
+                      ; [ Newline ]
+                      ])
                   content
            else
              content'
@@ -263,7 +319,7 @@ and list state config l =
            | Some false -> raw_text "[ ]"
            | None -> raw_text ""
          and indent' = raw_text @@ String.make indent ' '
-         and items' = list state config items in
+         and items' = list refs state config items in
          List.flatten
            [ [ indent' ]
            ; [ number' ]
@@ -277,9 +333,6 @@ and list state config l =
            ])
        l
 
-and directive name value =
-  [ raw_text "#+"; raw_text name; raw_text ":"; Space; raw_text value; Newline ]
-
 and example sl =
   flatten_map (fun l -> [ RawText "    "; RawText l; Newline ]) sl
 
@@ -290,10 +343,11 @@ and src { lines; language; _ } =
     ; [ raw_text "```"; Newline ]
     ]
 
-and quote state config tl =
+and quote refs state config tl =
   flatten_map
     (fun l ->
-      List.flatten [ [ RawText ">"; Space ]; block state config l; [ Newline ] ])
+      List.flatten
+        [ [ RawText ">"; Space ]; block refs state config l; [ Newline ] ])
     tl
 
 and latex_env name options content =
@@ -316,12 +370,12 @@ and drawer name kvs =
     ; [ Newline; raw_text ":END:"; Newline ]
     ]
 
-and footnote_definition state config name content =
-  let content' = flatten_map (inline state config) content in
+and footnote_definition refs state config name content =
+  let content' = flatten_map (inline refs state config) content in
   List.flatten
     [ [ raw_text @@ "[^" ^ name ^ "]"; Space ]; content'; [ Newline ] ]
 
-and table state config { header; groups; _ } =
+and table refs state config { header; groups; _ } =
   match header with
   | None -> []
   | Some header ->
@@ -333,7 +387,7 @@ and table state config { header; groups; _ } =
         [ flatten_map
             (fun col ->
               Space :: raw_text "|" :: Space
-              :: flatten_map (inline state config) col)
+              :: flatten_map (inline refs state config) col)
             header
         ; [ Space; raw_text "|" ]
         ]
@@ -345,7 +399,7 @@ and table state config { header; groups; _ } =
                [ flatten_map
                    (fun col ->
                      Space :: raw_text "|" :: Space
-                     :: flatten_map (inline state config) col)
+                     :: flatten_map (inline refs state config) col)
                    row
                ; [ Space; raw_text "|"; Newline ]
                ]))
@@ -358,8 +412,10 @@ and table state config { header; groups; _ } =
       ; [ Newline ]
       ]
 
-let blocks config tl =
-  flatten_map (fun t -> Space :: block default_state config t) tl
+and blocks_aux refs state config tl =
+  flatten_map (fun t -> Space :: block refs state config t) tl
+
+let blocks refs config tl = blocks_aux refs (default_state ()) config tl
 
 (* 1.  [...;space; space]         -> [...;space]
    2.  [...;newline;newline]      -> [...;newline]
@@ -395,7 +451,7 @@ let merge_adjacent_space_newline tl =
          | Newline, _, _, true -> (*  7 *) (result, None, false, true)
          | Newline, _, true, false ->
            (* 11 *)
-           (result, Some `Newline, true, false)
+           (result, Some `Newline, false, false)
          | Newline, Some `Space, false, false ->
            (* 3 *)
            (result, Some `Newline, false, false)
@@ -447,8 +503,17 @@ module MarkdownExporter = struct
 
   let default_filename = change_ext "md"
 
-  let export config doc output =
+  let export ~refs config doc output =
+    let refs =
+      Option.default
+        Reference.
+          { parsed_embed_blocks = []
+          ; parsed_embed_pages = []
+          ; refer_blocks = []
+          }
+        refs
+    in
     let doc_blocks = CCList.map fst doc.blocks in
-    let blocks = blocks config doc_blocks in
+    let blocks = blocks refs config doc_blocks in
     output_string output (to_string blocks)
 end
