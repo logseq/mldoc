@@ -47,7 +47,7 @@ let generate backend output _opts filename =
         open_out output
     in
     (* FIXME: parse *)
-    let result = Exporters.run export config document fdout in
+    let result = Exporters.run ~refs:None export config document fdout in
     return result
 
 (* Cmd liner part *)

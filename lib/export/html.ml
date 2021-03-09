@@ -480,7 +480,8 @@ module HtmlExporter = struct
 
   let default_filename = change_ext "html"
 
-  let export config doc output =
+  let export ~refs config doc output =
+    let _ = refs in
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
     collect_macros doc.directives;
     collect_options doc.directives;

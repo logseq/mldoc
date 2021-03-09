@@ -4,7 +4,12 @@ module type Exporter = sig
 
   val default_filename : string -> string
 
-  val export : Conf.t -> Document.t -> out_channel -> unit
+  val export :
+       refs:Reference.parsed_t option
+    -> Conf.t
+    -> Document.t
+    -> out_channel
+    -> unit
 end
 
 type exporter = (module Exporter)
@@ -24,9 +29,9 @@ module Exporters = struct
       ]
   end)
 
-  let run exporter config doc output =
+  let run exporter ~refs config doc output =
     let module M = (val exporter : Exporter) in
-    M.export config doc output
+    M.export ~refs config doc output
 
   let find name = find name (get ())
 
