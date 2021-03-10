@@ -45,12 +45,17 @@ let src_block ?(lang = None) ?(options = None) typ sl =
 
 type state =
   { outside_em_symbol : char option
-  ; mutable embed_parent_indent_level : int
+  ; embed_history : string list
+  ; embed_parent_indent_level : int
   ; mutable current_level : int
   }
 
 let default_state () =
-  { outside_em_symbol = None; embed_parent_indent_level = 0; current_level = 0 }
+  { outside_em_symbol = None
+  ; embed_parent_indent_level = 0
+  ; current_level = 0
+  ; embed_history = []
+  }
 
 let default_config = None
 
@@ -176,26 +181,42 @@ and macro_embed refs state config { arguments; _ } =
     let value = String.(trim @@ sub arg 2 (length arg - 4)) in
     let raw_result = map_raw_text [ "{{{embed "; arg; "}}}" ] in
     let current_level = state.current_level in
-    let origin_embed_parent_indent_level = state.embed_parent_indent_level in
-    state.embed_parent_indent_level <- current_level;
     if starts_with arg "[[" then
       (* page embed *)
       let pagename = value in
-      match List.assoc_opt pagename refs.parsed_embed_pages with
-      | Some ast ->
-        let embed_page = blocks_aux refs state config ast in
-        state.embed_parent_indent_level <- origin_embed_parent_indent_level;
-        Newline :: embed_page
-      | None -> raw_result
+      if List.mem pagename state.embed_history then
+        raw_result
+      else
+        match List.assoc_opt pagename refs.parsed_embed_pages with
+        | Some ast ->
+          let embed_page =
+            blocks_aux refs
+              { state with
+                embed_parent_indent_level = current_level
+              ; embed_history = pagename :: state.embed_history
+              }
+              config ast
+          in
+          Newline :: embed_page
+        | None -> raw_result
     else if starts_with arg "((" then
       (* block embed *)
       let block_uuid = value in
-      match List.assoc_opt block_uuid refs.parsed_embed_blocks with
-      | Some ast ->
-        let embed_block = blocks_aux refs state config ast in
-        state.embed_parent_indent_level <- origin_embed_parent_indent_level;
-        Newline :: embed_block
-      | None -> raw_result
+      if List.mem block_uuid state.embed_history then
+        raw_result
+      else
+        match List.assoc_opt block_uuid refs.parsed_embed_blocks with
+        | Some ast ->
+          let embed_block =
+            blocks_aux refs
+              { state with
+                embed_parent_indent_level = current_level
+              ; embed_history = block_uuid :: state.embed_history
+              }
+              config ast
+          in
+          Newline :: embed_block
+        | None -> raw_result
     else
       raw_result
 
