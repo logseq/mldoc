@@ -55,10 +55,11 @@ let _ =
                  Buffer.add_string buffer s)
            in
            generate "html" config document stdout;
+           flush stdout;
            Js_of_ocaml.Js.string (Buffer.contents buffer)
          | Error error -> Js_of_ocaml.Js.string error
 
-       method parseMarkdown input config_json references =
+       method parseAndExportMarkdown input config_json references =
          let str = Js.to_string input in
          let config_json = Js.to_string config_json in
          let references_json =
@@ -73,7 +74,8 @@ let _ =
            let ast = parse config str in
            let parsed_embed_blocks =
              CCList.map
-               (fun (k, v) -> (k, fst @@ unzip @@ parse config v))
+               (fun (k, (v, title)) ->
+                 (k, (fst @@ unzip @@ parse config v, title)))
                references.embed_blocks
            in
            let parsed_embed_pages =
@@ -82,10 +84,7 @@ let _ =
                references.embed_pages
            in
            let refs : Reference.parsed_t =
-             { parsed_embed_blocks
-             ; parsed_embed_pages
-             ; refer_blocks = references.refer_blocks
-             }
+             { parsed_embed_blocks; parsed_embed_pages }
            in
            let document = Document.from_ast None ast in
            let _ =
@@ -93,6 +92,7 @@ let _ =
                  Buffer.add_string buffer s)
            in
            generate "markdown" ~refs config document stdout;
+           flush stdout;
            Js_of_ocaml.Js.string (Buffer.contents buffer)
          | Error error, _ -> Js_of_ocaml.Js.string error
          | _, Error error -> Js_of_ocaml.Js.string error
