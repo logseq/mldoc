@@ -266,7 +266,7 @@ and block refs state config t =
   | Displayed_Math s ->
     [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
   | Drawer (name, kvs) -> drawer name kvs
-  | Property_Drawer kvs ->
+  | Property_Drawer _ ->
     (* hide Property_Drawers *)
     []
   | Footnote_Definition (name, content) ->
@@ -442,6 +442,15 @@ and blocks_aux refs state config tl =
 
 let blocks refs config tl = blocks_aux refs (default_state ()) config tl
 
+let directive kvs =
+  let sep_line = [ Newline; raw_text "---"; Newline ] in
+  sep_line
+  @ flatten_map
+      (fun (name, value) ->
+        [ Newline; raw_text name; raw_text ":"; Space; raw_text value; Newline ])
+      kvs
+  @ sep_line
+
 (* 1.  [...;space; space]         -> [...;space]
    2.  [...;newline;newline]      -> [...;newline]
    3.  [...;space; newline]       -> [...;newline]
@@ -535,6 +544,7 @@ module MarkdownExporter = struct
         refs
     in
     let doc_blocks = CCList.map fst doc.blocks in
+    let directives = directive doc.directives in
     let blocks = blocks refs config doc_blocks in
-    output_string output (to_string blocks)
+    output_string output (to_string (CCList.append directives blocks))
 end
