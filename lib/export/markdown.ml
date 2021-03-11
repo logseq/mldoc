@@ -93,7 +93,7 @@ let rec inline refs state config (t : Inline.t) : t list =
   | Inline_Source_Block { language; options; code } ->
     map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
   | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
-  | Block_reference uuid -> block_reference refs uuid
+  | Block_reference uuid -> block_reference refs state config uuid
   | Inline_Hiccup s -> map_raw_text [ s ]
 
 and emphasis refs state config (typ, tl) =
@@ -206,7 +206,7 @@ and macro_embed refs state config { arguments; _ } =
         raw_result
       else
         match List.assoc_opt block_uuid refs.parsed_embed_blocks with
-        | Some ast ->
+        | Some (ast, _) ->
           let embed_block =
             blocks_aux refs
               { state with
@@ -234,10 +234,12 @@ and timestamp t =
   | Clock (Stopped rt) -> [ "CLOCK: "; Range.to_string rt ]
   | Range rt -> [ Range.to_string rt ]
 
-and block_reference (refs : refs) block_uuid =
-  match List.assoc_opt block_uuid refs.refer_blocks with
+and block_reference (refs : refs) state config block_uuid =
+  match List.assoc_opt block_uuid refs.parsed_embed_blocks with
   | None -> map_raw_text [ "(("; block_uuid; "))" ]
-  | Some s -> map_raw_text [ "(("; s; "))" ]
+  | Some (_, title) ->
+    let title = flatten_map (inline refs state config) title in
+    List.flatten [ [ raw_text "((" ]; title; [ raw_text "))" ] ]
 
 and block refs state config t =
   match t with
@@ -264,7 +266,9 @@ and block refs state config t =
   | Displayed_Math s ->
     [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
   | Drawer (name, kvs) -> drawer name kvs
-  | Property_Drawer kvs -> drawer "PROPERTIES" kvs
+  | Property_Drawer kvs ->
+    (* hide Property_Drawers *)
+    []
   | Footnote_Definition (name, content) ->
     footnote_definition refs state config name content
   | Horizontal_Rule -> [ raw_text "---"; Newline ]
@@ -527,11 +531,7 @@ module MarkdownExporter = struct
   let export ~refs config doc output =
     let refs =
       Option.default
-        Reference.
-          { parsed_embed_blocks = []
-          ; parsed_embed_pages = []
-          ; refer_blocks = []
-          }
+        Reference.{ parsed_embed_blocks = []; parsed_embed_pages = [] }
         refs
     in
     let doc_blocks = CCList.map fst doc.blocks in
