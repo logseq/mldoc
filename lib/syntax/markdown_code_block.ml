@@ -27,7 +27,9 @@ let single_line =
   lift2 (fun indent content -> (indent, content)) spaces line
 
 let parse =
-  many1 (single_line <* (end_of_line <|> end_of_input) <* optional eols)
+  many1
+    ( single_line <* (end_of_line <|> end_of_input) <* optional eols
+    >>| fun (indent, s) -> (indent, s ^ "\n") )
   >>= fun lines ->
   let start_indent, _content = List.hd lines in
   let lines =
