@@ -225,6 +225,26 @@ let block =
           , check_aux "[^abc]: 中文"
               (Footnote_Definition ("abc", [ I.Plain "中文" ])) )
         ] )
+  ; ( "quote"
+    , testcases
+        [ ( "multi lines"
+          , `Quick
+          , check_aux ">foo\n>bar"
+              (Quote
+                 [ Paragraph
+                     [ I.Plain "foo"
+                     ; I.Break_Line
+                     ; I.Plain "bar"
+                     ; I.Break_Line
+                     ]
+                 ]) )
+        ] )
+  ; ( "example"
+    , testcases
+        [ ( "multi lines"
+          , `Quick
+          , check_aux "    foo\n    bar" (Example [ "foo\n"; "bar\n" ]) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]

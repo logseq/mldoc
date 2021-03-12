@@ -222,7 +222,7 @@ let rec at_most m p =
 let limits n m p = lift2 (fun xs ys -> xs @ ys) (count n p) (at_most m p)
 
 let lines_while p =
-  let line = p <* optional eol in
+  let line = p <* optional eol >>| fun s -> s ^ "\n" in
   many1 line
 
 let lines_starts_with p = lines_while ((spaces *> p <* spaces) *> optional_line)
