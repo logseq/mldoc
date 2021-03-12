@@ -15,6 +15,7 @@ type heading =
   ; priority : char option [@default None]  (** The optional priority *)
   ; anchor : string
   ; meta : meta
+  ; unordered: bool             (** whether it's an unordered list (starts with `-`) **)
   }
 [@@deriving yojson]
 
