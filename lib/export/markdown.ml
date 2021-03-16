@@ -149,9 +149,9 @@ and macro refs state config m =
     map_raw_text
     @@
     if List.length m.arguments > 0 then
-      [ "{{{"; m.name; "("; String.concat "," m.arguments; ")}}}" ]
+      [ "{{"; m.name; "("; String.concat "," m.arguments; ")}}" ]
     else
-      [ "{{{"; m.name; "}}}" ]
+      [ "{{"; m.name; "}}" ]
   else
     macro_embed refs state config m
 
@@ -161,7 +161,7 @@ and macro_embed refs state config { arguments; _ } =
   else
     let arg = String.trim (List.hd arguments) in
     let value = String.(trim @@ sub arg 2 (length arg - 4)) in
-    let raw_result = map_raw_text [ "{{{embed "; arg; "}}}" ] in
+    let raw_result = map_raw_text [ "{{embed "; arg; "}}" ] in
     let current_level = state.current_level in
     if starts_with arg "[[" then
       (* page embed *)
@@ -236,9 +236,9 @@ and block refs state config t =
   | Example sl -> example sl
   | Src cb -> src cb
   | Quote tl -> quote refs state config tl
-  | Export (name, options, content) -> []
-  | CommentBlock sl -> []
-  | Custom (typ, options, _, content) -> []
+  | Export _ -> []
+  | CommentBlock _ -> []
+  | Custom _ -> []
   | Latex_Fragment lf -> latex_fragment lf
   | Latex_Environment (name, options, content) -> latex_env name options content
   | Displayed_Math s ->
@@ -350,8 +350,9 @@ and quote refs state config tl =
   flatten_map
     (fun l ->
       List.flatten
-        [ [ RawText ">"; Space ]; block refs state config l; [ Newline ] ])
+        [ [ raw_text ">"; Space ]; block refs state config l; [ Newline ] ])
     tl
+  @ [ raw_text "\n\n" ]
 
 and latex_env name options content =
   [ raw_text @@ "\\begin{" ^ name ^ "}"
