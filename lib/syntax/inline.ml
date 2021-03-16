@@ -118,7 +118,7 @@ and t =
   | Inline_Hiccup of string
 [@@deriving yojson]
 
-let link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')' ]
+let link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '\n' ]
 
 let email = Email_address.email >>| fun email -> Email email
 
