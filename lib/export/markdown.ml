@@ -25,24 +25,6 @@ let flatten_map f l = List.flatten (CCList.map f l)
 
 type refs = Reference.parsed_t
 
-let src_block ?(lang = None) ?(options = None) typ sl =
-  let options =
-    match options with
-    | None -> ""
-    | Some v -> String.concat " " v
-  in
-  List.flatten
-    [ [ raw_text @@ "#+BEGIN_" ^ typ
-      ; Space
-      ; raw_text @@ Option.default "" lang
-      ; Space
-      ; raw_text options
-      ; Newline
-      ]
-    ; sl
-    ; [ Newline; raw_text @@ "#END_" ^ typ; Newline ]
-    ]
-
 type state =
   { outside_em_symbol : char option
   ; embed_history : string list
@@ -254,13 +236,9 @@ and block refs state config t =
   | Example sl -> example sl
   | Src cb -> src cb
   | Quote tl -> quote refs state config tl
-  | Export (name, options, content) ->
-    src_block ~lang:(Some name) ~options "EXPORT" [ raw_text content ]
-  | CommentBlock sl -> src_block "COMMENT" (map_raw_text sl)
-  | Custom (typ, options, _, content) ->
-    src_block typ
-      ~options:(Option.map (fun v -> [ v ]) options)
-      [ raw_text content ]
+  | Export (name, options, content) -> []
+  | CommentBlock sl -> []
+  | Custom (typ, options, _, content) -> []
   | Latex_Fragment lf -> latex_fragment lf
   | Latex_Environment (name, options, content) -> latex_env name options content
   | Displayed_Math s ->
