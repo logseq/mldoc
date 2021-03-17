@@ -28,7 +28,12 @@ let generate backend output _opts filename =
   lines >>= function
   | lines ->
     let config =
-      { toc = true; heading_number = true; keep_line_break = false; format }
+      { toc = true
+      ; heading_number = true
+      ; keep_line_break = false
+      ; format
+      ; heading_to_list = false
+      }
     in
     let ast = parse config (String.concat "\n" lines) in
     let document = Document.from_ast None ast in

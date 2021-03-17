@@ -20,6 +20,7 @@ type t =
   ; heading_number : bool
   ; keep_line_break : bool
   ; format : format
+  ; heading_to_list : bool (* export heading as list *)
   }
 [@@deriving yojson]
 

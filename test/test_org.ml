@@ -3,6 +3,7 @@ let default_config : Conf.t =
   ; heading_number = true
   ; keep_line_break = false
   ; format = Conf.Org
+  ; heading_to_list = false
   }
 
 let check_mldoc_type =
