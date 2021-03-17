@@ -18,6 +18,7 @@ let main () =
                ; heading_number = true
                ; keep_line_break = false
                ; format = Org
+               ; heading_to_list = false
                }
              in
              ignore (parse config doc_org))
@@ -27,6 +28,7 @@ let main () =
                ; heading_number = true
                ; keep_line_break = false
                ; format = Org
+               ; heading_to_list = false
                }
              in
              ignore (parse config syntax_org))
@@ -36,6 +38,7 @@ let main () =
                ; heading_number = true
                ; keep_line_break = false
                ; format = Markdown
+               ; heading_to_list = false
                }
              in
              ignore (parse config syntax_md))
