@@ -39,6 +39,7 @@ type state =
   ; embed_history : string list
   ; embed_parent_indent_level : int
   ; mutable current_level : int
+  ; mutable top_heading_level : int option
   }
 
 let default_state () =
@@ -46,6 +47,7 @@ let default_state () =
   ; embed_parent_indent_level = 0
   ; current_level = 0
   ; embed_history = []
+  ; top_heading_level = None
   }
 
 let default_config = None
@@ -209,6 +211,7 @@ and macro_embed refs state config { arguments; _ } =
               { state with
                 embed_parent_indent_level = current_level
               ; embed_history = pagename :: state.embed_history
+              ; top_heading_level = None
               }
               config ast
           in
@@ -227,6 +230,7 @@ and macro_embed refs state config { arguments; _ } =
               { state with
                 embed_parent_indent_level = current_level
               ; embed_history = block_uuid :: state.embed_history
+              ; top_heading_level = None
               }
               config ast
           in
@@ -252,9 +256,7 @@ and timestamp t =
 and block_reference (refs : refs) state config block_uuid =
   match List.assoc_opt block_uuid refs.parsed_embed_blocks with
   | None -> map_raw_text [ "(("; block_uuid; "))" ]
-  | Some (_, title) ->
-    let title = flatten_map (inline refs state config) title in
-    List.flatten [ [ raw_text "((" ]; title; [ raw_text "))" ] ]
+  | Some (_, title) -> flatten_map (inline refs state config) title
 
 and block refs state config t =
   match t with
@@ -308,7 +310,15 @@ and heading refs state config { title; tags; marker; level; priority; _ } =
     | Some s -> s ^ ""
     | None -> ""
   in
-  let level' = state.embed_parent_indent_level + level in
+  let top_heading_level = Option.default level state.top_heading_level in
+  if Option.is_none state.top_heading_level then
+    state.top_heading_level <- Some level;
+  let level' =
+    if state.embed_parent_indent_level > 0 && top_heading_level >= 2 then
+      state.embed_parent_indent_level + level - top_heading_level + 1
+    else
+      state.embed_parent_indent_level + level
+  in
   state.current_level <- level';
   let heading_or_list =
     if config.heading_to_list then
@@ -316,7 +326,6 @@ and heading refs state config { title; tags; marker; level; priority; _ } =
     else
       [ raw_text @@ String.make level' '#' ]
   in
-
   heading_or_list
   @ [ Space; raw_text marker; Space; raw_text priority; Space ]
   @ flatten_map (fun e -> Space :: inline refs state config e) title
