@@ -188,21 +188,26 @@ and macro refs state config m =
     else
       [ "{{"; m.name; "}}" ]
   else
-    macro_embed refs state config m
+    fst @@ macro_embed refs state config m
 
-and macro_embed refs state config { arguments; _ } =
+and macro_embed ?(outdent = false) refs state config { arguments; _ } =
   if List.length arguments <> 1 then
-    []
+    ([], false)
   else
     let arg = String.trim (List.hd arguments) in
     let value = String.(trim @@ sub arg 2 (length arg - 4)) in
     let raw_result = map_raw_text [ "{{embed "; arg; "}}" ] in
-    let current_level = state.current_level in
+    let current_level =
+      if outdent then
+        state.current_level - 1
+      else
+        state.current_level
+    in
     if starts_with arg "[[" then
       (* page embed *)
       let pagename = value in
       if List.mem pagename state.embed_history then
-        raw_result
+        (raw_result, false)
       else
         match List.assoc_opt pagename refs.parsed_embed_pages with
         | Some ast ->
@@ -215,13 +220,13 @@ and macro_embed refs state config { arguments; _ } =
               }
               config ast
           in
-          newline :: embed_page
-        | None -> raw_result
+          (newline :: embed_page, true)
+        | None -> (raw_result, false)
     else if starts_with arg "((" then
       (* block embed *)
       let block_uuid = value in
       if List.mem block_uuid state.embed_history then
-        raw_result
+        (raw_result, false)
       else
         match List.assoc_opt block_uuid refs.parsed_embed_blocks with
         | Some (ast, _) ->
@@ -234,10 +239,10 @@ and macro_embed refs state config { arguments; _ } =
               }
               config ast
           in
-          newline :: embed_block
-        | None -> raw_result
+          (newline :: embed_block, true)
+        | None -> (raw_result, false)
     else
-      raw_result
+      (raw_result, false)
 
 and entity { unicode; _ } = [ raw_text unicode ]
 
@@ -299,7 +304,13 @@ and block refs state config t =
   | Raw_Html s -> raw_text_indent state config s @ [ newline ]
   | Hiccup s -> [ raw_text s; Space ]
 
-and heading refs state config { title; tags; marker; level; priority; _ } =
+and heading_merely_have_embed { title; marker; priority; _ } =
+  match (title, marker, priority) with
+  | [ Macro hd ], None, None when hd.name = "embed" -> Some hd
+  | _ -> None
+
+and heading refs state config h =
+  let { title; tags; marker; level; priority; _ } = h in
   let priority =
     match priority with
     | Some c -> "[#" ^ String.make 1 c ^ "]"
@@ -320,22 +331,34 @@ and heading refs state config { title; tags; marker; level; priority; _ } =
       state.embed_parent_indent_level + level
   in
   state.current_level <- level';
-  let heading_or_list =
-    if config.heading_to_list then
-      [ Indent state.current_level; raw_text "-" ]
-    else
-      [ raw_text @@ String.make level' '#' ]
-  in
-  heading_or_list
-  @ [ Space; raw_text marker; Space; raw_text priority; Space ]
-  @ flatten_map (fun e -> Space :: inline refs state config e) title
-  @ [ Space
-    ; (if List.length tags > 0 then
-        raw_text @@ ":" ^ String.concat ":" tags ^ ":"
+  let f () =
+    let heading_or_list =
+      if config.heading_to_list then
+        [ Indent state.current_level; raw_text "-" ]
       else
-        raw_text "")
-    ; newline
-    ]
+        [ raw_text @@ String.make level' '#' ]
+    in
+    heading_or_list
+    @ [ Space; raw_text marker; Space; raw_text priority; Space ]
+    @ flatten_map (fun e -> Space :: inline refs state config e) title
+    @ [ Space
+      ; (if List.length tags > 0 then
+          raw_text @@ ":" ^ String.concat ":" tags ^ ":"
+        else
+          raw_text "")
+      ; newline
+      ]
+  in
+  match heading_merely_have_embed h with
+  | Some embed ->
+    (* this heading merely have one embed page(or block),
+       so override it by embed page(or block) *)
+    let r, succ = macro_embed ~outdent:true refs state config embed in
+    if succ then
+      r
+    else
+      f ()
+  | None -> f ()
 
 and list refs state config l =
   (fun l ->
