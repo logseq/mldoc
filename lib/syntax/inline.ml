@@ -631,6 +631,20 @@ let statistics_cookie =
 *)
 let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 
+let macro_arg =
+  string "[[" *> take_while1 (fun c -> c <> ']')
+  <* string "]]"
+  >>| (fun s -> "[[" ^ s ^ "]]")
+  <|> ( string "((" *> take_while1 (fun c -> c <> ')') <* string "))"
+      >>| fun s -> "((" ^ s ^ "))" )
+  <|> take_while1 (fun c -> not @@ List.mem c [ ','; ')' ])
+
+let macro_args =
+  let args_p =
+    sep_by (char ',') (optional spaces *> macro_arg <* optional spaces)
+  in
+  optional spaces *> (char '(' *> args_p <* char ')' <|> args_p)
+
 let macro =
   let p =
     take_while1 (function
@@ -641,24 +655,15 @@ let macro =
       | _ -> true)
     >>= fun s ->
     match parse_string ~consume:Prefix macro_name s with
-    | Ok name ->
+    | Ok name -> (
       let l = String.length s in
       let args = String.sub s (String.length name) (l - String.length name) in
-      let l = String.length args in
       if String.length args == 0 then
         return (Macro { name; arguments = [] })
       else
-        let args =
-          if args.[0] == '(' then
-            safe_sub args 1 (l - 2)
-          else if args.[0] == ' ' then
-            safe_sub args 1 (l - 1)
-          else
-            args
-        in
-        let arguments = String.split_on_char ',' args in
-        let arguments = CCList.map String.trim arguments in
-        return (Macro { name; arguments })
+        match parse_string macro_args ~consume:All args with
+        | Ok arguments -> return (Macro { name; arguments })
+        | Error e -> fail e)
     | Error _e -> fail "macro name"
   in
   between_string "{{{" "}}}" p <|> between_string "{{" "}}" p
