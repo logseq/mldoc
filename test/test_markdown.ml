@@ -115,6 +115,24 @@ let inline =
                  [ I.Macro
                      { I.Macro.name = "embed"; arguments = [ "[[page]]" ] }
                  ]) )
+        ; ( "args"
+          , `Quick
+          , check_aux "{{macroname [[A,B]], ((C,D)), E}}"
+              (Paragraph
+                 [ I.Macro
+                     { I.Macro.name = "macroname"
+                     ; arguments = [ "[[A,B]]"; "((C,D))"; "E" ]
+                     }
+                 ]) )
+        ; ( "args-2"
+          , `Quick
+          , check_aux "{{macroname ([[A,B]], ((C,D)), E)}}"
+              (Paragraph
+                 [ I.Macro
+                     { I.Macro.name = "macroname"
+                     ; arguments = [ "[[A,B]]"; "((C,D))"; "E" ]
+                     }
+                 ]) )
         ] )
   ; ( "drawer"
     , testcases
