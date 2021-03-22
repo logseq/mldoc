@@ -213,6 +213,15 @@ let inline =
                      )
                  ]) )
         ] )
+  ; ( "tag"
+    , testcases
+        [ ( "endwith-."
+          , `Quick
+          , check_aux "#tag." (Paragraph [ I.Tag "tag"; I.Plain "." ]) )
+        ; ( "endwith-,"
+          , `Quick
+          , check_aux "#tag," (Paragraph [ I.Tag "tag"; I.Plain "," ]) )
+        ] )
   ]
 
 let block =
