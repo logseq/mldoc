@@ -11,3 +11,4 @@ _tags
 *.install
 /dune-workspace
 examples/syntax.html
+js/package/index.js
