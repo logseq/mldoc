@@ -234,12 +234,24 @@ let inline =
         ] )
   ; ( "tag"
     , testcases
-        [ ( "endwith-."
+        [ ( "endwith '.'"
           , `Quick
           , check_aux "#tag." (Paragraph [ I.Tag "tag"; I.Plain "." ]) )
-        ; ( "endwith-,"
+        ; ( "endwith ','"
           , `Quick
           , check_aux "#tag," (Paragraph [ I.Tag "tag"; I.Plain "," ]) )
+        ; ("with '.'", `Quick, check_aux "#a.b.c" (Paragraph [ I.Tag "a.b.c" ]))
+        ; ( "with '.' and endwith '.'"
+          , `Quick
+          , check_aux "#a.b.c." (Paragraph [ I.Tag "a.b.c"; I.Plain "." ]) )
+        ; ( "with '.' and endwith '.' (2)"
+          , `Quick
+          , check_aux "#a.b.c. defg"
+              (Paragraph [ I.Tag "a.b.c"; I.Plain ". defg" ]) )
+        ; ( "with page-ref"
+          , `Quick
+          , check_aux "#a.[[b c d ]].e."
+              (Paragraph [ I.Tag "a.[[b c d ]].e"; I.Plain "." ]) )
         ] )
   ]
 
