@@ -44,20 +44,31 @@ open Type
 open! Prelude
 
 let env_name_options_parser =
-  lift2
-    (fun name options ->
-      match options with
-      | None
-      | Some "" ->
-        (name, None)
-      | _ -> (name, options))
-    (string_ci "\\begin{" *> take_while1 (fun c -> c <> '}') <* char '}')
-    (optional line)
-  <* end_of_line
+  string_ci "\\begin{" *> take_while1 (fun c -> c <> '}')
+  <* char '}'
+  >>| (fun name -> (name, None))
+  <* spaces_or_eols
 
 let parse _config =
   spaces *> env_name_options_parser >>= fun (name, options) ->
-  end_string
-    ("\\end{" ^ name ^ "}")
-    ~ci:true
-    (fun s -> Latex_Environment (String.lowercase_ascii name, options, s))
+  let ending = "\\end{" ^ name ^ "}" in
+  let ending_len = String.length ending in
+  fix (fun m ->
+      peek_char >>= fun c ->
+      match c with
+      | None -> return []
+      | Some '\\' ->
+        (* check if equals to '\end{...}' *)
+        available >>= fun len ->
+        if len < ending_len then
+          fail "ending"
+        else
+          peek_string ending_len >>= fun s ->
+          if String.lowercase_ascii ending = String.lowercase_ascii s then
+            advance ending_len >>= fun _ -> return []
+          else
+            List.cons <$> (any_char >>| String.make 1) <*> m
+      | Some _ -> List.cons <$> take_while1 (fun c -> c <> '\\') <*> m)
+  >>| String.concat ""
+  >>| fun content ->
+  Latex_Environment (String.lowercase_ascii name, options, content)

@@ -285,6 +285,13 @@ let block =
           , `Quick
           , check_aux "    foo\n    bar" (Example [ "foo\n"; "bar\n" ]) )
         ] )
+  ; ( "latex_env"
+    , testcases
+        [ ( "one-line"
+          , `Quick
+          , check_aux "\\begin{equation}[a,b,c] x=\\sqrt{b} \\end{equation}"
+              (Latex_Environment ("equation", None, "[a,b,c] x=\\sqrt{b} ")) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]
