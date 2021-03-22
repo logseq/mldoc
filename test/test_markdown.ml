@@ -115,6 +115,24 @@ let inline =
                  [ I.Macro
                      { I.Macro.name = "embed"; arguments = [ "[[page]]" ] }
                  ]) )
+        ; ( "args"
+          , `Quick
+          , check_aux "{{macroname [[A,B]], ((C,D)), E}}"
+              (Paragraph
+                 [ I.Macro
+                     { I.Macro.name = "macroname"
+                     ; arguments = [ "[[A,B]]"; "((C,D))"; "E" ]
+                     }
+                 ]) )
+        ; ( "args-2"
+          , `Quick
+          , check_aux "{{macroname ([[A,B]], ((C,D)), E)}}"
+              (Paragraph
+                 [ I.Macro
+                     { I.Macro.name = "macroname"
+                     ; arguments = [ "[[A,B]]"; "((C,D))"; "E" ]
+                     }
+                 ]) )
         ] )
   ; ( "drawer"
     , testcases
@@ -213,6 +231,27 @@ let inline =
                      , [ I.Emphasis (`Bold, [ I.Plain "asd"; I.Code "qwe" ]) ]
                      )
                  ]) )
+        ] )
+  ; ( "tag"
+    , testcases
+        [ ( "endwith '.'"
+          , `Quick
+          , check_aux "#tag." (Paragraph [ I.Tag "tag"; I.Plain "." ]) )
+        ; ( "endwith ','"
+          , `Quick
+          , check_aux "#tag," (Paragraph [ I.Tag "tag"; I.Plain "," ]) )
+        ; ("with '.'", `Quick, check_aux "#a.b.c" (Paragraph [ I.Tag "a.b.c" ]))
+        ; ( "with '.' and endwith '.'"
+          , `Quick
+          , check_aux "#a.b.c." (Paragraph [ I.Tag "a.b.c"; I.Plain "." ]) )
+        ; ( "with '.' and endwith '.' (2)"
+          , `Quick
+          , check_aux "#a.b.c. defg"
+              (Paragraph [ I.Tag "a.b.c"; I.Plain ". defg" ]) )
+        ; ( "with page-ref"
+          , `Quick
+          , check_aux "#a.[[b c d ]].e."
+              (Paragraph [ I.Tag "a.[[b c d ]].e"; I.Plain "." ]) )
         ] )
   ]
 
