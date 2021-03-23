@@ -116,6 +116,7 @@ and t =
   | Email of Email_address.t
   | Block_reference of string  (** Block reference *)
   | Inline_Hiccup of string
+  | Inline_Html of string
 [@@deriving yojson]
 
 let link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '\n' ]
@@ -961,6 +962,8 @@ let hash_tag = Hash_tag.parse >>| fun s -> Tag s
 
 let inline_hiccup = Hiccup.parse >>| fun s -> Inline_Hiccup s
 
+let inline_html = Raw_html.parse >>| fun s -> Inline_Html s
+
 (* TODO: configurable, re-order *)
 let inline_choices config =
   let is_markdown = config.format = Conf.Markdown in
@@ -980,7 +983,7 @@ let inline_choices config =
         nested_link config <|> link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
-      | '<' -> quick_link config <|> timestamp <|> email
+      | '<' -> quick_link config <|> timestamp <|> inline_html <|> email
       | '{' -> macro
       | '!' -> markdown_image config
       | '@' -> export_snippet
@@ -1014,7 +1017,7 @@ let inline_choices config =
         nested_link config <|> link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
-      | '<' -> target <|> radio_target <|> timestamp <|> email
+      | '<' -> target <|> radio_target <|> timestamp <|> inline_html <|> email
       | '{' -> macro
       | '!' -> markdown_image config
       | '@' -> export_snippet

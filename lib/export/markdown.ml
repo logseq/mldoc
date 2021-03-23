@@ -111,7 +111,8 @@ let rec inline refs state config (t : Inline.t) : t list =
     map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
   | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
   | Block_reference uuid -> block_reference refs state config uuid
-  | Inline_Hiccup s -> map_raw_text [ s ])
+  | Inline_Hiccup s -> map_raw_text [ s ]
+  | Inline_Html s -> map_raw_text [ s ])
 
 and emphasis refs state config (typ, tl) =
   let outside_em_symbol = state.outside_em_symbol in
