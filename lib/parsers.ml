@@ -1,36 +1,23 @@
 open Angstrom
 open Prelude
 
-let is_space = function
-  | ' '
-  | '\009'
-  | '\026'
-  | '\012' ->
-    true
-  | _ -> false
+let space_chars = [ ' '; '\t'; '\026'; '\012' ]
+
+let is_space c = List.mem c space_chars
 
 let is_tab = function
   | '\t' -> true
   | _ -> false
 
-let is_tab_or_space = function
-  | '\t'
-  | ' '
-  | '\026'
-  | '\012' ->
-    true
-  | _ -> false
+let is_tab_or_space = is_space
 
 let non_tab_or_space = not << is_tab_or_space
 
 let non_space = not << is_space
 
-(* end of line *)
-let is_eol = function
-  | '\r'
-  | '\n' ->
-    true
-  | _ -> false
+let eol_chars = [ '\r'; '\n' ]
+
+let is_eol c = List.mem c eol_chars
 
 let non_eol = not << is_eol
 
@@ -266,3 +253,46 @@ let block_ref, block_ref_ignore_bracket =
       ]
   in
   (p >>| String.concat "", p >>| fun l -> List.nth l 1)
+
+let any_char_string = String.make 1 <$> any_char
+
+let string_contains_balanced_brackets ?(excluded_ending_chars = []) bracket_pair
+    other_delims =
+  let left, right = unzip bracket_pair in
+  fix (fun (m : string list list t) ->
+      choice
+        [ (fun s l -> [ List.cons s (List.flatten l) ])
+          <$> take_while1 (fun c ->
+                  (not @@ List.mem c other_delims)
+                  && (not @@ List.mem c excluded_ending_chars)
+                  && (not (List.mem c left))
+                  && not (List.mem c right))
+          <*> m
+        ; ( peek_char >>= fun c ->
+            match c with
+            | None -> fail "finish"
+            | Some c when List.mem c left ->
+              (fun left l right -> [ [ left ]; List.flatten l; right ])
+              <$> any_char_string <*> m
+              <*> (char (List.assoc c bracket_pair)
+                  >>= (fun c ->
+                        (fun right l -> List.cons right (List.flatten l))
+                        <$> return (String.make 1 c)
+                        <*> m)
+                  <|> return [])
+            | Some c when List.mem c excluded_ending_chars ->
+              available >>= fun len ->
+              if len < 2 then
+                fail "finish"
+              else
+                peek_string 2 >>= fun s ->
+                let s1 = s.[1] in
+                if List.mem s1 other_delims then
+                  fail "finish"
+                else
+                  (fun c l -> [ [ c ]; List.flatten l ])
+                  <$> any_char_string <*> m
+            | Some _ -> fail "delims" )
+        ; return [ [] ]
+        ])
+  >>| (String.concat "" << List.flatten)
