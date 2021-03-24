@@ -119,7 +119,9 @@ and t =
   | Inline_Html of string
 [@@deriving yojson]
 
-let link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')'; '\n' ]
+let quicklink_delims = [ '>' ] @ eol_chars
+
+let inline_link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')' ] @ eol_chars
 
 let email = Email_address.email >>| fun email -> Email email
 
@@ -412,12 +414,37 @@ let metadata =
   >>= (fun s -> return ("{" ^ s ^ "}"))
   <|> string "{}" <|> return ""
 
-(* complex link, or auto link *)
-(* :// *)
-let link_inline _config =
+let link_inline =
+  let protocol_part = take_while1 is_letter_or_digit <* string "://" in
+  let before_path_part =
+    take_while1 (fun c ->
+        non_space c && c <> '/' && c <> '?' && c <> '#'
+        && not (List.mem c inline_link_delims))
+  in
+  let remaining_part =
+    (fun c remain -> String.make 1 c ^ remain)
+    <$> choice [ char '/'; char '?'; char '#' ]
+    <*> string_contains_balanced_brackets
+          ~excluded_ending_chars:[ ','; ';'; '.'; '!'; '?' ]
+          [ ('(', ')'); ('[', ']') ]
+          (('{' :: space_chars) @ eol_chars)
+    <|> return ""
+  in
+  lift4
+    (fun protocol before_path remain metadata ->
+      Link
+        { label = [ Plain (protocol ^ "://" ^ before_path ^ remain) ]
+        ; url = Complex { protocol; link = "//" ^ before_path ^ remain }
+        ; title = None
+        ; full_text = protocol ^ "://" ^ before_path ^ remain ^ metadata
+        ; metadata
+        })
+    protocol_part before_path_part remaining_part metadata
+
+let quick_link_aux ?(delims = inline_link_delims) _config =
   let protocol_part = take_while1 is_letter_or_digit <* string "://" in
   let link_part =
-    take_while1 (fun c -> non_space c && not (List.mem c link_delims))
+    take_while1 (fun c -> non_space c && not (List.mem c delims))
   in
   lift3
     (fun protocol link metadata ->
@@ -430,7 +457,8 @@ let link_inline _config =
         })
     protocol_part link_part metadata
 
-let quick_link config = between_char '<' '>' (link_inline config)
+let quick_link config =
+  between_char '<' '>' (quick_link_aux config ~delims:quicklink_delims)
 
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
@@ -478,6 +506,17 @@ let org_link config =
       Link { label; url; title; full_text; metadata })
     url_part label_part metadata
 
+(* helper for markdown_link and markdown_image *)
+let link_url_part =
+  string_contains_balanced_brackets [ ('(', ')') ] eol_chars >>= fun s ->
+  let len = String.length s in
+  char ')' *> return s
+  <|>
+  if len > 0 && s.[len - 1] = ')' then
+    return @@ String.sub s 0 (len - 1)
+  else
+    fail "link_url_part"
+
 (* link *)
 (* 1. [label](url)
    2. [label](url "title"), for example:
@@ -485,17 +524,36 @@ let org_link config =
 *)
 (* TODO: URI encode *)
 let markdown_link config =
-  let label_part_delims = [ '`'; ']' ] in
+  let label_part_delims = [ '`'; '['; ']' ] in
+  let label_part_choices =
+    choice
+      [ ( take_while1 (fun c ->
+              non_eol c && (not @@ List.mem c label_part_delims))
+        >>| fun s -> Plain s )
+      ; ( peek_char >>= fun c ->
+          match c with
+          | None -> fail "finish"
+          | Some '`' -> md_code <|> (any_char_string >>| fun s -> Plain s)
+          | Some '[' -> page_ref <|> any_char_string >>| fun s -> Plain s
+          | Some ']' ->
+            available >>= fun len ->
+            if len < 2 then
+              fail "label_part_choices"
+            else
+              peek_string 2 >>= fun s ->
+              if s = "](" then
+                fail "finish"
+              else
+                any_char_string >>| fun s -> Plain s
+          | Some c when is_eol c -> fail "finish"
+          | Some _ -> any_char_string >>| fun s -> Plain s )
+      ]
+  in
   let label_part =
     string "[]("
     >>| (fun _ -> ([ Plain "" ], ""))
-    <|> ( between_string "[" "](" @@ many1
-        @@ choice
-             [ ( take_while1 (fun c -> not @@ List.mem c label_part_delims)
-               >>| fun s -> Plain s )
-             ; md_code
-             ; (take_while1 (( <> ) ']') >>| fun s -> Plain s)
-             ]
+    <|> ( between_string "[" "]("
+        @@ fix (fun m -> List.cons <$> label_part_choices <*> m <|> return [])
         >>| fun l ->
           ( concat_plains l
           , CCList.map
@@ -506,11 +564,11 @@ let markdown_link config =
               l
             |> String.concat "" ) )
   in
-
-  let url_part = take_while (fun c -> c <> ')') <* string ")" in
   lift3
     (fun (label_t, label_text) url_text metadata ->
-      let url, title = split_first '"' url_text in
+      let url, title = split_first ' ' url_text in
+      let url = String.trim url in
+      let title = String.trim title in
       let lowercased_url = String.lowercase_ascii url in
       let url =
         try
@@ -551,21 +609,21 @@ let markdown_link config =
         |> List.concat |> concat_plains
       in
       let title =
-        if String.equal title "" || String.equal title "\"" then
+        if String.equal title "" || String.equal title "\"\"" then
           None
         else
-          Some (String.sub title 0 (String.length title - 1))
+          Some (String.sub title 1 (String.length title - 2))
       in
       let full_text =
         Printf.sprintf "[%s](%s)%s" label_text url_text metadata
       in
       Link { label; url; title; full_text; metadata })
-    label_part url_part metadata
+    label_part link_url_part metadata
 
 let link config =
   match config.format with
   | Conf.Org -> org_link config
-  | Conf.Markdown -> markdown_link config <|> org_link config
+  | Conf.Markdown -> markdown_link config
 
 (* page reference *)
 
@@ -790,7 +848,6 @@ let markdown_image config =
   let label_part =
     string "![" *> take_while (fun c -> c <> ']') <* optional (string "](")
   in
-  let url_part = take_while (fun c -> c <> ')') <* string ")" in
   lift3
     (fun label_text url_text metadata ->
       let url =
@@ -830,7 +887,7 @@ let markdown_image config =
         Printf.sprintf "![%s](%s)%s" label_text url_text metadata
       in
       Link { label; url; title; full_text; metadata })
-    label_part url_part metadata
+    label_part link_url_part metadata
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') in
@@ -875,7 +932,7 @@ let footnote_inline_definition config ?(break = false) definition =
     ; nested_link config
     ; link config
     ; email
-    ; link_inline config
+    ; link_inline
     ; radio_target
     ; target
     ; latex_fragment config
@@ -997,7 +1054,7 @@ let inline_choices config =
         timestamp
       | '(' -> block_reference config
       | ' ' -> Markdown_line_breaks.parse >>| fun _ -> Hard_Break_Line
-      | _ -> link_inline config
+      | _ -> link_inline
     else
       peek_char_fail >>= function
       | '\n' -> breakline
@@ -1031,7 +1088,7 @@ let inline_choices config =
       | 'd' ->
         timestamp
       | '(' -> block_reference config
-      | _ -> link_inline config
+      | _ -> link_inline
   in
   p <|> plain config
 
