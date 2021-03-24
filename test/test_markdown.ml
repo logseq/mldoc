@@ -93,6 +93,148 @@ let inline =
                      }
                  ; I.Plain " "
                  ]) )
+        ; ( "endwith '.'"
+          , `Quick
+          , check_aux "http://test/f.o.o/b.a.r. "
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "//test/f.o.o/b.a.r" }
+                     ; label = [ Plain "http://test/f.o.o/b.a.r" ]
+                     ; title = None
+                     ; full_text = "http://test/f.o.o/b.a.r"
+                     ; metadata = ""
+                     }
+                 ; I.Plain ". "
+                 ]) )
+        ; ( "include brackets"
+          , `Quick
+          , check_aux "http://test/(foo)bar"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "//test/(foo)bar" }
+                     ; label = [ Plain "http://test/(foo)bar" ]
+                     ; title = None
+                     ; full_text = "http://test/(foo)bar"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "include brackets (2)"
+          , `Quick
+          , check_aux "http://test/[(foo)b]ar"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "//test/[(foo)b]ar" }
+                     ; label = [ Plain "http://test/[(foo)b]ar" ]
+                     ; title = None
+                     ; full_text = "http://test/[(foo)b]ar"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "include brackets (3)"
+          , `Quick
+          , check_aux "http://test/[foo)b]ar"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "//test/[foo" }
+                     ; label = [ Plain "http://test/[foo" ]
+                     ; title = None
+                     ; full_text = "http://test/[foo"
+                     ; metadata = ""
+                     }
+                 ; I.Plain ")b]ar"
+                 ]) )
+        ; ( "include brackets (4)"
+          , `Quick
+          , check_aux "http://te(s)t/foobar"
+              (Paragraph
+                 [ I.Link
+                     { url = I.Complex { protocol = "http"; link = "//te" }
+                     ; label = [ Plain "http://te" ]
+                     ; title = None
+                     ; full_text = "http://te"
+                     ; metadata = ""
+                     }
+                 ; I.Plain "(s)t/foobar"
+                 ]) )
+        ] )
+  ; ( "link"
+    , testcases
+        [ ( "normal"
+          , `Quick
+          , check_aux "[label here](http://foobar/path?query=123)"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"
+                           ; link = "//foobar/path?query=123"
+                           }
+                     ; label = [ Plain "label here" ]
+                     ; title = None
+                     ; full_text = "[label here](http://foobar/path?query=123)"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "label with page-ref"
+          , `Quick
+          , check_aux "[abc [[d ef]] gh](../assets/0000.pdf)"
+              (Paragraph
+                 [ I.Link
+                     { url = I.Search "../assets/0000.pdf"
+                     ; label = [ Plain "abc [[d ef]] gh" ]
+                     ; title = None
+                     ; full_text = "[abc [[d ef]] gh](../assets/0000.pdf)"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "with title"
+          , `Quick
+          , check_aux "[abc [[d]( ef]] gh](../assets/0000.pdf \"title\")"
+              (Paragraph
+                 [ I.Link
+                     { url = I.Search "../assets/0000.pdf"
+                     ; label = [ Plain "abc [[d]( ef]] gh" ]
+                     ; title = Some "title"
+                     ; full_text =
+                         "[abc [[d]( ef]] gh](../assets/0000.pdf \"title\")"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "include brackets"
+          , `Quick
+          , check_aux "[label](abc(def)gh)"
+              (Paragraph
+                 [ I.Link
+                     { url = I.Search "abc(def)gh"
+                     ; label = [ Plain "label" ]
+                     ; title = None
+                     ; full_text = "[label](abc(def)gh)"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "include brackets (2)"
+          , `Quick
+          , check_aux "[中文](https://a.b.c.d/e/f%20g(1).h)"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "https"
+                           ; link = "//a.b.c.d/e/f%20g(1).h"
+                           }
+                     ; label = [ Plain "中文" ]
+                     ; title = None
+                     ; full_text = "[中文](https://a.b.c.d/e/f%20g(1).h)"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ; ( "inline-macro"
     , testcases
