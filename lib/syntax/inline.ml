@@ -693,8 +693,6 @@ let statistics_cookie =
 
 (*
    Define: #+MACRO: demo =$1= ($1)
-   Usage:  {{{demo(arg1, arg2, ..., argn)}}}
-   or
    {{{demo arg1, arg2, ..., argn}}}
 *)
 let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
@@ -705,13 +703,13 @@ let macro_arg =
   >>| (fun s -> "[[" ^ s ^ "]]")
   <|> ( string "((" *> take_while1 (fun c -> c <> ')') <* string "))"
       >>| fun s -> "((" ^ s ^ "))" )
-  <|> take_while1 (fun c -> not @@ List.mem c [ ','; ')' ])
+  <|> take_while1 (fun c -> not @@ List.mem c [ ',' ])
 
 let macro_args =
   let args_p =
     sep_by (char ',') (optional spaces *> macro_arg <* optional spaces)
   in
-  optional spaces *> (char '(' *> args_p <* char ')' <|> args_p)
+  optional spaces *> args_p
 
 let macro =
   let p =

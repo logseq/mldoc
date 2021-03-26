@@ -250,6 +250,12 @@ let inline =
               (Paragraph
                  [ I.Macro { I.Macro.name = "test"; arguments = [ "foo" ] } ])
           )
+        ; ( "query"
+          , `Quick
+          , check_aux "{{query (and [[test]])}}"
+              (Paragraph
+                 [ I.Macro { I.Macro.name = "query"; arguments = [ "(and [[test]])" ] } ])
+          )
         ; ( "embed"
           , `Quick
           , check_aux "{{{embed [[page]]}}}"
@@ -260,15 +266,6 @@ let inline =
         ; ( "args"
           , `Quick
           , check_aux "{{macroname [[A,B]], ((C,D)), E}}"
-              (Paragraph
-                 [ I.Macro
-                     { I.Macro.name = "macroname"
-                     ; arguments = [ "[[A,B]]"; "((C,D))"; "E" ]
-                     }
-                 ]) )
-        ; ( "args-2"
-          , `Quick
-          , check_aux "{{macroname ([[A,B]], ((C,D)), E)}}"
               (Paragraph
                  [ I.Macro
                      { I.Macro.name = "macroname"
