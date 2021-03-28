@@ -621,13 +621,17 @@ let markdown_link config =
     label_part link_url_part metadata
 
 let markdown_link_or_page_ref config =
-  (markdown_link config)
-  <|>
-  (page_ref >>| fun s ->
-   let inner_s = String.sub s 2 (String.length s - 4) in
-    Link
-     {url = Search inner_s; label = [Plain ""]; title = None;
-      full_text = s; metadata = ""})
+  page_ref
+  >>| (fun s ->
+        let inner_s = String.sub s 2 (String.length s - 4) in
+        Link
+          { url = Search inner_s
+          ; label = [ Plain "" ]
+          ; title = None
+          ; full_text = s
+          ; metadata = ""
+          })
+  <|> markdown_link config
 
 let link config =
   match config.format with
