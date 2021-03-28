@@ -235,6 +235,25 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "page-ref before link"
+          , `Quick
+          , check_aux "[[a]][b](c)"
+              (Paragraph
+                 [ I.Link
+                     { url = I.Search "a"
+                     ; label = [ Plain "" ]
+                     ; title = None
+                     ; full_text = "[[a]]"
+                     ; metadata = ""
+                     }
+                 ; I.Link
+                     { url = I.Search "c"
+                     ; label = [ Plain "b" ]
+                     ; title = None
+                     ; full_text = "[b](c)"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ; ( "inline-macro"
     , testcases
@@ -254,8 +273,11 @@ let inline =
           , `Quick
           , check_aux "{{query (and [[test]])}}"
               (Paragraph
-                 [ I.Macro { I.Macro.name = "query"; arguments = [ "(and [[test]])" ] } ])
-          )
+                 [ I.Macro
+                     { I.Macro.name = "query"
+                     ; arguments = [ "(and [[test]])" ]
+                     }
+                 ]) )
         ; ( "embed"
           , `Quick
           , check_aux "{{{embed [[page]]}}}"
