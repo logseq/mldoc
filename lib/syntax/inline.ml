@@ -636,7 +636,7 @@ let link config =
 
 (* page reference *)
 
-let nested_link _config = Nested_link.parse >>| fun s -> Nested_link s
+let nested_link = Nested_link.parse >>| fun s -> Nested_link s
 
 let nested_emphasis config =
   let rec aux_nested_emphasis = function
@@ -650,7 +650,7 @@ let nested_emphasis config =
              ; subscript config
              ; superscript config
              ; link config
-             ; nested_link config
+             ; nested_link
              ; plain config
              ])
       in
@@ -700,6 +700,8 @@ let statistics_cookie =
 let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 
 let macro_arg =
+  (Nested_link.parse >>| fun l -> l.content)
+  <|>
   string "[[" *> take_while1 (fun c -> c <> ']')
   <* string "]]"
   >>| (fun s -> "[[" ^ s ^ "]]")
@@ -938,7 +940,7 @@ let incr_id id =
 let footnote_inline_definition config ?(break = false) definition =
   let choices =
     [ markdown_image config
-    ; nested_link config
+    ; nested_link
     ; link config
     ; email
     ; link_inline
@@ -1046,7 +1048,7 @@ let inline_choices config =
       | '$' -> latex_fragment config
       | '\\' -> latex_fragment config <|> entity
       | '[' ->
-        nested_link config <|> link config <|> timestamp
+        nested_link <|> link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
       | '<' -> quick_link config <|> timestamp <|> inline_html <|> email
@@ -1080,7 +1082,7 @@ let inline_choices config =
         >>| (fun _ -> Hard_Break_Line)
         <|> latex_fragment config <|> entity
       | '[' ->
-        nested_link config <|> link config <|> timestamp
+        nested_link <|> link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
       | '<' -> target <|> radio_target <|> timestamp <|> inline_html <|> email

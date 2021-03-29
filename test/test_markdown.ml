@@ -257,6 +257,13 @@ let inline =
                  [ I.Macro
                      { I.Macro.name = "embed"; arguments = [ "[[page]]" ] }
                  ]) )
+        ; ( "query nested link"
+          , `Quick
+          , check_aux "{{{query [[page [[nested]]]]}}}"
+              (Paragraph
+                 [ I.Macro
+                     { I.Macro.name = "query"; arguments = [ "[[page [[nested]]]]" ] }
+                 ]) )
         ; ( "args"
           , `Quick
           , check_aux "{{macroname [[A,B]], ((C,D)), E}}"
