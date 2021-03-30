@@ -30,8 +30,9 @@ type repetition_duration =
 type t =
   { date : date
   ; wday : string
-  ; time : time option
-  ; repetition : (repetition_kind * repetition_duration * int) option
+  ; time : time option [@default None]
+  ; repetition :
+      ((repetition_kind * repetition_duration * int) option[@default None])
   ; active : bool
   }
 [@@deriving yojson]

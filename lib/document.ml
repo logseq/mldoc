@@ -23,9 +23,9 @@ type t =
   { filename : string option  (** The filename the document was parsed from *)
   ; blocks : blocks  (** Blocks content *)
   ; directives : directives  (** The directives present in the file *)
-  ; title : string option  (** The document's title *)
-  ; subtitle : string option  (** The document's subtitle *)
-  ; author : string option  (** The document's author *)
+  ; title : string option [@default None]  (** The document's title *)
+  ; subtitle : string option [@default None]  (** The document's subtitle *)
+  ; author : string option [@default None]  (** The document's author *)
   ; toc : toc  (** Table of content *)
   }
 [@@deriving yojson]

@@ -23,7 +23,7 @@ type emphasis =
 and footnote_reference =
   { id : int
   ; name : string
-  ; definition : t list option
+  ; definition : t list option [@default None]
   }
 [@@deriving yojson]
 
@@ -42,7 +42,7 @@ and complex =
 and link =
   { url : url
   ; label : t list
-  ; title : string option
+  ; title : string option [@default None]
   ; full_text : string
   ; metadata : string
   }
@@ -79,8 +79,9 @@ and timestamp =
 and inline_call =
   { program : string  (** The name of the block to call *)
   ; arguments : (string * string) list  (** The arguments to the block *)
-  ; inside_headers : string option  (** The inside header arguments *)
-  ; end_headers : string option  (** The end header arguments *)
+  ; inside_headers : string option [@default None]
+        (** The inside header arguments *)
+  ; end_headers : string option [@default None]  (** The end header arguments *)
   }
 (** See org's documentation for more information *)
 

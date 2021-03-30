@@ -9,10 +9,10 @@ type pos_meta =
 type heading =
   { title : inline_list  (** The title as inline formatted content *)
   ; tags : string list  (** The tags set by the user *)
-  ; marker : string option  (** TODO, DONE, and so on *)
+  ; marker : string option [@default None]  (** TODO, DONE, and so on *)
   ; level : int  (** The level (number of stars) -- starts at 1 *)
-  ; numbering : int list option
-  ; priority : char option  (** The optional priority *)
+  ; numbering : int list option [@default None]
+  ; priority : char option [@default None]  (** The optional priority *)
   ; anchor : string
   ; meta : meta
   }
@@ -27,16 +27,16 @@ and meta =
 and list_item =
   { content : t list  (** The contents of the current item *)
   ; items : list_item list
-  ; number : int option  (** Its number *)
+  ; number : int option [@default None]  (** Its number *)
   ; name : Inline.t list  (** Definition name *)
-  ; checkbox : bool option  (** Was it checked *)
+  ; checkbox : bool option [@default None]  (** Was it checked *)
   ; indent : int  (** Indentation of the current item. *)
   ; ordered : bool
   }
 [@@deriving yojson]
 
 and table =
-  { header : row option
+  { header : row option [@default None]
   ; groups : group list (* rows groups *)
   ; col_groups : int list
   }
@@ -51,8 +51,9 @@ and col = Inline.t list
 (** {2 Code blocks} *)
 and code_block =
   { lines : string list
-  ; language : string option  (** The language the code is written in *)
-  ; options : string list option
+  ; language : string option [@default None]
+        (** The language the code is written in *)
+  ; options : string list option [@default None]
   ; pos_meta : pos_meta
   }
 [@@deriving yojson]
