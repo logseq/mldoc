@@ -1,7 +1,7 @@
 open Angstrom
 open Parsers
 
-let tag_delims = [ ','; ';'; '.'; '!'; '?'; '\''; '"' ]
+let tag_delims = [ ','; ';'; '.'; '!'; '?'; '\''; '"'; ':' ]
 
 let hashtag_name =
   let hashtag_name_part =
