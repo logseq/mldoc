@@ -518,6 +518,23 @@ let link_url_part =
   else
     fail "link_url_part"
 
+(* return (url, title) *)
+let link_url_part_inner =
+  let url_part =
+    take_while1 (fun c -> non_space_eol c && c <> '[')
+    <|> page_ref
+    <|> ( peek_char >>= fun c ->
+          match c with
+          | None -> fail "url1"
+          | Some ' ' -> fail "url2"
+          | Some _ -> any_char_string )
+  in
+  both
+    (fix (fun m ->
+         List.cons <$> url_part <*> m <|> (List.cons <$> url_part <*> return []))
+    >>| String.concat "")
+    (take_while (fun _ -> true))
+
 (* link *)
 (* 1. [label](url)
    2. [label](url "title"), for example:
@@ -567,7 +584,13 @@ let markdown_link config =
   in
   lift3
     (fun (label_t, label_text) url_text metadata ->
-      let url, title = split_first ' ' url_text in
+      let url, title =
+        match
+          Angstrom.parse_string ~consume:All link_url_part_inner url_text
+        with
+        | Ok (url, title) -> (url, title)
+        | Error _ -> (url_text, "")
+      in
       let url = String.trim url in
       let title = String.trim title in
       let lowercased_url = String.lowercase_ascii url in
@@ -703,9 +726,9 @@ let statistics_cookie =
 let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 
 let macro_arg =
-  (Nested_link.parse >>| fun l -> l.content)
-  <|>
-  string "[[" *> take_while1 (fun c -> c <> ']')
+  Nested_link.parse
+  >>| (fun l -> l.content)
+  <|> string "[[" *> take_while1 (fun c -> c <> ']')
   <* string "]]"
   >>| (fun s -> "[[" ^ s ^ "]]")
   <|> ( string "((" *> take_while1 (fun c -> c <> ')') <* string "))"
