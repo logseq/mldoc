@@ -290,7 +290,9 @@ let inline =
           , check_aux "{{{query [[page [[nested]]]]}}}"
               (Paragraph
                  [ I.Macro
-                     { I.Macro.name = "query"; arguments = [ "[[page [[nested]]]]" ] }
+                     { I.Macro.name = "query"
+                     ; arguments = [ "[[page [[nested]]]]" ]
+                     }
                  ]) )
         ; ( "args"
           , `Quick
@@ -408,6 +410,12 @@ let inline =
         ; ( "endwith ','"
           , `Quick
           , check_aux "#tag," (Paragraph [ I.Tag "tag"; I.Plain "," ]) )
+        ; ( "endwith '\"'"
+          , `Quick
+          , check_aux "#tag\"" (Paragraph [ I.Tag "tag"; I.Plain "\"" ]) )
+        ; ( "endwith several periods"
+          , `Quick
+          , check_aux "#tag,.?" (Paragraph [ I.Tag "tag"; I.Plain ",.?" ]) )
         ; ("with '.'", `Quick, check_aux "#a.b.c" (Paragraph [ I.Tag "a.b.c" ]))
         ; ( "with '.' and endwith '.'"
           , `Quick
