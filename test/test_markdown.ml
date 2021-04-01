@@ -254,6 +254,30 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "url and title"
+          , `Quick
+          , check_aux "[a](bbb[[ccc \"dd\"]] \"e f\")"
+              (Paragraph
+                 [ I.Link
+                     { url = I.Search "bbb[[ccc \"dd\"]]"
+                     ; label = [ Plain "a" ]
+                     ; title = Some "e f"
+                     ; full_text = "[a](bbb[[ccc \"dd\"]] \"e f\")"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "url part include page ref"
+          , `Quick
+          , check_aux "[a](bbb[[ccc \"dd\"]][[ff gg hh]] \"ee\")"
+              (Paragraph
+                 [ I.Link
+                     { url = I.Search "bbb[[ccc \"dd\"]][[ff gg hh]]"
+                     ; label = [ Plain "a" ]
+                     ; title = Some "ee"
+                     ; full_text = "[a](bbb[[ccc \"dd\"]][[ff gg hh]] \"ee\")"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ; ( "inline-macro"
     , testcases
@@ -290,7 +314,9 @@ let inline =
           , check_aux "{{{query [[page [[nested]]]]}}}"
               (Paragraph
                  [ I.Macro
-                     { I.Macro.name = "query"; arguments = [ "[[page [[nested]]]]" ] }
+                     { I.Macro.name = "query"
+                     ; arguments = [ "[[page [[nested]]]]" ]
+                     }
                  ]) )
         ; ( "args"
           , `Quick
