@@ -23,6 +23,8 @@ let non_eol = not << is_eol
 
 let non_space_eol c = non_space c && non_eol c
 
+let is_space_eol c = is_space c || is_eol c
+
 let is_hex = function
   | '0' .. '9'
   | 'a' .. 'f'
