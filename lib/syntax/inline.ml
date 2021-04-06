@@ -346,45 +346,6 @@ let md_em_parser ?(nested = false) pattern typ =
   else
     Emphasis (typ, concat_plains l)
 
-(* let md_em_nested_parser pattern =
- *   let pattern_c = pattern.[0] in
- *   let stop_chars = pattern_c :: whitespace_chars in
- *   (\* inline code has higher precedence than any other inline constructs
- *      except HTML tags and autolinks *\)
- *   let stop_chars_include_inline_code_delim = '`' :: stop_chars in
- *   let non_whitespace_choices =
- *     choice
- *       [ ( take_while1 (fun c ->
- *               not @@ List.mem c stop_chars_include_inline_code_delim)
- *         >>| fun s -> Plain s )
- *       ; md_code
- *       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
- *           Plain s )
- *       ; ( ( unsafe_lookahead (string pattern *> any_char)
- *           >>= fun following_char ->
- *             match (pattern_c, !char_before_pattern, following_char) with
- *             | '_', Some c, _ when List.mem c whitespace_chars -> string pattern
- *             | '_', _, fc when not (List.mem fc underline_emphasis_delims) ->
- *               string pattern
- *             | _, _, _ -> fail "non_whitespace_choices" )
- *         >>| fun s -> Plain s )
- *       ]
- *   in
- *   let whitespace_choice =
- *     take_while1 (fun c -> List.mem c whitespace_chars) >>| fun s -> Plain s
- *   in
- *   is_left_flanking_delimiter_run pattern
- *   *> (between_string pattern pattern
- *      @@ fix (fun m ->
- *             List.cons <$> non_whitespace_choices <*> m
- *             <|> ((fun ws nws l -> ws :: nws :: l)
- *                 <$> whitespace_choice <*> non_whitespace_choices <*> m)
- *             <|> (List.cons <$> non_whitespace_choices <*> return [])
- *             <|> ((fun ws nws l -> ws :: nws :: l)
- *                 <$> whitespace_choice <*> non_whitespace_choices <*> return []))
- *      )
- *   >>| fun l -> Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ]) *)
-
 (* TODO: html tags support *)
 (* <ins></ins> *)
 (* let underline =    *)
