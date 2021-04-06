@@ -240,59 +240,173 @@ let concat_plains l =
     [] l
   |> List.rev
 
-let md_em_parser pattern typ =
-  let pattern_c = pattern.[0] in
-  let stop_chars = [ pattern_c; '\r'; '\n' ] in
-  (* inline code has higher precedence than any other inline constructs
-     except HTML tags and autolinks *)
-  let stop_chars_include_inline_code_delim = '`' :: stop_chars in
-  between_string pattern pattern
-  @@ many1
-  @@ choice
-       [ ( take_while1 (fun c ->
-               not @@ List.mem c stop_chars_include_inline_code_delim)
-         >>| fun s -> Plain s )
-       ; md_code
-       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
-           Plain s )
-       ]
-  >>| fun l -> Emphasis (typ, concat_plains l)
+let underline_emphasis_delims =
+  [ '!'
+  ; '"'
+  ; '#'
+  ; '$'
+  ; '%'
+  ; '&'
+  ; '\''
+  ; '('
+  ; ')'
+  ; '*'
+  ; '+'
+  ; ','
+  ; '-'
+  ; '.'
+  ; '/'
+  ; ':'
+  ; ';'
+  ; '<'
+  ; '='
+  ; '>'
+  ; '?'
+  ; '@'
+  ; '['
+  ; '\\'
+  ; ']'
+  ; '^'
+  ; '_'
+  ; '`'
+  ; '{'
+  ; '|'
+  ; '}'
+  ; '~'
+  ]
+  @ whitespace_chars
 
-let md_em_nested_parser pattern =
+let is_left_flanking_delimiter_run pattern =
+  unsafe_lookahead @@ (string pattern *> not_one_of whitespace_chars)
+
+let md_em_parser ?(nested = false) pattern typ =
   let pattern_c = pattern.[0] in
-  let stop_chars = [ pattern_c; '\r'; '\n' ] in
+  let stop_chars = pattern_c :: whitespace_chars in
   (* inline code has higher precedence than any other inline constructs
      except HTML tags and autolinks *)
   let stop_chars_include_inline_code_delim = '`' :: stop_chars in
-  between_string pattern pattern
-  @@ many1
-  @@ choice
-       [ ( take_while1 (fun c ->
-               not @@ List.mem c stop_chars_include_inline_code_delim)
-         >>| fun s -> Plain s )
-       ; md_code
-       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
-           Plain s )
-       ]
-  >>| fun l -> Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
+  let char_before_pattern = ref None in
+  let set_char_before_pattern t =
+    match t with
+    | Plain s -> char_before_pattern := Some String.(get s (length s - 1))
+    | Code _ -> char_before_pattern := Some '`'
+    | _ -> char_before_pattern := None
+  in
+  let non_whitespace_choices =
+    choice
+      [ ( take_while1 (fun c ->
+              not @@ List.mem c stop_chars_include_inline_code_delim)
+        >>| fun s ->
+          set_char_before_pattern (Plain s);
+          Plain s )
+      ; ( md_code >>| fun t ->
+          set_char_before_pattern t;
+          t )
+      ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
+          set_char_before_pattern (Plain s);
+          Plain s )
+      ; ( peek_string (String.length pattern) >>= fun s ->
+          if s = pattern then
+            fail "non_whitespace_choices"
+          else
+            any_char_string >>| fun s ->
+            set_char_before_pattern (Plain s);
+            Plain s )
+      ; ( ( unsafe_lookahead (string pattern *> any_char)
+          >>= fun following_char ->
+            match (pattern_c, !char_before_pattern, following_char) with
+            | '_', Some c, _ when List.mem c whitespace_chars -> string pattern
+            | '_', _, fc when not (List.mem fc underline_emphasis_delims) ->
+              string pattern
+            | _, Some c, _ when List.mem c whitespace_chars -> string pattern
+            | _, _, _ -> fail "finish" )
+        >>| fun s ->
+          set_char_before_pattern (Plain s);
+          Plain s )
+      ]
+  in
+  let whitespace_choice =
+    take_while1 (fun c -> List.mem c whitespace_chars) >>| fun s ->
+    set_char_before_pattern (Plain s);
+    Plain s
+  in
+  is_left_flanking_delimiter_run pattern
+  *> (between_string pattern pattern
+     @@ fix (fun m ->
+            List.cons <$> non_whitespace_choices <*> m
+            <|> ((fun ws nws l -> ws :: nws :: l)
+                <$> whitespace_choice <*> non_whitespace_choices <*> m)
+            <|> (List.cons <$> non_whitespace_choices <*> return [])
+            <|> ((fun ws nws l -> ws :: nws :: l)
+                <$> whitespace_choice <*> non_whitespace_choices <*> return []))
+     )
+  >>| fun l ->
+  if nested then
+    Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
+  else
+    Emphasis (typ, concat_plains l)
+
+(* let md_em_nested_parser pattern =
+ *   let pattern_c = pattern.[0] in
+ *   let stop_chars = pattern_c :: whitespace_chars in
+ *   (\* inline code has higher precedence than any other inline constructs
+ *      except HTML tags and autolinks *\)
+ *   let stop_chars_include_inline_code_delim = '`' :: stop_chars in
+ *   let non_whitespace_choices =
+ *     choice
+ *       [ ( take_while1 (fun c ->
+ *               not @@ List.mem c stop_chars_include_inline_code_delim)
+ *         >>| fun s -> Plain s )
+ *       ; md_code
+ *       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
+ *           Plain s )
+ *       ; ( ( unsafe_lookahead (string pattern *> any_char)
+ *           >>= fun following_char ->
+ *             match (pattern_c, !char_before_pattern, following_char) with
+ *             | '_', Some c, _ when List.mem c whitespace_chars -> string pattern
+ *             | '_', _, fc when not (List.mem fc underline_emphasis_delims) ->
+ *               string pattern
+ *             | _, _, _ -> fail "non_whitespace_choices" )
+ *         >>| fun s -> Plain s )
+ *       ]
+ *   in
+ *   let whitespace_choice =
+ *     take_while1 (fun c -> List.mem c whitespace_chars) >>| fun s -> Plain s
+ *   in
+ *   is_left_flanking_delimiter_run pattern
+ *   *> (between_string pattern pattern
+ *      @@ fix (fun m ->
+ *             List.cons <$> non_whitespace_choices <*> m
+ *             <|> ((fun ws nws l -> ws :: nws :: l)
+ *                 <$> whitespace_choice <*> non_whitespace_choices <*> m)
+ *             <|> (List.cons <$> non_whitespace_choices <*> return [])
+ *             <|> ((fun ws nws l -> ws :: nws :: l)
+ *                 <$> whitespace_choice <*> non_whitespace_choices <*> return []))
+ *      )
+ *   >>| fun l -> Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ]) *)
 
 (* TODO: html tags support *)
 (* <ins></ins> *)
 (* let underline =    *)
 
+let underline_emphasis_delims_lookahead =
+  unsafe_lookahead @@ (one_of underline_emphasis_delims *> return ())
+  <|> end_of_input
+
 let markdown_emphasis =
   peek_char_fail >>= function
   | '*' ->
     choice
-      [ md_em_parser "**" `Bold
+      [ md_em_parser ~nested:true "***" `Bold
+      ; md_em_parser "**" `Bold
       ; md_em_parser "*" `Italic
-      ; md_em_nested_parser "***"
       ]
   | '_' ->
     choice
-      [ md_em_parser "__" `Bold
-      ; md_em_parser "_" `Italic
-      ; md_em_nested_parser "___"
+      [ md_em_parser ~nested:true "___" `Bold
+        <* underline_emphasis_delims_lookahead
+      ; md_em_parser "__" `Bold <* underline_emphasis_delims_lookahead
+      ; md_em_parser "_" `Italic <* underline_emphasis_delims_lookahead
       ]
   | '~' -> md_em_parser "~~" `Strike_through
   | '^' -> md_em_parser "^^" `Highlight
@@ -1100,6 +1214,8 @@ let inline_choices config =
       | '/'
       | '+' ->
         nested_emphasis config
+      (* | ' ' ->
+       *   List.cons <$> (ws >>| fun s -> Plain s) <*> nested_emphasis config *)
       | '_' -> nested_emphasis config <|> subscript config
       | '^' -> nested_emphasis config <|> superscript config
       | '$' -> latex_fragment config
@@ -1128,33 +1244,6 @@ let inline_choices config =
       | _ -> link_inline
   in
   p <|> plain config
-
-(* let choices =
- *   [
- *     latex_fragment config            (\* '$' '\' *\)
- *   ; inline_footnote_or_reference config        (\* 'f', fn *\)
- *   ; block_reference config               (\* (()) *\)
- *   ; hard_breakline            (\* "\\" *\)
- *   ; breakline                 (\* '\n' *\)
- *   ; timestamp                 (\* '<' '[' 'S' 'C' 'D'*\)
- *   (\* ; entity                    (\\* '\' *\\) *\)
- *   ; macro                     (\* '{' *\)
- *   ; statistics_cookie         (\* '[' *\)
- *   (\* ; markdown_image config *\)
- *   ; link config                      (\* '[' [[]] *\)
- *   ; link_inline config               (\*  *\)
- *   ; email
- *   ; export_snippet
- *   ; radio_target              (\* "<<<" *\)
- *   ; target                    (\* "<" *\)
- *   ; verbatim                  (\*  *\)
- *   ; code config                      (\* '=' *\)
- *   ; nested_emphasis config
- *   ; subscript config                 (\* '_' "_{" *\)
- *   ; superscript config               (\* '^' "^{" *\)
- *   ; plain config
- *   ] in
- * choice choices *)
 
 let parse config =
   many1 (inline_choices config) >>| (fun l -> concat_plains l) <?> "inline"

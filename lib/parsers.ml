@@ -1,6 +1,8 @@
 open Angstrom
 open Prelude
 
+let whitespace_chars = [ ' '; '\t'; '\n'; '\r'; '\012' ]
+
 let space_chars = [ ' '; '\t'; '\026'; '\012' ]
 
 let is_space c = List.mem c space_chars
@@ -215,6 +217,10 @@ let lines_while p =
 let lines_starts_with p = lines_while ((spaces *> p <* spaces) *> optional_line)
 
 let lines_till p = many_till (line <* optional eol) p
+
+let one_of cl = satisfy (fun c -> List.mem c cl)
+
+let not_one_of cl = satisfy (fun c -> not (List.mem c cl))
 
 let page_ref, page_ref_ignore_bracket =
   (* allow single char ']' in pagename but "]]" *)
