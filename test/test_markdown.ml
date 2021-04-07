@@ -444,6 +444,15 @@ let inline =
           , `Quick
           , check_aux "*a * a*"
               (Paragraph [ I.Emphasis (`Italic, [ I.Plain "a * a" ]) ]) )
+        ; ( "left flanking delimiter"
+          , `Quick
+          , check_aux "hello_world_" (Paragraph [ I.Plain "hello_world_" ]) )
+        ; ( "left flanking delimiter (2)"
+          , `Quick
+          , check_aux "hello,_world_"
+              (Paragraph
+                 [ I.Plain "hello,"; I.Emphasis (`Italic, [ I.Plain "world" ]) ])
+          )
         ] )
   ; ( "tag"
     , testcases

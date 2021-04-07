@@ -178,6 +178,8 @@ end
 
 let bind = Monad.bind
 
+let return = Monad.return
+
 (*$T bind
   bind None (fun s -> Some s) = None
   bind (Some ()) (fun s -> Some s) = Some ()

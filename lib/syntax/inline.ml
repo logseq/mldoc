@@ -120,6 +120,8 @@ and t =
   | Inline_Html of string
 [@@deriving yojson]
 
+type inner_state = { mutable last_plain_char : char option }
+
 let quicklink_delims = [ '>' ] @ eol_chars
 
 let inline_link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')' ] @ eol_chars
@@ -207,16 +209,31 @@ let in_plain_delims config c =
 
 let whitespaces = ws >>| fun spaces -> Plain spaces
 
-let plain config =
+let plain ?state config =
+  let set_last_char s =
+    Option.(
+      state >>= fun st ->
+      st.last_plain_char <- Some s.[String.length s - 1];
+      return ())
+    |> ignore
+  in
   take_while1 (fun c -> non_eol c && not (in_plain_delims config c))
-  >>| (fun s -> Plain s)
-  <|> (ws >>| fun s -> Plain s)
+  >>| (fun s ->
+        set_last_char s;
+        Plain s)
+  <|> ( ws >>| fun s ->
+        set_last_char s;
+        Plain s )
   <|> ( char '\\' *> satisfy non_tab_or_space >>| fun c ->
-        Plain (String.make 1 c) )
+        let s = String.make 1 c in
+        set_last_char s;
+        Plain s )
   <|> ( any_char >>= fun c ->
-        if in_plain_delims config c then
-          return (Plain (String.make 1 c))
-        else
+        if in_plain_delims config c then (
+          let s = String.make 1 c in
+          set_last_char s;
+          return (Plain s)
+        ) else
           fail "plain" )
 
 (* Slow version *)
@@ -354,7 +371,18 @@ let underline_emphasis_delims_lookahead =
   unsafe_lookahead @@ (one_of underline_emphasis_delims *> return ())
   <|> end_of_input
 
-let markdown_emphasis =
+let underline_emphasis_delims_backward state =
+  let open Option in
+  state
+  >>= (fun st ->
+        st.last_plain_char >>= fun c ->
+        if List.mem c underline_emphasis_delims then
+          return true
+        else
+          return false)
+  |> default true
+
+let markdown_emphasis state () =
   peek_char_fail >>= function
   | '*' ->
     choice
@@ -363,20 +391,23 @@ let markdown_emphasis =
       ; md_em_parser "*" `Italic
       ]
   | '_' ->
-    choice
-      [ md_em_parser ~nested:true "___" `Bold
-        <* underline_emphasis_delims_lookahead
-      ; md_em_parser "__" `Bold <* underline_emphasis_delims_lookahead
-      ; md_em_parser "_" `Italic <* underline_emphasis_delims_lookahead
-      ]
+    if underline_emphasis_delims_backward state then
+      choice
+        [ md_em_parser ~nested:true "___" `Bold
+          <* underline_emphasis_delims_lookahead
+        ; md_em_parser "__" `Bold <* underline_emphasis_delims_lookahead
+        ; md_em_parser "_" `Italic <* underline_emphasis_delims_lookahead
+        ]
+    else
+      fail "markdown_underline_emphasis"
   | '~' -> md_em_parser "~~" `Strike_through
   | '^' -> md_em_parser "^^" `Highlight
   | _ -> fail "Inline emphasis"
 
-let emphasis config =
+let emphasis ?state config =
   match config.format with
   | Org -> org_emphasis
-  | Markdown -> markdown_emphasis
+  | Markdown -> markdown_emphasis state ()
 
 let org_hard_breakline = string "\\" <* eol
 
@@ -741,7 +772,7 @@ let link config =
 
 let nested_link = Nested_link.parse >>| fun s -> Nested_link s
 
-let nested_emphasis config =
+let nested_emphasis ?state config =
   let rec aux_nested_emphasis = function
     | Plain s -> Plain s
     | Emphasis (`Italic, [ Emphasis (`Bold, _) ]) as e -> e
@@ -775,7 +806,7 @@ let nested_emphasis config =
     | Nested_link _ as nl -> nl
     | _ -> failwith "nested_emphasis"
   in
-  emphasis config >>= fun e -> return (aux_nested_emphasis e)
+  emphasis ?state config >>= fun e -> return (aux_nested_emphasis e)
 
 let statistics_cookie =
   between_char '[' ']'
@@ -1134,7 +1165,7 @@ let inline_hiccup = Hiccup.parse >>| fun s -> Inline_Hiccup s
 let inline_html = Raw_html.parse >>| fun s -> Inline_Html s
 
 (* TODO: configurable, re-order *)
-let inline_choices config =
+let inline_choices state config =
   let is_markdown = config.format = Conf.Markdown in
   let p =
     if is_markdown then
@@ -1144,7 +1175,7 @@ let inline_choices config =
       | '*'
       | '~' ->
         nested_emphasis config
-      | '_' -> nested_emphasis config <|> subscript config
+      | '_' -> nested_emphasis ~state config <|> subscript config
       | '^' -> nested_emphasis config <|> superscript config
       | '$' -> latex_fragment config
       | '\\' -> latex_fragment config <|> entity
@@ -1175,8 +1206,6 @@ let inline_choices config =
       | '/'
       | '+' ->
         nested_emphasis config
-      (* | ' ' ->
-       *   List.cons <$> (ws >>| fun s -> Plain s) <*> nested_emphasis config *)
       | '_' -> nested_emphasis config <|> subscript config
       | '^' -> nested_emphasis config <|> superscript config
       | '$' -> latex_fragment config
@@ -1204,10 +1233,13 @@ let inline_choices config =
       | '(' -> block_reference config
       | _ -> link_inline
   in
-  p <|> plain config
+  p <|> plain ~state config
 
 let parse config =
-  many1 (inline_choices config) >>| (fun l -> concat_plains l) <?> "inline"
+  let state = { last_plain_char = None } in
+  many1 (inline_choices state config)
+  >>| (fun l -> concat_plains l)
+  <?> "inline"
 
 let string_of_url = function
   | File s
