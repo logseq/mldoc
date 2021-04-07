@@ -411,6 +411,11 @@ let inline =
           , `Quick
           , check_aux "**abc**"
               (Paragraph [ I.Emphasis (`Bold, [ Plain "abc" ]) ]) )
+        ; ( "normal-3"
+          , `Quick
+          , check_aux "_a_,"
+              (Paragraph [ I.Emphasis (`Italic, [ Plain "a" ]); I.Plain "," ])
+          )
         ; ( "inline-code-inside"
           , `Quick
           , check_aux "*asd`qwe`*"
@@ -425,6 +430,29 @@ let inline =
                      , [ I.Emphasis (`Bold, [ I.Plain "asd"; I.Code "qwe" ]) ]
                      )
                  ]) )
+        ; ( "not emphasis (1)"
+          , `Quick
+          , check_aux "a * b*" (Paragraph [ I.Plain "a * b*" ]) )
+        ; ( "not emphasis (2)"
+          , `Quick
+          , check_aux "a_b_c" (Paragraph [ I.Plain "a_b_c" ]) )
+        ; ( "contains underline"
+          , `Quick
+          , check_aux "_a _ a_"
+              (Paragraph [ I.Emphasis (`Italic, [ I.Plain "a _ a" ]) ]) )
+        ; ( "contains star"
+          , `Quick
+          , check_aux "*a * a*"
+              (Paragraph [ I.Emphasis (`Italic, [ I.Plain "a * a" ]) ]) )
+        ; ( "left flanking delimiter"
+          , `Quick
+          , check_aux "hello_world_" (Paragraph [ I.Plain "hello_world_" ]) )
+        ; ( "left flanking delimiter (2)"
+          , `Quick
+          , check_aux "hello,_world_"
+              (Paragraph
+                 [ I.Plain "hello,"; I.Emphasis (`Italic, [ I.Plain "world" ]) ])
+          )
         ] )
   ; ( "tag"
     , testcases

@@ -120,6 +120,8 @@ and t =
   | Inline_Html of string
 [@@deriving yojson]
 
+type inner_state = { mutable last_plain_char : char option }
+
 let quicklink_delims = [ '>' ] @ eol_chars
 
 let inline_link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')' ] @ eol_chars
@@ -207,16 +209,31 @@ let in_plain_delims config c =
 
 let whitespaces = ws >>| fun spaces -> Plain spaces
 
-let plain config =
+let plain ?state config =
+  let set_last_char s =
+    Option.(
+      state >>= fun st ->
+      st.last_plain_char <- Some s.[String.length s - 1];
+      return ())
+    |> ignore
+  in
   take_while1 (fun c -> non_eol c && not (in_plain_delims config c))
-  >>| (fun s -> Plain s)
-  <|> (ws >>| fun s -> Plain s)
+  >>| (fun s ->
+        set_last_char s;
+        Plain s)
+  <|> ( ws >>| fun s ->
+        set_last_char s;
+        Plain s )
   <|> ( char '\\' *> satisfy non_tab_or_space >>| fun c ->
-        Plain (String.make 1 c) )
+        let s = String.make 1 c in
+        set_last_char s;
+        Plain s )
   <|> ( any_char >>= fun c ->
-        if in_plain_delims config c then
-          return (Plain (String.make 1 c))
-        else
+        if in_plain_delims config c then (
+          let s = String.make 1 c in
+          set_last_char s;
+          return (Plain s)
+        ) else
           fail "plain" )
 
 (* Slow version *)
@@ -240,68 +257,157 @@ let concat_plains l =
     [] l
   |> List.rev
 
-let md_em_parser pattern typ =
-  let pattern_c = pattern.[0] in
-  let stop_chars = [ pattern_c; '\r'; '\n' ] in
-  (* inline code has higher precedence than any other inline constructs
-     except HTML tags and autolinks *)
-  let stop_chars_include_inline_code_delim = '`' :: stop_chars in
-  between_string pattern pattern
-  @@ many1
-  @@ choice
-       [ ( take_while1 (fun c ->
-               not @@ List.mem c stop_chars_include_inline_code_delim)
-         >>| fun s -> Plain s )
-       ; md_code
-       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
-           Plain s )
-       ]
-  >>| fun l -> Emphasis (typ, concat_plains l)
+let underline_emphasis_delims =
+  [ '!'
+  ; '"'
+  ; '#'
+  ; '$'
+  ; '%'
+  ; '&'
+  ; '\''
+  ; '('
+  ; ')'
+  ; '*'
+  ; '+'
+  ; ','
+  ; '-'
+  ; '.'
+  ; '/'
+  ; ':'
+  ; ';'
+  ; '<'
+  ; '='
+  ; '>'
+  ; '?'
+  ; '@'
+  ; '['
+  ; '\\'
+  ; ']'
+  ; '^'
+  ; '_'
+  ; '`'
+  ; '{'
+  ; '|'
+  ; '}'
+  ; '~'
+  ]
+  @ whitespace_chars
 
-let md_em_nested_parser pattern =
+let is_left_flanking_delimiter_run pattern =
+  unsafe_lookahead @@ (string pattern *> not_one_of whitespace_chars)
+
+let md_em_parser ?(nested = false) pattern typ =
   let pattern_c = pattern.[0] in
-  let stop_chars = [ pattern_c; '\r'; '\n' ] in
+  let stop_chars = pattern_c :: whitespace_chars in
   (* inline code has higher precedence than any other inline constructs
      except HTML tags and autolinks *)
   let stop_chars_include_inline_code_delim = '`' :: stop_chars in
-  between_string pattern pattern
-  @@ many1
-  @@ choice
-       [ ( take_while1 (fun c ->
-               not @@ List.mem c stop_chars_include_inline_code_delim)
-         >>| fun s -> Plain s )
-       ; md_code
-       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
-           Plain s )
-       ]
-  >>| fun l -> Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
+  let char_before_pattern = ref None in
+  let set_char_before_pattern t =
+    match t with
+    | Plain s -> char_before_pattern := Some String.(get s (length s - 1))
+    | Code _ -> char_before_pattern := Some '`'
+    | _ -> char_before_pattern := None
+  in
+  let non_whitespace_choices =
+    choice
+      [ ( take_while1 (fun c ->
+              not @@ List.mem c stop_chars_include_inline_code_delim)
+        >>| fun s ->
+          set_char_before_pattern (Plain s);
+          Plain s )
+      ; ( md_code >>| fun t ->
+          set_char_before_pattern t;
+          t )
+      ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
+          set_char_before_pattern (Plain s);
+          Plain s )
+      ; ( peek_string (String.length pattern) >>= fun s ->
+          if s = pattern then
+            fail "non_whitespace_choices"
+          else
+            any_char_string >>| fun s ->
+            set_char_before_pattern (Plain s);
+            Plain s )
+      ; ( ( unsafe_lookahead (string pattern *> any_char)
+          >>= fun following_char ->
+            match (pattern_c, !char_before_pattern, following_char) with
+            | '_', Some c, _ when List.mem c whitespace_chars -> string pattern
+            | '_', _, fc when not (List.mem fc underline_emphasis_delims) ->
+              string pattern
+            | _, Some c, _ when List.mem c whitespace_chars -> string pattern
+            | _, _, _ -> fail "finish" )
+        >>| fun s ->
+          set_char_before_pattern (Plain s);
+          Plain s )
+      ]
+  in
+  let whitespace_choice =
+    take_while1 (fun c -> List.mem c whitespace_chars) >>| fun s ->
+    set_char_before_pattern (Plain s);
+    Plain s
+  in
+  is_left_flanking_delimiter_run pattern
+  *> (between_string pattern pattern
+     @@ fix (fun m ->
+            List.cons <$> non_whitespace_choices <*> m
+            <|> ((fun ws nws l -> ws :: nws :: l)
+                <$> whitespace_choice <*> non_whitespace_choices <*> m)
+            <|> (List.cons <$> non_whitespace_choices <*> return [])
+            <|> ((fun ws nws l -> ws :: nws :: l)
+                <$> whitespace_choice <*> non_whitespace_choices <*> return []))
+     )
+  >>| fun l ->
+  if nested then
+    Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
+  else
+    Emphasis (typ, concat_plains l)
 
 (* TODO: html tags support *)
 (* <ins></ins> *)
 (* let underline =    *)
 
-let markdown_emphasis =
+let underline_emphasis_delims_lookahead =
+  unsafe_lookahead @@ (one_of underline_emphasis_delims *> return ())
+  <|> end_of_input
+
+let underline_emphasis_delims_backward state =
+  let open Option in
+  state
+  >>= (fun st ->
+        st.last_plain_char >>= fun c ->
+        if List.mem c underline_emphasis_delims then
+          return true
+        else
+          return false)
+  |> default true
+
+let markdown_emphasis state () =
   peek_char_fail >>= function
   | '*' ->
     choice
-      [ md_em_parser "**" `Bold
+      [ md_em_parser ~nested:true "***" `Bold
+      ; md_em_parser "**" `Bold
       ; md_em_parser "*" `Italic
-      ; md_em_nested_parser "***"
       ]
   | '_' ->
-    choice
-      [ md_em_parser "__" `Bold
-      ; md_em_parser "_" `Italic
-      ; md_em_nested_parser "___"
-      ]
+    if underline_emphasis_delims_backward state then
+      choice
+        [ md_em_parser ~nested:true "___" `Bold
+          <* underline_emphasis_delims_lookahead
+        ; md_em_parser "__" `Bold <* underline_emphasis_delims_lookahead
+        ; md_em_parser "_" `Italic <* underline_emphasis_delims_lookahead
+        ]
+    else
+      fail "markdown_underline_emphasis"
   | '~' -> md_em_parser "~~" `Strike_through
   | '^' -> md_em_parser "^^" `Highlight
   | _ -> fail "Inline emphasis"
 
-let emphasis config =
+let emphasis ?state config =
   match config.format with
   | Org -> org_emphasis
-  | Markdown -> markdown_emphasis
+  | Markdown -> markdown_emphasis state ()
 
 let org_hard_breakline = string "\\" <* eol
 
@@ -666,7 +772,7 @@ let link config =
 
 let nested_link = Nested_link.parse >>| fun s -> Nested_link s
 
-let nested_emphasis config =
+let nested_emphasis ?state config =
   let rec aux_nested_emphasis = function
     | Plain s -> Plain s
     | Emphasis (`Italic, [ Emphasis (`Bold, _) ]) as e -> e
@@ -700,7 +806,7 @@ let nested_emphasis config =
     | Nested_link _ as nl -> nl
     | _ -> failwith "nested_emphasis"
   in
-  emphasis config >>= fun e -> return (aux_nested_emphasis e)
+  emphasis ?state config >>= fun e -> return (aux_nested_emphasis e)
 
 let statistics_cookie =
   between_char '[' ']'
@@ -1059,7 +1165,7 @@ let inline_hiccup = Hiccup.parse >>| fun s -> Inline_Hiccup s
 let inline_html = Raw_html.parse >>| fun s -> Inline_Html s
 
 (* TODO: configurable, re-order *)
-let inline_choices config =
+let inline_choices state config =
   let is_markdown = config.format = Conf.Markdown in
   let p =
     if is_markdown then
@@ -1069,7 +1175,7 @@ let inline_choices config =
       | '*'
       | '~' ->
         nested_emphasis config
-      | '_' -> nested_emphasis config <|> subscript config
+      | '_' -> nested_emphasis ~state config <|> subscript config
       | '^' -> nested_emphasis config <|> superscript config
       | '$' -> latex_fragment config
       | '\\' -> latex_fragment config <|> entity
@@ -1127,37 +1233,13 @@ let inline_choices config =
       | '(' -> block_reference config
       | _ -> link_inline
   in
-  p <|> plain config
-
-(* let choices =
- *   [
- *     latex_fragment config            (\* '$' '\' *\)
- *   ; inline_footnote_or_reference config        (\* 'f', fn *\)
- *   ; block_reference config               (\* (()) *\)
- *   ; hard_breakline            (\* "\\" *\)
- *   ; breakline                 (\* '\n' *\)
- *   ; timestamp                 (\* '<' '[' 'S' 'C' 'D'*\)
- *   (\* ; entity                    (\\* '\' *\\) *\)
- *   ; macro                     (\* '{' *\)
- *   ; statistics_cookie         (\* '[' *\)
- *   (\* ; markdown_image config *\)
- *   ; link config                      (\* '[' [[]] *\)
- *   ; link_inline config               (\*  *\)
- *   ; email
- *   ; export_snippet
- *   ; radio_target              (\* "<<<" *\)
- *   ; target                    (\* "<" *\)
- *   ; verbatim                  (\*  *\)
- *   ; code config                      (\* '=' *\)
- *   ; nested_emphasis config
- *   ; subscript config                 (\* '_' "_{" *\)
- *   ; superscript config               (\* '^' "^{" *\)
- *   ; plain config
- *   ] in
- * choice choices *)
+  p <|> plain ~state config
 
 let parse config =
-  many1 (inline_choices config) >>| (fun l -> concat_plains l) <?> "inline"
+  let state = { last_plain_char = None } in
+  many1 (inline_choices state config)
+  >>| (fun l -> concat_plains l)
+  <?> "inline"
 
 let string_of_url = function
   | File s
