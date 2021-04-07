@@ -16,6 +16,61 @@ let check_aux source expect =
 let testcases =
   List.map (fun (case, level, f) -> Alcotest.test_case case level f)
 
+let inline =
+  let open Type in
+  let module I = Inline in
+  [ ( "emphasis"
+    , testcases
+        [ ( "normal bold"
+          , `Quick
+          , check_aux "*a b c*"
+              (Paragraph [ I.Emphasis (`Bold, [ I.Plain "a b c" ]) ]) )
+        ; ( "normal bold(2)"
+          , `Quick
+          , check_aux "a*b*c"
+              (Paragraph
+                 [ I.Plain "a"
+                 ; I.Emphasis (`Bold, [ I.Plain "b" ])
+                 ; I.Plain "c"
+                 ]) )
+        ; ( "normal italic"
+          , `Quick
+          , check_aux "/a b c/"
+              (Paragraph [ I.Emphasis (`Italic, [ I.Plain "a b c" ]) ]) )
+        ; ( "normal underline"
+          , `Quick
+          , check_aux "_a b c_"
+              (Paragraph [ I.Emphasis (`Underline, [ I.Plain "a b c" ]) ]) )
+        ; ( "not emphasis (1)"
+          , `Quick
+          , check_aux "a * b*" (Paragraph [ I.Plain "a * b*" ]) )
+        ; ( "not emphasis (2)"
+          , `Quick
+          , check_aux "a_b_c"
+              (Paragraph [ I.Plain "a"; I.Subscript [ I.Plain "b_c" ] ]) )
+        ; ( "contains underline"
+          , `Quick
+          , check_aux "_a _ a_"
+              (Paragraph [ I.Emphasis (`Underline, [ I.Plain "a _ a" ]) ]) )
+        ; ( "contains star"
+          , `Quick
+          , check_aux "*a * a*"
+              (Paragraph [ I.Emphasis (`Bold, [ I.Plain "a * a" ]) ]) )
+        ; ( "left flanking delimiter"
+          , `Quick
+          , check_aux "hello_world_"
+              (Paragraph [ I.Plain "hello"; I.Subscript [ I.Plain "world_" ] ])
+          )
+        ; ( "left flanking delimiter (2)"
+          , `Quick
+          , check_aux "hello,_world_"
+              (Paragraph
+                 [ I.Plain "hello,"
+                 ; I.Emphasis (`Underline, [ I.Plain "world" ])
+                 ]) )
+        ] )
+  ]
+
 let block =
   let open Type in
   let module I = Inline in
@@ -49,4 +104,4 @@ let block =
         ] )
   ]
 
-let () = Alcotest.run "mldoc" @@ List.concat [ block ]
+let () = Alcotest.run "mldoc" @@ List.concat [ block; inline ]
