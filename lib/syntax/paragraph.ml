@@ -33,8 +33,8 @@ let concat_paragraph_lines config l =
         match item with
         | Paragraph_line line, { start_pos; end_pos } ->
           let start_pos =
-            if pos1 = 0 then
-              start_pos
+            if Option.is_none pos1 then
+              Some start_pos
             else
               pos1
           in
@@ -42,19 +42,26 @@ let concat_paragraph_lines config l =
         | Paragraph_Sep n, { start_pos; end_pos } ->
           let line = repeat n "\n" in
           let line = String.concat "" line in
+          let start_pos =
+            if Option.is_none pos1 then
+              Some start_pos
+            else
+              pos1
+          in
           (acc, line :: lines, start_pos, end_pos)
         | _other, _pos_meta ->
           if List.length lines > 0 then
+            let pos1 = Option.default 0 pos1 in
             let paragraph_with_meta = parse_lines config lines pos1 pos2 in
             let acc = item :: paragraph_with_meta :: acc in
-            (acc, [], 0, 0)
+            (acc, [], None, 0)
           else
-            (item :: acc, [], 0, 0))
-      ([], [], 0, 0) l
+            (item :: acc, [], None, 0))
+      ([], [], None, 0) l
   in
   let acc =
     if List.length lines > 0 then
-      (* FIXME: wrong meta *)
+      let pos1 = Option.default 0 pos1 in
       let paragraph_with_meta = parse_lines config lines pos1 pos2 in
       paragraph_with_meta :: acc
     else
