@@ -20,11 +20,11 @@ let list_content_parsers config =
 (* Orders care *)
 let parsers config =
   [ Directive.parse
+  ; Drawer.parse
   ; Heading.parse config
   ; Paragraph.sep
   ; Table.parse config
   ; Latex_env.parse config
-  ; Drawer.parse
   ; Lists.parse config (list_content_parsers config)
   ; Block.parse config
   ; Hr.parse config

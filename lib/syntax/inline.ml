@@ -143,32 +143,6 @@ let between ?(e = None) s =
          else
            true))
 
-let bold =
-  between "*"
-  >>= (fun s -> return (Emphasis (`Bold, [ Plain s ])))
-  <?> "Inline bold"
-
-let underline =
-  between "_"
-  >>= (fun s -> return (Emphasis (`Underline, [ Plain s ])))
-  <?> "Inline underline"
-
-let italic =
-  between "/"
-  >>= (fun s -> return (Emphasis (`Italic, [ Plain s ])))
-  <?> "Inline italic"
-
-let strike_through =
-  between "+"
-  >>= (fun s -> return (Emphasis (`Strike_through, [ Plain s ])))
-  <?> "Inline strike_through"
-
-(* ^^highlight^^ *)
-let highlight =
-  between "^^"
-  >>= (fun s -> return (Emphasis (`Highlight, [ Plain s ])))
-  <?> "Inline highlight"
-
 (* '=', '~' verbatim *)
 let verbatim =
   between "=" >>= (fun s -> return (Verbatim s)) <?> "Inline verbatim"
@@ -194,9 +168,11 @@ let code config =
   | Markdown -> md_code
 
 (* TODO: optimization *)
-let org_plain_delims = [ ' '; '\\'; '_'; '^'; '['; '$' ]
+let org_plain_delims =
+  [ '\\'; '_'; '^'; '['; '*'; '/'; '+'; '^'; '$' ] @ whitespace_chars
 
-let markdown_plain_delims = [ ' '; '\\'; '_'; '^'; '['; '*'; '~'; '`'; '$' ]
+let markdown_plain_delims =
+  [ '\\'; '_'; '^'; '['; '*'; '~'; '`'; '$' ] @ whitespace_chars
 
 (* replace list with a  *)
 let in_plain_delims config c =
@@ -235,18 +211,6 @@ let plain ?state config =
           return (Plain s)
         ) else
           fail "plain" )
-
-(* Slow version *)
-(* let emphasis =
- *   choice [bold; underline; italic; strike_through; highlight] *)
-let org_emphasis =
-  peek_char_fail >>= function
-  | '*' -> bold
-  | '_' -> underline
-  | '/' -> italic
-  | '+' -> strike_through
-  | '^' -> highlight
-  | _ -> fail "Inline emphasis"
 
 let concat_plains l =
   List.fold_left
@@ -296,12 +260,17 @@ let underline_emphasis_delims =
 let is_left_flanking_delimiter_run pattern =
   unsafe_lookahead @@ (string pattern *> not_one_of whitespace_chars)
 
-let md_em_parser ?(nested = false) pattern typ =
+let md_em_parser ?(nested = false) ?(include_md_code = true) pattern typ =
   let pattern_c = pattern.[0] in
   let stop_chars = pattern_c :: whitespace_chars in
   (* inline code has higher precedence than any other inline constructs
      except HTML tags and autolinks *)
-  let stop_chars_include_inline_code_delim = '`' :: stop_chars in
+  let stop_chars_include_inline_code_delim =
+    if include_md_code then
+      '`' :: stop_chars
+    else
+      stop_chars
+  in
   let char_before_pattern = ref None in
   let set_char_before_pattern t =
     match t with
@@ -316,9 +285,12 @@ let md_em_parser ?(nested = false) pattern typ =
         >>| fun s ->
           set_char_before_pattern (Plain s);
           Plain s )
-      ; ( md_code >>| fun t ->
+      ; (if include_md_code then (
+          md_code >>| fun t ->
           set_char_before_pattern t;
-          t )
+          t
+        ) else
+          fail "continue")
       ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
           set_char_before_pattern (Plain s);
           Plain s )
@@ -363,6 +335,8 @@ let md_em_parser ?(nested = false) pattern typ =
   else
     Emphasis (typ, concat_plains l)
 
+let org_em_parser = md_em_parser ~include_md_code:false
+
 (* TODO: html tags support *)
 (* <ins></ins> *)
 (* let underline =    *)
@@ -370,6 +344,11 @@ let md_em_parser ?(nested = false) pattern typ =
 let underline_emphasis_delims_lookahead =
   unsafe_lookahead @@ (one_of underline_emphasis_delims *> return ())
   <|> end_of_input
+
+let org_italic_emphasis_delims_lookahead = underline_emphasis_delims_lookahead
+
+let org_strike_through_emphasis_delims_lookahead =
+  underline_emphasis_delims_lookahead
 
 let underline_emphasis_delims_backward state =
   let open Option in
@@ -382,7 +361,12 @@ let underline_emphasis_delims_backward state =
           return false)
   |> default true
 
-let markdown_emphasis state () =
+let org_italic_emphasis_delims_backward = underline_emphasis_delims_backward
+
+let org_strike_through_emphasis_delims_backward =
+  underline_emphasis_delims_backward
+
+let markdown_emphasis ?state () =
   peek_char_fail >>= function
   | '*' ->
     choice
@@ -404,10 +388,32 @@ let markdown_emphasis state () =
   | '^' -> md_em_parser "^^" `Highlight
   | _ -> fail "Inline emphasis"
 
+let org_emphasis ?state () =
+  peek_char_fail >>= function
+  | '*' -> org_em_parser "*" `Bold
+  | '_' ->
+    if underline_emphasis_delims_backward state then
+      org_em_parser "_" `Underline <* underline_emphasis_delims_lookahead
+    else
+      fail "org_underline_emphasis"
+  | '/' ->
+    if org_italic_emphasis_delims_backward state then
+      org_em_parser "/" `Italic <* org_italic_emphasis_delims_lookahead
+    else
+      fail "org_italic_emphasis"
+  | '+' ->
+    if org_strike_through_emphasis_delims_backward state then
+      org_em_parser "+" `Strike_through
+      <* org_strike_through_emphasis_delims_lookahead
+    else
+      fail "org_strike_through_emphasis"
+  | '^' -> org_em_parser "^^" `Highlight
+  | _ -> fail "Inline emphasis"
+
 let emphasis ?state config =
   match config.format with
-  | Org -> org_emphasis
-  | Markdown -> markdown_emphasis state ()
+  | Org -> org_emphasis ?state ()
+  | Markdown -> markdown_emphasis ?state ()
 
 let org_hard_breakline = string "\\" <* eol
 
@@ -1205,8 +1211,8 @@ let inline_choices state config =
       | '*'
       | '/'
       | '+' ->
-        nested_emphasis config
-      | '_' -> nested_emphasis config <|> subscript config
+        nested_emphasis ~state config
+      | '_' -> nested_emphasis ~state config <|> subscript config
       | '^' -> nested_emphasis config <|> superscript config
       | '$' -> latex_fragment config
       | '\\' ->
