@@ -360,6 +360,11 @@ let inline =
                :END:\r\n"
               (Property_Drawer
                  [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
+        ; ( "without-property-drawer-name"
+          , `Quick
+          , check_aux ":now: 1614485729874\n:done: 1614485743195\n"
+              (Property_Drawer
+                 [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
         ] )
   ; ( "inline-code"
     , testcases

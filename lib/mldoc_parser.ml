@@ -24,7 +24,7 @@ let parsers config =
   ; Paragraph.sep
   ; Table.parse config
   ; Latex_env.parse config
-  ; Drawer.parse
+  ; Drawer.parse config
   ; Lists.parse config (list_content_parsers config)
   ; Block.parse config
   ; Hr.parse config
