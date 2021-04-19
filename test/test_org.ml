@@ -4,6 +4,7 @@ let default_config : Conf.t =
   ; keep_line_break = false
   ; format = Conf.Org
   ; heading_to_list = false
+  ; exporting_keep_properties = false
   }
 
 let check_mldoc_type =

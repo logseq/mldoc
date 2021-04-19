@@ -21,6 +21,8 @@ type t =
   ; keep_line_break : bool
   ; format : format
   ; heading_to_list : bool (* export heading as list *)
+  ; exporting_keep_properties : bool [@default false]
+        (* keep properties when exporting *)
   }
 [@@deriving yojson]
 

@@ -286,9 +286,12 @@ and block refs state config t =
   | Displayed_Math s ->
     [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
   | Drawer (name, kvs) -> drawer state config name kvs
-  | Property_Drawer _ ->
-    (* hide Property_Drawers *)
-    []
+  | Property_Drawer kvs ->
+    if config.exporting_keep_properties then
+      drawer state config "PROPERTIES" kvs
+    else
+      (* hide Property_Drawers *)
+      []
   | Footnote_Definition (name, content) ->
     footnote_definition refs state config name content
   | Horizontal_Rule -> [ newline; raw_text "---"; newline ]
