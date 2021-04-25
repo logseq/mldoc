@@ -529,12 +529,6 @@ let block =
                      ]
                  ]) )
         ] )
-  ; ( "example"
-    , testcases
-        [ ( "multi lines"
-          , `Quick
-          , check_aux "    foo\n    bar" (Example [ "foo\n"; "bar\n" ]) )
-        ] )
   ; ( "latex_env"
     , testcases
         [ ( "one-line"
