@@ -226,4 +226,4 @@ let block_parse config =
 let parse config =
   match config.format with
   | Org -> block_parse config
-  | Markdown -> block_parse config <|> Markdown_code_block.parse
+  | Markdown -> block_parse config
