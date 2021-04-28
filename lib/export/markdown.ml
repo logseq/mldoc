@@ -314,7 +314,7 @@ and heading_merely_have_embed { title; marker; priority; _ } =
   | _ -> None
 
 and heading refs state config h =
-  let { title; tags; marker; level; priority; _ } = h in
+  let { title; tags; marker; level; priority; unordered; _ } = h in
   let priority =
     match priority with
     | Some c -> "[#" ^ String.make 1 c ^ "]"
@@ -326,8 +326,10 @@ and heading refs state config h =
     | None -> ""
   in
   let top_heading_level = Option.default level state.top_heading_level in
-  if Option.is_none state.top_heading_level then
-    state.top_heading_level <- Some level;
+  let _ =
+    if Option.is_none state.top_heading_level then
+      state.top_heading_level <- Some level
+  in
   let level' =
     if state.embed_parent_indent_level > 0 && top_heading_level >= 2 then
       state.embed_parent_indent_level + level - top_heading_level + 1
@@ -338,7 +340,10 @@ and heading refs state config h =
   let f () =
     let heading_or_list =
       if config.heading_to_list then
-        [ Indent state.current_level; raw_text "-" ]
+        if unordered then
+          [ Indent state.current_level; raw_text "-" ]
+        else
+          [ Indent (2 * state.current_level); raw_text "-" ]
       else
         [ raw_text @@ String.make level' '#' ]
     in
@@ -836,7 +841,7 @@ let to_string config tl =
          | OneNewline -> "\n"
          | Indent n ->
            if config.heading_to_list then
-             String.make (2 * n) ' '
+             String.make n ' '
            else
              ""
          | RawText s -> s)
