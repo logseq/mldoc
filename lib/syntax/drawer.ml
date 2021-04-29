@@ -35,7 +35,7 @@ let property =
   let property_value = optional spaces *> optional_line <* eol in
   lift2 (fun key value -> (key, value)) property_key property_value
 
-let drawer_properties = many1 property
+let drawer_properties = many property
 
 (* TODO: support other drawers than properties *)
 let parse config =

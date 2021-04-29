@@ -365,6 +365,9 @@ let inline =
           , `Quick
           , check_aux "a.b.c:: def\na-b-c::"
               (Property_Drawer [ ("a.b.c", "def"); ("a-b-c", "") ]) )
+        ; ( "empty-property"
+          , `Quick
+          , check_aux ":PROPERTIES:\r\n:END:\r\n" (Property_Drawer []) )
         ] )
   ; ( "inline-code"
     , testcases
