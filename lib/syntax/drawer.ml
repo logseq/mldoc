@@ -35,10 +35,11 @@ let property =
   let property_value = optional spaces *> optional_line <* eol in
   lift2 (fun key value -> (key, value)) property_key property_value
 
-let drawer_properties = many1 property
+let drawer_properties = many property
 
 (* TODO: support other drawers than properties *)
-let parse =
+let parse config =
+  let is_markdown = Conf.is_markdown config in
   let drawer_name =
     spaces
     *> between_char ':' ':'
@@ -54,4 +55,8 @@ let parse =
         | _ -> Drawer (name, properties))
       drawer_name drawer_properties
   in
-  p <* spaces <* string_ci end_mark <* optional eol
+  let p' = p <* spaces <* string_ci end_mark <* optional eol in
+  if is_markdown then
+    Markdown_property.parse <|> p'
+  else
+    p'

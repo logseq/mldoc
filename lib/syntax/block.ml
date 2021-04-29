@@ -78,7 +78,7 @@ let list_content_parsers config block_parse =
       [ Table.parse config
       ; block_parse
       ; Directive.parse
-      ; Drawer.parse
+      ; Drawer.parse config
       ; Latex_env.parse config
       ; Hr.parse config
       ; results
@@ -97,7 +97,7 @@ let block_content_parsers config block_parse =
       [ Directive.parse
       ; Table.parse config
       ; Lists.parse config list_content_parser
-      ; Drawer.parse
+      ; Drawer.parse config
       ; block_parse
       ; Latex_env.parse config
       ; Hr.parse config

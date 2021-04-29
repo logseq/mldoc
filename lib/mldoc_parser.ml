@@ -20,7 +20,7 @@ let list_content_parsers config =
 (* Orders care *)
 let parsers config =
   [ Directive.parse
-  ; Drawer.parse
+  ; Drawer.parse config
   ; Heading.parse config
   ; Paragraph.sep
   ; Table.parse config
