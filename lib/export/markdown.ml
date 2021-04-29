@@ -534,13 +534,22 @@ and blocks_aux refs state config tl =
 let blocks refs config tl = blocks_aux refs (default_state ()) config tl
 
 let directive kvs =
-  let sep_line = [ newline; raw_text "---"; newline ] in
-  sep_line
-  @ flatten_map
-      (fun (name, value) ->
-        [ newline; raw_text name; raw_text ":"; Space; raw_text value; newline ])
-      kvs
-  @ sep_line
+  if List.length kvs = 0 then
+    []
+  else
+    let sep_line = [ newline; raw_text "---"; newline ] in
+    sep_line
+    @ flatten_map
+        (fun (name, value) ->
+          [ newline
+          ; raw_text name
+          ; raw_text ":"
+          ; Space
+          ; raw_text value
+          ; newline
+          ])
+        kvs
+    @ sep_line
 
 (* 1.  [...;space; space]         -> [...;space]
    2.  [...;newline;newline]      -> [...;newline]
