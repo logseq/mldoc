@@ -363,7 +363,7 @@ let inline =
                  [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
         ; ( "simplified-property-syntax"
           , `Quick
-          , check_aux "a.b.c::def\na-b-c::"
+          , check_aux "a.b.c:: def\na-b-c::"
               (Property_Drawer [ ("a.b.c", "def"); ("a-b-c", "") ]) )
         ] )
   ; ( "inline-code"
