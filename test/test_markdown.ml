@@ -377,11 +377,10 @@ let inline =
                :END:\r\n"
               (Property_Drawer
                  [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
-        ; ( "without-property-drawer-name"
+        ; ( "simplified-property-syntax"
           , `Quick
-          , check_aux ":now: 1614485729874\n:done: 1614485743195\n"
-              (Property_Drawer
-                 [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
+          , check_aux "a.b.c::def\na-b-c::"
+              (Property_Drawer [ ("a.b.c", "def"); ("a-b-c", "") ]) )
         ] )
   ; ( "inline-code"
     , testcases
