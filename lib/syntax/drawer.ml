@@ -48,29 +48,17 @@ let parse config =
          (take_while1 (fun c -> c <> ':' && c <> ' ' && non_eol c))
     <* eol
   in
-  let drawer_name' =
-    if is_markdown then
-      optional drawer_name
-    else
-      drawer_name >>| Option.some
-  in
-  let end_mark' =
-    if is_markdown then
-      optional (string_ci end_mark)
-    else
-      string_ci end_mark >>| Option.some
-  in
-
   (* anything but a headline and another drawer *)
   let p =
     lift2
       (fun name properties ->
-        match name with
-        | Some name -> (
-          match String.lowercase_ascii name with
-          | "properties" -> Property_Drawer properties
-          | _ -> Drawer (name, properties))
-        | None -> Property_Drawer properties)
-      drawer_name' drawer_properties
+        match String.lowercase_ascii name with
+        | "properties" -> Property_Drawer properties
+        | _ -> Drawer (name, properties))
+      drawer_name drawer_properties
   in
-  p <* spaces <* end_mark' <* optional eol
+  let p' = p <* spaces <* string_ci end_mark <* optional eol in
+  if is_markdown then
+    Markdown_property.parse <|> p'
+  else
+    p'
