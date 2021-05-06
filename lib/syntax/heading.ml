@@ -27,18 +27,24 @@ let org_level = take_while1 (fun c -> c = '*')
 
 let level config =
   match config.format with
-  | Org -> org_level >>= fun s ->
+  | Org ->
+    org_level >>= fun s ->
     let len = String.length s in
     return (len, false)
   | Markdown ->
-    let markdown_heading = Markdown_level.parse >>| fun s ->
+    let markdown_heading =
+      Markdown_level.parse >>| fun s ->
       let len = String.length s in
-      (len, false) in
-    let unordered = (optional tabs_or_ws) <* char '-' >>| fun result -> match result with
+      (len, false)
+    in
+    let unordered =
+      optional tabs_or_ws <* char '-' >>| fun result ->
+      match result with
       | Some s ->
         let len = String.length s in
         (len + 1, true)
-      | None -> (1, true) in
+      | None -> (1, true)
+    in
     markdown_heading <|> unordered
 
 let priority = string "[#" *> any_char <* char ']'
@@ -51,10 +57,10 @@ let tags = char ':' *> seperated_tags <* char ':'
 (* not priority, tags, marker *)
 let title =
   take_while (function
-      | '\r'
-      | '\n' ->
-        false
-      | _ -> true)
+    | '\r'
+    | '\n' ->
+      false
+    | _ -> true)
 
 let is_blank s =
   let n = String.length s in
@@ -85,54 +91,61 @@ let parse config =
   let p =
     lift4
       (fun (level, unordered) marker priority title ->
-         let title =
-           match title with
-           | None -> []
-           | Some title -> (
-               match
-                 parse_string ~consume:All (Inline.parse config)
-                   (String.trim title)
-               with
-               | Ok title -> title
-               | Error _e -> [])
-         in
-         let title, tags =
-           match title with
-           | [] -> (title, [])
-           | _ -> (
-               let last_inline = List.nth title (List.length title - 1) in
-               match last_inline with
-               | Inline.Plain s ->
-                 let s = String.trim s in
-                 if String.length s > 1 && s.[String.length s - 1] = ':' then
-                   let prefix, maybe_tags = splitr (fun c -> c <> ' ') s in
-                   match parse_string ~consume:All tags maybe_tags with
-                   | Ok tags ->
-                     let title =
-                       if prefix = "" then
-                         drop_last 1 title
-                       else
-                         drop_last 1 title @ [ Inline.Plain prefix ]
-                     in
-                     (title, remove is_blank tags)
-                   | _ -> (title, [])
-                 else
-                   (title, [])
-               | _ -> (title, []))
-         in
-         let anchor = anchor_link (Inline.asciis title) in
-         let meta = { timestamps = []; properties = [] } in
-         Heading
-           { level
-           ; marker
-           ; priority
-           ; title
-           ; tags
-           ; anchor
-           ; meta
-           ; numbering = None
-           ; unordered
-           })
+        let title =
+          match title with
+          | None -> []
+          | Some title -> (
+            match
+              parse_string ~consume:All (Inline.parse config)
+                (String.trim title)
+            with
+            | Ok title -> title
+            | Error _e -> [])
+        in
+        let title, tags =
+          match title with
+          | [] -> (title, [])
+          | _ -> (
+            let last_inline = List.nth title (List.length title - 1) in
+            match last_inline with
+            | Inline.Plain s ->
+              let s = String.trim s in
+              if String.length s > 1 && s.[String.length s - 1] = ':' then
+                let prefix, maybe_tags = splitr (fun c -> c <> ' ') s in
+                match parse_string ~consume:All tags maybe_tags with
+                | Ok tags ->
+                  let title =
+                    if prefix = "" then
+                      drop_last 1 title
+                    else
+                      drop_last 1 title @ [ Inline.Plain prefix ]
+                  in
+                  (title, remove is_blank tags)
+                | _ -> (title, [])
+              else
+                (title, [])
+            | _ -> (title, []))
+        in
+        let anchor = anchor_link (Inline.asciis title) in
+        let meta = { timestamps = []; properties = [] } in
+        let size =
+          if unordered then
+            None
+          else
+            Some level
+        in
+        Heading
+          { level
+          ; marker
+          ; priority
+          ; title
+          ; tags
+          ; anchor
+          ; meta
+          ; numbering = None
+          ; unordered
+          ; size
+          })
       (level config <?> "Heading level")
       (optional (ws *> marker <?> "Heading marker"))
       (optional (ws *> priority <?> "Heading priority"))

@@ -10,9 +10,24 @@ let default_config : Conf.t =
 let check_mldoc_type =
   Alcotest.check (Alcotest.testable Type.pp ( = )) "check mldoc type"
 
+let check_mldoc_type_list =
+  Alcotest.check
+    (Alcotest.testable
+       (Format.pp_print_list
+          ~pp_sep:(fun ppf () -> Format.pp_print_string ppf ", ")
+          Type.pp)
+       ( = ))
+    "check mldoc type list"
+
 let check_aux source expect =
   let result = Mldoc.Parser.parse default_config source |> List.hd |> fst in
   fun _ -> check_mldoc_type expect result
+
+let check_list_aux source expect =
+  let result =
+    Mldoc.Parser.parse default_config source |> List.map (fun (t, _pos) -> t)
+  in
+  fun _ -> check_mldoc_type_list expect result
 
 let testcases =
   List.map (fun (case, level, f) -> Alcotest.test_case case level f)
@@ -521,6 +536,217 @@ let block =
           , `Quick
           , check_aux "\\begin{equation}[a,b,c] x=\\sqrt{b} \\end{equation}"
               (Latex_Environment ("equation", None, "[a,b,c] x=\\sqrt{b} ")) )
+        ] )
+  ; ( "reset levels"
+    , testcases
+        [ ( "case1"
+          , `Quick
+            (*
+               ## A    (level 1)
+               - B     (level 5)
+                   - C (level 9)
+               #### D  (level 1)
+                   - E (level 5)
+               - F     (level 1)
+            *)
+          , check_list_aux "## A\n- B\n    - C\n#### D\n    - E\n- F"
+              [ Type.Heading
+                  { Type.title = [ Inline.Plain "A" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "A"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = false
+                  ; size = Some 2
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "B" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 5
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "B"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "C" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 9
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "C"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "D" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "D"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = false
+                  ; size = Some 4
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "E" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 5
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "E"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "F" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "F"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ] )
+        ; ( "case2"
+          , `Quick
+            (*
+- A     (level 1)
+## B    (level 1)
+- C     (level 5)
+- D     (level 5)
+    - E (level 9)
+- F     (level 5)
+### G   (level 1)
+    - H (level 5)
+- I     (level 1)
+            *)
+          , check_list_aux
+              "- A\n## B\n- C\n- D\n    - E\n- F\n### G\n    - H\n- I"
+              [ Type.Heading
+                  { Type.title = [ Inline.Plain "A" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "A"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "B" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "B"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = false
+                  ; size = Some 2
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "C" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 5
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "C"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "D" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 5
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "D"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "E" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 9
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "E"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "F" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 5
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "F"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "G" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "G"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = false
+                  ; size = Some 3
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "H" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 5
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "H"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { Type.title = [ Inline.Plain "I" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "I"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ] )
         ] )
   ]
 
