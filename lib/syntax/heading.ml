@@ -30,20 +30,29 @@ let level config =
   | Org ->
     org_level >>= fun s ->
     let len = String.length s in
-    return (len, false)
+    return (len, false, None)
   | Markdown ->
     let markdown_heading =
       Markdown_level.parse >>| fun s ->
       let len = String.length s in
-      (len, false)
+      (len, false, Some len)
     in
     let unordered =
-      optional tabs_or_ws <* char '-' >>| fun result ->
-      match result with
-      | Some s ->
-        let len = String.length s in
-        (len + 1, true)
-      | None -> (1, true)
+      both (optional ws <* char '-') (optional Markdown_level.parse)
+      >>| fun (level, hashstr) ->
+      let level' =
+        match level with
+        | Some s ->
+          let len = String.length s in
+          len + 1
+        | None -> 1
+      in
+      let size =
+        match hashstr with
+        | Some s -> Some (String.length s)
+        | None -> None
+      in
+      (level', true, size)
     in
     markdown_heading <|> unordered
 
@@ -90,7 +99,7 @@ let anchor_link s =
 let parse config =
   let p =
     lift4
-      (fun (level, unordered) marker priority title ->
+      (fun (level, unordered, size) marker priority title ->
         let title =
           match title with
           | None -> []
@@ -128,12 +137,6 @@ let parse config =
         in
         let anchor = anchor_link (Inline.asciis title) in
         let meta = { timestamps = []; properties = [] } in
-        let size =
-          if unordered then
-            None
-          else
-            Some level
-        in
         Heading
           { level
           ; marker
