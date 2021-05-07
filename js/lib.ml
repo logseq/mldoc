@@ -74,8 +74,10 @@ let _ =
            let ast = parse config str in
            let parsed_embed_blocks =
              CCList.map
-               (fun (k, (v, title)) ->
-                 (k, (fst @@ unzip @@ parse config v, title)))
+               (fun (k, (content_include_children, content)) ->
+                 ( k
+                 , ( fst @@ unzip @@ parse config content_include_children
+                   , fst @@ unzip @@ parse config content ) ))
                references.embed_blocks
            in
            let parsed_embed_pages =
