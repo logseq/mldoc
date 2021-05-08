@@ -372,7 +372,7 @@ and list refs state config l =
       l)
   @@ List.flatten
   @@ CCList.map
-       (fun { content; items; number; name; checkbox; indent; _ } ->
+  (fun { content; items; number; name; checkbox; indent; _ } ->
          let name' = flatten_map (inline refs state config) name in
          let content' = flatten_map (block refs state config) content in
          (* Definition Lists content if name isn't empty  *)
