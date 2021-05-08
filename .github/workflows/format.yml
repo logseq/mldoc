@@ -24,7 +24,7 @@ jobs:
         
       - name: format
         run: |
-          opam exec -- dune build @fmt --auto-promote
+          opam exec -- dune build @fmt --auto-promote || true
           
       - name: commit
         uses: stefanzweifel/git-auto-commit-action@v4.11.0
