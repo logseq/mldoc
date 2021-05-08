@@ -20,7 +20,7 @@ jobs:
           ocaml-version: 4.11.1
           
       - name: install dependencies
-        run: opam install ocamlformat dune
+        run: opam install ocamlformat.0.16.0 dune
         
       - name: format
         run: |
