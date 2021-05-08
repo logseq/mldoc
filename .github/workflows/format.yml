@@ -1,4 +1,4 @@
-name: CI
+name: Format
 
 on:
   pull_request:
@@ -24,7 +24,7 @@ jobs:
         
       - name: format
         run: |
-          dune build @fmt --auto-promote
+          opam exec -- dune build @fmt --auto-promote
           
       - name: commit
         uses: stefanzweifel/git-auto-commit-action@v4.11.0
