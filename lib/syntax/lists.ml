@@ -71,7 +71,7 @@ let content_parser config list_parser content_parsers indent lines =
 let format_parser config indent =
   let choices =
     if is_markdown config || indent <> 0 then
-      char '+' <|> char '-' <|> char '*'
+      char '+' <|> char '*'
     else
       char '+' <|> char '-'
   in
