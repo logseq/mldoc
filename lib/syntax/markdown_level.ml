@@ -1,3 +1,4 @@
 open Angstrom
+open Parsers
 
-let parse = take_while1 (fun c -> c = '#')
+let parse = optional ws *> take_while1 (fun c -> c = '#')
