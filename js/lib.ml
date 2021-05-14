@@ -99,6 +99,51 @@ let _ =
          | Error error, _ -> Js_of_ocaml.Js.string error
          | _, Error error -> Js_of_ocaml.Js.string error
 
+       method astExportMarkdown ast config_json references =
+         let ast = Js.to_string ast |> Yojson.Safe.from_string in
+         let config_json =
+           Js.to_string config_json |> Yojson.Safe.from_string
+         in
+         let references_json =
+           Js.to_string references |> Yojson.Safe.from_string
+         in
+         let buffer = Buffer.create 1024 in
+         match
+           ( Conf.of_yojson config_json
+           , Reference.of_yojson references_json
+           , Type.blocks_of_yojson ast )
+         with
+         | Ok config, Ok references, Ok ast ->
+           let parsed_embed_blocks =
+             CCList.map
+               (fun (k, (content_include_children, content)) ->
+                 ( k
+                 , ( fst @@ unzip @@ parse config content_include_children
+                   , fst @@ unzip @@ parse config content ) ))
+               references.embed_blocks
+           in
+           let parsed_embed_pages =
+             CCList.map
+               (fun (k, v) -> (k, fst @@ unzip @@ parse config v))
+               references.embed_pages
+           in
+           let refs : Reference.parsed_t =
+             { parsed_embed_blocks; parsed_embed_pages }
+           in
+           let document = Document.from_ast None ast in
+           let _ =
+             Sys_js.set_channel_flusher stdout (fun s ->
+                 Buffer.add_string buffer s)
+           in
+           generate "markdown" ~refs config document stdout;
+           flush stdout;
+           Js_of_ocaml.Js.string (Buffer.contents buffer)
+         | Error error, _, _ ->
+           Js_of_ocaml.Js.string ("json->config err: " ^ error)
+         | _, Error error, _ ->
+           Js_of_ocaml.Js.string ("json->references err: " ^ error)
+         | _, _, Error error -> Js_of_ocaml.Js.string ("json->ast err: " ^ error)
+
        method anchorLink s =
          let s = Js.to_string s in
          Js_of_ocaml.Js.string (Heading.anchor_link s)
