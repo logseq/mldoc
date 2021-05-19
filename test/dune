@@ -8,6 +8,11 @@
  (modules test_org)
  (libraries alcotest mldoc))
 
+(executables
+ (names gen_md_files)
+ (modules gen_md_files)
+ (libraries qcheck mldoc))
+
 (rule
  (alias runtest)
  (deps
