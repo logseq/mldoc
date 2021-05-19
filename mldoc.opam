@@ -22,6 +22,7 @@ depends: [
   "lwt"
   "odoc" {with-doc}
   "alcotest" {with-test}
+  "qcheck" {with-test}
 ]
 build: [
   ["dune" "subst"] {dev}
