@@ -32,7 +32,9 @@ let property =
     else
       return s
   in
-  let property_value = optional spaces *> optional_line <* eol in
+  let property_value =
+    optional spaces *> optional_line <* (eol *> return () <|> end_of_input)
+  in
   lift2 (fun key value -> (key, value)) property_key property_value
 
 let drawer_properties = many property

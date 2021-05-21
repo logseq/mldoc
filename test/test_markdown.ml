@@ -183,6 +183,22 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "also support org-link syntax"
+          , `Quick
+          , check_aux "[[http://foobar/path?query=123][label here]]"
+              (Paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"
+                           ; link = "//foobar/path?query=123"
+                           }
+                     ; label = [ Plain "label here" ]
+                     ; title = None
+                     ; full_text = "[[http://foobar/path?query=123]]"
+                     ; metadata = ""
+                     }
+                 ]) )
         ; ( "label with page-ref"
           , `Quick
           , check_aux "[abc [[d ef]] gh](../assets/0000.pdf)"
