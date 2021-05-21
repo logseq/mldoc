@@ -113,7 +113,9 @@ let from_ast filename ast =
       | Directive (k, v) ->
         let directives = (k, v) :: directives in
         aut directives blocks toc tl
-      | Heading { title; tags; marker; level; priority; anchor; meta; unordered; _ } ->
+      | Heading
+          { title; tags; marker; level; priority; anchor; meta; unordered; _ }
+        ->
         let numbering = compute_heading_numbering level toc in
         let h =
           Heading
