@@ -77,7 +77,9 @@ function run () {
     html = MO.parseHtml(content, JSON.stringify({"toc": true,
                                                  "heading_number": true,
                                                  "keep_line_break": false,
-                                                 "format": format}));
+                                                 "format": format,
+                                                 "heading_to_list": false
+                                                }));
 
     // write the output
     messenger.printMsg('Writing data to ' + writeMode + '...');

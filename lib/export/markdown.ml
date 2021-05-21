@@ -262,7 +262,7 @@ and timestamp t =
 and block_reference (refs : refs) state config block_uuid =
   match List.assoc_opt block_uuid refs.parsed_embed_blocks with
   | None -> map_raw_text [ "(("; block_uuid; "))" ]
-  | Some (_, title) -> flatten_map (inline refs state config) title
+  | Some (_, content) -> flatten_map (block refs state config) content
 
 and block refs state config t =
   match t with
@@ -314,7 +314,7 @@ and heading_merely_have_embed { title; marker; priority; _ } =
   | _ -> None
 
 and heading refs state config h =
-  let { title; tags; marker; level; priority; _ } = h in
+  let { title; tags; marker; level; priority; unordered; meta; _ } = h in
   let priority =
     match priority with
     | Some c -> "[#" ^ String.make 1 c ^ "]"
@@ -326,8 +326,10 @@ and heading refs state config h =
     | None -> ""
   in
   let top_heading_level = Option.default level state.top_heading_level in
-  if Option.is_none state.top_heading_level then
-    state.top_heading_level <- Some level;
+  let _ =
+    if Option.is_none state.top_heading_level then
+      state.top_heading_level <- Some level
+  in
   let level' =
     if state.embed_parent_indent_level > 0 && top_heading_level >= 2 then
       state.embed_parent_indent_level + level - top_heading_level + 1
@@ -338,7 +340,10 @@ and heading refs state config h =
   let f () =
     let heading_or_list =
       if config.heading_to_list then
-        [ Indent state.current_level; raw_text "-" ]
+        if unordered then
+          [ Indent state.current_level; raw_text "-" ]
+        else
+          [ Indent (2 * state.current_level); raw_text "-" ]
       else
         [ raw_text @@ String.make level' '#' ]
     in
@@ -353,16 +358,26 @@ and heading refs state config h =
       ; newline
       ]
   in
-  match heading_merely_have_embed h with
-  | Some embed ->
-    (* this heading merely have one embed page(or block),
-       so override it by embed page(or block) *)
-    let r, succ = macro_embed ~outdent:true refs state config embed in
-    if succ then
-      r
+  let heading =
+    match heading_merely_have_embed h with
+    | Some embed ->
+      (* this heading merely have one embed page(or block),
+         so override it by embed page(or block) *)
+      let r, succ = macro_embed ~outdent:true refs state config embed in
+      if succ then
+        r
+      else
+        f ()
+    | None -> f ()
+  in
+  let properties =
+    if config.exporting_keep_properties then
+      drawer state config "PROPERTIES" meta.properties
     else
-      f ()
-  | None -> f ()
+      (* hide Property_Drawers *)
+      []
+  in
+  List.append heading properties
 
 and list refs state config l =
   (fun l ->
@@ -464,15 +479,20 @@ and latex_env state config name options content =
     ]
 
 and drawer state config name kvs =
-  List.flatten
-    [ [ raw_text @@ ":" ^ name ^ ":"; newline ]
-    ; flatten_map
-        (fun (k, v) ->
-          (raw_text_indent state config @@ ":" ^ k ^ ":")
-          @ [ Space; raw_text v ])
-        kvs
-    ; [ newline; raw_text ":END:"; newline ]
-    ]
+  if config.format != Conf.Org && name = "PROPERTIES" then
+    flatten_map
+      (fun (k, v) -> raw_text_indent state config (k ^ ":: " ^ v) @ [ newline ])
+      kvs
+  else
+    List.flatten
+      [ [ raw_text @@ ":" ^ name ^ ":"; newline ]
+      ; flatten_map
+          (fun (k, v) ->
+            (raw_text_indent state config @@ ":" ^ k ^ ":")
+            @ [ Space; raw_text v; newline ])
+          kvs
+      ; [ raw_text ":END:"; newline ]
+      ]
 
 and footnote_definition refs state config name content =
   let content' = flatten_map (inline refs state config) content in
@@ -845,7 +865,7 @@ let to_string config tl =
          | OneNewline -> "\n"
          | Indent n ->
            if config.heading_to_list then
-             String.make (2 * n) ' '
+             String.make n ' '
            else
              ""
          | RawText s -> s)

@@ -27,8 +27,25 @@ let org_level = take_while1 (fun c -> c = '*')
 
 let level config =
   match config.format with
-  | Org -> org_level
-  | Markdown -> Markdown_level.parse
+  | Org ->
+    org_level >>= fun s ->
+    let len = String.length s in
+    return (len, false)
+  | Markdown ->
+    let markdown_heading =
+      Markdown_level.parse >>| fun s ->
+      let len = String.length s in
+      (len, false)
+    in
+    let unordered =
+      optional tabs_or_ws <* char '-' >>| fun result ->
+      match result with
+      | Some s ->
+        let len = String.length s in
+        (len + 1, true)
+      | None -> (1, true)
+    in
+    markdown_heading <|> unordered
 
 let priority = string "[#" *> any_char <* char ']'
 
@@ -73,8 +90,7 @@ let anchor_link s =
 let parse config =
   let p =
     lift4
-      (fun level marker priority title ->
-        let level = String.length level in
+      (fun (level, unordered) marker priority title ->
         let title =
           match title with
           | None -> []
@@ -121,6 +137,7 @@ let parse config =
           ; anchor
           ; meta
           ; numbering = None
+          ; unordered
           })
       (level config <?> "Heading level")
       (optional (ws *> marker <?> "Heading marker"))
