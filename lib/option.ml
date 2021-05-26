@@ -197,6 +197,8 @@ module Infix = struct
   let ( |? ) x def = default def x
 
   let ( >>= ) = Monad.bind
+
+  let ( >>| ) e f = map f e
 end
 
 include Infix

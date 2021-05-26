@@ -186,13 +186,13 @@ let leftmost t =
     let right = concat_rev butlast (t.value :: t.right) in
     { t with value; left; right }
 
-let insert_left t item =
+let insert_left t ~item =
   bool_to_option (not t.end') >>= fun () ->
   list_to_option t.pnodes >>= fun _ ->
   let left = item :: t.left in
   Some { t with left; changed = true }
 
-let insert_right t item =
+let insert_right t ~item =
   bool_to_option (not t.end') >>= fun () ->
   list_to_option t.pnodes >>= fun _ ->
   let right = item :: t.right in
