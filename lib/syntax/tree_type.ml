@@ -29,14 +29,11 @@ type t = Type.t_with_pos_meta Z.t
 
  *)
 
-let debug = ref None
-
 let insert_heading_block_exn block loc =
   let open Z in
-  try get (insert_right loc ~item:(branch [ leaf block ]) >>= right >>= down)
-  with e ->
-    debug := Some (loc, block);
-    raise e
+  get_exn
+    (insert_right loc ~item:(branch [ leaf block ]) >>= right >>= down)
+    (Failure "insert_heading_block_exn")
 
 let insert_normal_block_exn block loc =
   get_exn
