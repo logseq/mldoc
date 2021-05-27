@@ -538,6 +538,35 @@ let block =
           , check_aux "\\begin{equation}[a,b,c] x=\\sqrt{b} \\end{equation}"
               (Latex_Environment ("equation", None, "[a,b,c] x=\\sqrt{b} ")) )
         ] )
+  ; ( "list"
+    , testcases
+        [ ( "heading in list"
+          , `Quick
+          , check_aux "+ line1\n  - heading"
+              (List
+                 [ { content = [ Paragraph [ I.Plain "line1" ] ]
+                   ; items = []
+                   ; number = None
+                   ; name = []
+                   ; checkbox = None
+                   ; indent = 0
+                   ; ordered = false
+                   }
+                 ]) )
+        ; ( "heading in list (2)"
+          , `Quick
+          , check_aux "+ line1\n  -"
+              (List
+                 [ { content = [ Paragraph [ I.Plain "line1" ] ]
+                   ; items = []
+                   ; number = None
+                   ; name = []
+                   ; checkbox = None
+                   ; indent = 0
+                   ; ordered = false
+                   }
+                 ]) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]
