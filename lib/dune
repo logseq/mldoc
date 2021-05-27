@@ -10,5 +10,12 @@
  (public_name mldoc)
  (preprocess
   (pps ppx_deriving_yojson))
- (libraries angstrom bigstringaf yojson ppx_deriving_yojson.runtime uri str xmlm)
+ (libraries
+  angstrom
+  bigstringaf
+  yojson
+  ppx_deriving_yojson.runtime
+  uri
+  str
+  xmlm)
  (wrapped false))
