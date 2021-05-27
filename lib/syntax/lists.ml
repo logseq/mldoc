@@ -16,7 +16,7 @@ let check_listitem config line =
     try Scanf.sscanf (String.trim line) "%d" (fun x -> Some x) with _ -> None
   in
   match number with
-  | Some number -> (indent, true, Some number)
+  | Some number -> (indent, true, false, Some number)
   | None ->
     if String.length line - indent >= 2 then
       let prefix = String.sub line indent 2 in
@@ -26,9 +26,31 @@ let check_listitem config line =
         else
           indent <> 0 && prefix = "* "
       in
-      (indent, prefix = "- " || prefix = "+ " || star_condition, None)
+      let is_item =
+        if is_markdown config then
+          prefix = "+ " || star_condition
+        else
+          prefix = "+ " || star_condition || prefix = "- "
+      in
+
+      let is_heading =
+        if is_markdown config then
+          prefix = "- "
+        else
+          indent = 0 && prefix = "* "
+      in
+      (indent, is_item, is_heading, None)
+    else if String.length line - indent >= 1 then
+      let prefix = String.sub line indent 1 in
+      let is_heading =
+        if is_markdown config then
+          prefix = "-"
+        else
+          indent = 0 && prefix = "*"
+      in
+      (indent, false, is_heading, None)
     else
-      (indent, false, None)
+      (indent, false, false, None)
 
 let terminator items =
   if !items = [] then
@@ -51,10 +73,12 @@ let content_parser config list_parser content_parsers indent lines =
                   eol *> content_parser
                 ) else if is_space c then
                   peek_line >>= fun content ->
-                  let indent', is_item, _number =
+                  let indent', is_item, is_heading, _number =
                     check_listitem config content
                   in
-                  if is_item then
+                  if is_heading then
+                    return (List.rev !lines, [])
+                  else if is_item then
                     if indent' <= indent then
                       (* breakout, another item or a new list. *)
                       return (List.rev !lines, [])
@@ -122,7 +146,10 @@ let definition config s =
 let rec list_parser config content_parsers items last_indent =
   fix (fun list ->
       indent_parser >>= fun indent ->
-      if last_indent > indent then
+      (* breakout, if heading found in list *)
+      unsafe_lookahead (Heading.parse config) *> return true <|> return false
+      >>= fun is_heading ->
+      if last_indent > indent || is_heading then
         terminator items
       (* breakout *)
       else
