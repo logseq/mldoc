@@ -200,7 +200,7 @@ let get_indent line =
   let len = String.length line in
   try
     for i = 0 to len - 1 do
-      if line.[i] <> ' ' || line.[i] <> '\t' then raise (Found_int i)
+      if line.[i] <> ' ' && line.[i] <> '\t' then raise (Found_int i)
     done;
     0
   with Found_int i -> i
