@@ -4,6 +4,8 @@ module Z = Zip
 
 type t = Type.t_with_pos_meta Z.t
 
+type value = Type.t_with_pos_meta Z.l
+
 (*
    - Heading (level=1)
        - Paragraph A
@@ -98,3 +100,5 @@ let of_blocks (blocks : Type.blocks) =
         | Type.Heading _ -> add_heading_block_exn block loc
         | _ -> insert_normal_block_exn block loc)
       init t
+
+let to_value = Z.root
