@@ -30,7 +30,7 @@ let displayed_math = string "$$" *> end_string "$$" (fun s -> Displayed_Math s)
  *   "age": 25
  * }
  * ``` *)
-let fenced_language = (string "```" <|> string "~~~") *> spaces *> optional line *> optional eol
+let fenced_language = (string "```" <|> string "~~~") *> spaces *> optional line <* optional eol
 
 let fenced_code_block =
   fenced_language >>= fun language ->
