@@ -20,6 +20,7 @@ let main () =
                ; format = Org
                ; heading_to_list = false
                ; exporting_keep_properties = false
+               ; ignore_heading_list_marker = false
                }
              in
              ignore (parse config doc_org))
@@ -31,6 +32,7 @@ let main () =
                ; format = Org
                ; heading_to_list = false
                ; exporting_keep_properties = false
+               ; ignore_heading_list_marker = false
                }
              in
              ignore (parse config syntax_org))
@@ -42,6 +44,7 @@ let main () =
                ; format = Markdown
                ; heading_to_list = false
                ; exporting_keep_properties = false
+               ; ignore_heading_list_marker = false
                }
              in
              ignore (parse config syntax_md))
