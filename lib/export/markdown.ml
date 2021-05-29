@@ -50,8 +50,6 @@ let default_state () =
   ; top_heading_level = None
   }
 
-let default_config = None
-
 let raw_text_indent state config s =
   let indent state config s =
     if config.heading_to_list then
