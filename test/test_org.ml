@@ -5,6 +5,7 @@ let default_config : Conf.t =
   ; format = Conf.Org
   ; heading_to_list = false
   ; exporting_keep_properties = false
+  ; ignore_heading_list_marker = false
   }
 
 let check_mldoc_type =

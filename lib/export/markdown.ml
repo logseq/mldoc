@@ -339,14 +339,16 @@ and heading refs state config h =
   state.current_level <- level';
   let f () =
     let heading_or_list =
-      if config.heading_to_list then
+      match (config.heading_to_list, config.ignore_heading_list_marker) with
+      | true, false ->
         if unordered then
           [ Indent state.current_level; raw_text "-" ]
         else
           [ Indent (2 * state.current_level); raw_text "-" ]
-      else
-        [ raw_text @@ String.make level' '#' ]
+      | true, true -> [ Indent state.current_level ]
+      | false, _ -> [ raw_text @@ String.make level' '#' ]
     in
+
     heading_or_list
     @ [ Space; raw_text marker; Space; raw_text priority; Space ]
     @ flatten_map (fun e -> Space :: inline refs state config e) title

@@ -34,6 +34,7 @@ let generate backend output _opts filename =
       ; format
       ; heading_to_list = true
       ; exporting_keep_properties = true
+      ; ignore_heading_list_marker = false
       }
     in
     let ast = parse config (String.concat "\n" lines) in
