@@ -5,8 +5,7 @@ let default_state = Markdown.default_state
 
 let empty_references = Reference.empty_parsed_t
 
-(* TODO: delete me *)
-let debug_config =
+let default_config =
   { toc = true
   ; heading_number = true
   ; keep_line_break = false
@@ -22,8 +21,8 @@ let rec block_tree_to_plain_tree (blocks : Tree_type.value) : string Zip.l =
   | Leaf (t, _pos) ->
     leaf
       Markdown.(
-        to_string debug_config
-        @@ block empty_references (default_state ()) debug_config t)
+        to_string default_config
+        @@ block empty_references (default_state ()) default_config t)
   | Branch [] -> Branch []
   | Branch l -> branch @@ CCList.map block_tree_to_plain_tree l
 
@@ -81,7 +80,7 @@ let output_tree_type o tree = Xmlm.output_tree plain_tree_to_frag o tree
 
 type output_header = { title : string }
 
-let output_with_header o tree { title } =
+let output_with_header o { title } tree =
   let open Xmlm in
   output o (`Dtd None);
   output o (`El_start (tag "opml" [ attr "version" "2.0" ]));
@@ -94,3 +93,16 @@ let output_with_header o tree { title } =
   output_tree_type o tree;
   (* body *) output o `El_end;
   (* opml *) output o `El_end
+
+module OPMLExporter = struct
+  let name = "opml"
+
+  let default_filename = change_ext "opml"
+
+  let export ~refs:_ _config (doc : Document.t) output =
+    let title = Option.default "untitled" doc.title in
+    let output_buf = Xmlm.make_output ~indent:(Some 2) (`Channel output) in
+    doc.blocks |> Tree_type.of_blocks |> Tree_type.to_value
+    |> block_tree_to_plain_tree
+    |> output_with_header output_buf { title }
+end

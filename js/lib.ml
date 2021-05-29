@@ -99,6 +99,31 @@ let _ =
          | Error error, _ -> Js_of_ocaml.Js.string error
          | _, Error error -> Js_of_ocaml.Js.string error
 
+       method astExportOPML ast =
+         let ast = Js.to_string ast |> Yojson.Safe.from_string in
+         let buffer = Buffer.create 1024 in
+         match Type.blocks_of_yojson ast with
+         | Ok ast ->
+           let document = Document.from_ast None ast in
+           let _ =
+             Sys_js.set_channel_flusher stdout (fun s ->
+                 Buffer.add_string buffer s)
+           in
+           let dummy_config : Conf.t =
+             { toc = true
+             ; heading_number = true
+             ; keep_line_break = false
+             ; format = Conf.Markdown
+             ; heading_to_list = true
+             ; exporting_keep_properties = false
+             ; ignore_heading_list_marker = true
+             }
+           in
+           generate "opml" dummy_config document stdout;
+           flush stdout;
+           Js.string (Buffer.contents buffer)
+         | Error error -> Js.string ("json->ast err: " ^ error)
+
        method astExportMarkdown ast config_json references =
          let ast = Js.to_string ast |> Yojson.Safe.from_string in
          let config_json =
