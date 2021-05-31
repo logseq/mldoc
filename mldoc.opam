@@ -20,6 +20,7 @@ depends: [
   "uri"
   "yojson"
   "lwt"
+  "xmlm"
   "odoc" {with-doc}
   "alcotest" {with-test}
   "qcheck" {with-test}
@@ -40,4 +41,5 @@ build: [
 ]
 pin-depends: [
   [ "angstrom.dev" "git://github.com/logseq/angstrom#fork" ]
+  [ "xmlm.dev" "git://github.com/logseq/xmlm#fork" ]
 ]
