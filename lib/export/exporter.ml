@@ -26,6 +26,7 @@ module Exporters = struct
     let base =
       [ (module Html.HtmlExporter : Exporter)
       ; (module Markdown.MarkdownExporter : Exporter)
+      ; (module Opml.OPMLExporter : Exporter)
       ]
   end)
 
