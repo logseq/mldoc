@@ -90,8 +90,13 @@ let output_with_header o { title } tree =
   (* title *) output o `El_end;
   (* head *) output o `El_end;
   (* body *) output o (`El_start (tag "body" []));
-  output_tree_type o tree;
-  (* body *) output o `El_end;
+  let _ =
+    match tree with
+    | Zip.Leaf _ -> output_tree_type o tree
+    | Zip.Branch l -> List.iter (output_tree_type o) l
+  in
+  (* body *)
+  output o `El_end;
   (* opml *) output o `El_end
 
 module OPMLExporter = struct
