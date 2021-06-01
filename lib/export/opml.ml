@@ -105,7 +105,7 @@ module OPMLExporter = struct
   let default_filename = change_ext "opml"
 
   let export ~refs:_ _config (doc : Document.t) output =
-    let title = Option.default "untitled" doc.title in
+    let title = Option.(doc.filename |? (doc.title |? "untitled")) in
     let output_buf = Xmlm.make_output ~indent:(Some 2) (`Channel output) in
     doc.blocks |> Tree_type.of_blocks |> Tree_type.to_value
     |> block_tree_to_plain_tree

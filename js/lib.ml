@@ -99,16 +99,17 @@ let _ =
          | Error error, _ -> Js_of_ocaml.Js.string error
          | _, Error error -> Js_of_ocaml.Js.string error
 
-       method parseAndExportOPML input config_json =
+       method parseAndExportOPML input config_json title =
          let str = Js.to_string input in
          let config_json = Js.to_string config_json in
          let config_json = Yojson.Safe.from_string config_json in
+         let title = Js.to_string title in
          let buffer = Buffer.create 1024 in
          match Conf.of_yojson config_json with
          | Ok config ->
            let config = { config with ignore_heading_list_marker = true } in
            let ast = parse config str in
-           let document = Document.from_ast None ast in
+           let document = Document.from_ast (Some title) ast in
            let _ =
              Sys_js.set_channel_flusher stdout (fun s ->
                  Buffer.add_string buffer s)
