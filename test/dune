@@ -13,12 +13,19 @@
  (modules gen_md_files)
  (libraries qcheck mldoc))
 
+(executables
+ (names test_zip)
+ (modules test_zip)
+ (libraries alcotest qcheck qcheck-alcotest mldoc))
+
 (rule
  (alias runtest)
  (deps
   (:md test_markdown.exe)
-  (:org test_org.exe))
+  (:org test_org.exe)
+  (:zip test_zip.exe))
  (action
   (progn
    (run %{md})
-   (run %{org}))))
+   (run %{org})
+   (run %{zip}))))

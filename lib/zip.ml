@@ -51,8 +51,7 @@ let rec concat_rev l_rev r =
 
 (* APIs *)
 
-let of_list l =
-  let value = branch @@ CCList.map (fun e -> leaf e) l in
+let of_l (value : 'a l) =
   { value
   ; ppath = None
   ; left = []
@@ -61,6 +60,10 @@ let of_list l =
   ; changed = false
   ; end' = false
   }
+
+let of_list l =
+  let value = branch @@ CCList.map (fun e -> leaf e) l in
+  of_l value
 
 let node t = t.value
 
