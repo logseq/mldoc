@@ -73,9 +73,6 @@ let rec plain_tree_to_frag (plain_tree : string Zip.l) : string Zip.l Xmlm.frag
   | Branch [ (Branch _ as e) ] -> plain_tree_to_frag e
   | Branch (Branch _ :: _ as l) -> outline_frag ~childs:l ""
 
-(* TODO: delete me *)
-let debug_output buf = Xmlm.make_output ~indent:(Some 2) (`Buffer buf)
-
 let output_tree_type o tree = Xmlm.output_tree plain_tree_to_frag o tree
 
 type output_header = { title : string }
