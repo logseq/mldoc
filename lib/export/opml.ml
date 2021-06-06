@@ -21,7 +21,7 @@ let rec block_tree_to_plain_tree (blocks : Tree_type.value) : string Zip.l =
   | Leaf (t, _pos) ->
     leaf
       Markdown.(
-        to_string default_config
+        Output.to_string
         @@ block empty_references (default_state ()) default_config t)
   | Branch [] -> Branch []
   | Branch l -> branch @@ CCList.map block_tree_to_plain_tree l

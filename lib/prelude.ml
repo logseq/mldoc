@@ -340,8 +340,120 @@ module CCList = struct
       | x :: l' -> safe p l' (x :: acc)
     in
     direct direct_depth_filter_ p l
+
+  let take n l =
+    let rec direct i n l =
+      match l with
+      | [] -> []
+      | _ when i = 0 -> safe n [] l
+      | x :: l' ->
+        if n > 0 then
+          x :: direct (i - 1) (n - 1) l'
+        else
+          []
+    and safe n acc l =
+      match l with
+      | [] -> List.rev acc
+      | _ when n = 0 -> List.rev acc
+      | x :: l' -> safe (n - 1) (x :: acc) l'
+    in
+    direct direct_depth_default_ n l
+
+  let rec drop n l =
+    match l with
+    | [] -> []
+    | _ when n = 0 -> l
+    | _ :: l' -> drop (n - 1) l'
+
+  let find_mapi f l =
+    let rec aux f i = function
+      | [] -> None
+      | x :: l' -> (
+        match f i x with
+        | Some _ as res -> res
+        | None -> aux f (i + 1) l')
+    in
+    aux f 0 l
+
+  let find_map f l = find_mapi (fun _ -> f) l
+
+  let find_idx p l =
+    find_mapi
+      (fun i x ->
+        if p x then
+          Some (i, x)
+        else
+          None)
+      l
+
+  let fold_right f l acc =
+    let rec direct i f l acc =
+      match l with
+      | [] -> acc
+      | _ when i = 0 -> safe f (List.rev l) acc
+      | x :: l' ->
+        let acc = direct (i - 1) f l' acc in
+        f x acc
+    and safe f l acc =
+      match l with
+      | [] -> acc
+      | x :: l' ->
+        let acc = f x acc in
+        safe f l' acc
+    in
+    direct direct_depth_default_ f l acc
 end
 
 let ( @ ) = List.append
 
 let clear_indents s = CCList.map String.trim (lines s)
+
+(** Copied from https://github.com/c-cube/ocaml-containers/blob/master/src/core/CCString.ml *)
+module String = struct
+  include String
+
+  let drop_while f s =
+    let i = ref 0 in
+    while !i < length s && f (unsafe_get s !i) do
+      incr i
+    done;
+    if !i > 0 then
+      sub s !i (length s - !i)
+    else
+      s
+
+  let rdrop_while f s =
+    let i = ref (length s - 1) in
+    while !i >= 0 && f (unsafe_get s !i) do
+      decr i
+    done;
+    if !i < length s - 1 then
+      sub s 0 (!i + 1)
+    else
+      s
+
+  let is_space_ = function
+    | ' '
+    | '\012'
+    | '\n'
+    | '\r'
+    | '\t' ->
+      true
+    | _ -> false
+
+  let ltrim s = drop_while is_space_ s
+
+  let rtrim s = rdrop_while is_space_ s
+end
+
+let butlast l =
+  match List.rev l with
+  | [] -> (None, [])
+  | [ h ] -> (Some h, [])
+  | h :: t -> (Some h, List.rev t)
+
+let butlast_rev l =
+  match List.rev l with
+  | [] -> (None, [])
+  | [ h ] -> (Some h, [])
+  | h :: t -> (Some h, t)
