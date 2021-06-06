@@ -4,16 +4,9 @@ open Inline
 open Document
 open Reference
 open Conf
+open Output
 
-type t =
-  | RawText of string
-  (* merge adjacent multiple Space as one Space *)
-  | Space
-  (* merge adjacent multiple Newline as one Newline *)
-  | Newline
-  | TwoNewlines
-  | OneNewline (* merge_adjacent_space_newline internal use *)
-  | Indent of int
+type t = Output.t
 
 let show t =
   match t with
@@ -22,7 +15,7 @@ let show t =
   | Newline -> "Newline"
   | TwoNewlines -> "TwoNewlines"
   | OneNewline -> "OneNewline"
-  | Indent n -> Printf.sprintf "Indent(%d)" n
+  | Indent (n1, n2) -> Printf.sprintf "Indent(%d, %d)" n1 n2
 
 let raw_text s = RawText s
 
@@ -38,17 +31,21 @@ type state =
   { outside_em_symbol : char option
   ; embed_history : string list
   ; embed_parent_indent_level : int
-  ; mutable current_level : int
-  ; mutable top_heading_level : int option
+  ; current_level : int (* ; mutable top_heading_level : int option *)
+  ; mutable last_newline : bool
   }
 
 let default_state () =
   { outside_em_symbol = None
   ; embed_parent_indent_level = 0
-  ; current_level = 0
+  ; current_level = -2
   ; embed_history = []
-  ; top_heading_level = None
+  ; last_newline = false
   }
+
+let indent_with_2_spacemore n = Indent (n, 2)
+
+(* let indent_with_2_spacemore_if_start_of_line s =  *)
 
 let raw_text_indent state config s =
   let indent state config s =
@@ -56,7 +53,9 @@ let raw_text_indent state config s =
       let ls =
         lines s
         |> flatten_map (fun l ->
-               [ Indent (state.current_level + 1); raw_text (l ^ "\n") ])
+               [ indent_with_2_spacemore state.current_level
+               ; raw_text (l ^ "\n")
+               ])
       in
       let ls_rev = List.rev ls in
       List.rev
@@ -70,47 +69,71 @@ let raw_text_indent state config s =
   if state.current_level = 0 then
     [ raw_text s ]
   else
-    Indent (state.current_level + 1) :: indent state config s
+    indent_with_2_spacemore state.current_level :: indent state config s
 
 let rec inline refs state config (t : Inline.t) : t list =
-  Indent (state.current_level + 1)
-  ::
-  (match t with
-  | Emphasis em -> emphasis refs state config em
-  | Break_Line -> [ raw_text "\n" ]
-  | Hard_Break_Line -> [ raw_text "  \n" ]
-  | Verbatim s -> [ raw_text s ]
-  | Code s -> map_raw_text [ "`"; s; "`" ] (* it's inline code *)
-  | Tag s -> map_raw_text [ "#"; s ]
-  | Spaces s -> map_raw_text [ s ]
-  | Plain s -> map_raw_text [ s ]
-  | Link l -> inline_link l
-  | Nested_link l -> inline_nested_link l
-  | Target s -> map_raw_text [ "<<"; s; ">>" ]
-  | Subscript tl -> inline_subscript refs state config tl
-  | Superscript tl -> inline_superscript refs state config tl
-  | Footnote_Reference fr -> footnote_reference fr
-  | Cookie c -> cookie c
-  | Latex_Fragment lf -> latex_fragment lf
-  | Macro m -> macro refs state config m
-  | Entity e -> entity e
-  | Timestamp t -> timestamp t
-  | Radio_Target s ->
-    map_raw_text [ "<<<"; s; ">>>" ] (* FIXME: not parsed in md parser? *)
-  | Export_Snippet (name, content) ->
-    [ raw_text "@@"
-    ; raw_text name
-    ; raw_text ":"
-    ; Space
-    ; raw_text content
-    ; raw_text "@@"
-    ]
-  | Inline_Source_Block { language; options; code } ->
-    map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
-  | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
-  | Block_reference uuid -> block_reference refs state config uuid
-  | Inline_Hiccup s -> map_raw_text [ s ]
-  | Inline_Html s -> map_raw_text [ s ])
+  let content =
+    indent_with_2_spacemore state.current_level
+    ::
+    (match t with
+    | Emphasis em -> emphasis refs state config em
+    | Break_Line ->
+      state.last_newline <- true;
+      [ raw_text "\n" ]
+    | Hard_Break_Line ->
+      state.last_newline <- true;
+      [ raw_text "  \n" ]
+    | Verbatim s -> [ raw_text s ]
+    | Code s -> map_raw_text [ "`"; s; "`" ] (* it's inline code *)
+    | Tag s -> map_raw_text [ "#"; s ]
+    | Spaces s ->
+      if state.last_newline then
+        []
+      else
+        map_raw_text [ s ]
+    | Plain s ->
+      if state.last_newline then (
+        state.last_newline <- false;
+        map_raw_text [ String.ltrim s ]
+      ) else
+        map_raw_text [ s ]
+    | Link l -> inline_link l
+    | Nested_link l -> inline_nested_link l
+    | Target s -> map_raw_text [ "<<"; s; ">>" ]
+    | Subscript tl -> inline_subscript refs state config tl
+    | Superscript tl -> inline_superscript refs state config tl
+    | Footnote_Reference fr -> footnote_reference fr
+    | Cookie c -> cookie c
+    | Latex_Fragment lf -> latex_fragment lf
+    | Macro m -> macro m
+    | Entity e -> entity e
+    | Timestamp t -> timestamp t
+    | Radio_Target s ->
+      map_raw_text [ "<<<"; s; ">>>" ] (* FIXME: not parsed in md parser? *)
+    | Export_Snippet (name, content) ->
+      [ raw_text "@@"
+      ; raw_text name
+      ; raw_text ":"
+      ; Space
+      ; raw_text content
+      ; raw_text "@@"
+      ]
+    | Inline_Source_Block { language; options; code } ->
+      map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
+    | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
+    | Block_reference uuid -> block_reference uuid
+    | Inline_Hiccup s -> map_raw_text [ s ]
+    | Inline_Html s -> map_raw_text [ s ])
+  in
+  let _ =
+    match t with
+    | Break_Line
+    | Hard_Break_Line
+    | Spaces _ ->
+      ()
+    | _ -> state.last_newline <- false
+  in
+  content
 
 and emphasis refs state config (typ, tl) =
   let outside_em_symbol = state.outside_em_symbol in
@@ -178,70 +201,13 @@ and latex_fragment = function
   | Inline s -> [ Space; raw_text "$"; raw_text s; raw_text "$"; Space ]
   | Displayed s -> [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
 
-and macro refs state config m =
-  if m.name <> "embed" then
-    map_raw_text
-    @@
-    if List.length m.arguments > 0 then
-      [ "{{"; m.name; "("; String.concat "," m.arguments; ")}}" ]
-    else
-      [ "{{"; m.name; "}}" ]
+and macro m =
+  map_raw_text
+  @@
+  if List.length m.arguments > 0 then
+    [ "{{"; m.name; "("; String.concat "," m.arguments; ")}}" ]
   else
-    fst @@ macro_embed refs state config m
-
-and macro_embed ?(outdent = false) refs state config { arguments; _ } =
-  if List.length arguments <> 1 then
-    ([], false)
-  else
-    let arg = String.trim (List.hd arguments) in
-    let value = String.(trim @@ sub arg 2 (length arg - 4)) in
-    let raw_result = map_raw_text [ "{{embed "; arg; "}}" ] in
-    let current_level =
-      if outdent then
-        state.current_level - 1
-      else
-        state.current_level
-    in
-    if starts_with arg "[[" then
-      (* page embed *)
-      let pagename = value in
-      if List.mem pagename state.embed_history then
-        (raw_result, false)
-      else
-        match List.assoc_opt pagename refs.parsed_embed_pages with
-        | Some ast ->
-          let embed_page =
-            blocks_aux refs
-              { state with
-                embed_parent_indent_level = current_level
-              ; embed_history = pagename :: state.embed_history
-              ; top_heading_level = None
-              }
-              config ast
-          in
-          (newline :: embed_page, true)
-        | None -> (raw_result, false)
-    else if starts_with arg "((" then
-      (* block embed *)
-      let block_uuid = value in
-      if List.mem block_uuid state.embed_history then
-        (raw_result, false)
-      else
-        match List.assoc_opt block_uuid refs.parsed_embed_blocks with
-        | Some (ast, _) ->
-          let embed_block =
-            blocks_aux refs
-              { state with
-                embed_parent_indent_level = current_level
-              ; embed_history = block_uuid :: state.embed_history
-              ; top_heading_level = None
-              }
-              config ast
-          in
-          (newline :: embed_block, true)
-        | None -> (raw_result, false)
-    else
-      (raw_result, false)
+    [ "{{"; m.name; "}}" ]
 
 and entity { unicode; _ } = [ raw_text unicode ]
 
@@ -257,54 +223,55 @@ and timestamp t =
   | Clock (Stopped rt) -> [ "CLOCK: "; Range.to_string rt ]
   | Range rt -> [ Range.to_string rt ]
 
-and block_reference (refs : refs) state config block_uuid =
-  match List.assoc_opt block_uuid refs.parsed_embed_blocks with
-  | None -> map_raw_text [ "(("; block_uuid; "))" ]
-  | Some (_, content) -> flatten_map (block refs state config) content
+and block_reference block_uuid = map_raw_text [ "(("; block_uuid; "))" ]
 
 and block refs state config t =
-  match t with
-  | Paragraph l ->
-    flatten_map (fun e -> Space :: inline refs state config e) l @ [ newline ]
-  | Paragraph_line l -> raw_text_indent state config l @ [ newline ]
-  | Paragraph_Sep n -> [ raw_text @@ String.make n '\n' ]
-  | Heading h -> heading refs state config h
-  | List l -> list refs state config l
-  | Directive _ -> []
-  | Results -> []
-  | Example sl -> example state sl
-  | Src cb -> src state config cb
-  | Quote tl -> quote refs state config tl
-  | Export _ -> []
-  | CommentBlock _ -> []
-  | Custom _ -> []
-  | Latex_Fragment lf -> latex_fragment lf
-  | Latex_Environment (name, options, content) ->
-    latex_env state config name options content
-  | Displayed_Math s ->
-    [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
-  | Drawer (name, kvs) -> drawer state config name kvs
-  | Property_Drawer kvs ->
-    if config.exporting_keep_properties then
-      drawer state config "PROPERTIES" kvs
-    else
-      (* hide Property_Drawers *)
-      []
-  | Footnote_Definition (name, content) ->
-    footnote_definition refs state config name content
-  | Horizontal_Rule -> [ newline; raw_text "---"; newline ]
-  | Table t -> table refs state config t
-  | Comment s ->
-    List.flatten
-      [ raw_text_indent state config "<!---"
-      ; [ newline ]
-      ; raw_text_indent state config s
-      ; [ newline ]
-      ; raw_text_indent state config "-->"
-      ; [ newline ]
-      ]
-  | Raw_Html s -> raw_text_indent state config s @ [ newline ]
-  | Hiccup s -> [ raw_text s; Space ]
+  let content =
+    match t with
+    | Paragraph l ->
+      flatten_map (fun e -> Space :: inline refs state config e) l @ [ newline ]
+    | Paragraph_line l -> raw_text_indent state config l @ [ newline ]
+    | Paragraph_Sep n -> [ raw_text @@ String.make n '\n' ]
+    | Heading h -> heading refs state config h
+    | List l -> list refs state config l
+    | Directive _ -> []
+    | Results -> []
+    | Example sl -> example state sl
+    | Src cb -> src state config cb
+    | Quote tl -> quote refs state config tl
+    | Export _ -> []
+    | CommentBlock _ -> []
+    | Custom _ -> []
+    | Latex_Fragment lf -> latex_fragment lf
+    | Latex_Environment (name, options, content) ->
+      latex_env state config name options content
+    | Displayed_Math s ->
+      [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
+    | Drawer (name, kvs) -> drawer state config name kvs
+    | Property_Drawer kvs ->
+      if config.exporting_keep_properties then
+        drawer state config "PROPERTIES" kvs
+      else
+        (* hide Property_Drawers *)
+        []
+    | Footnote_Definition (name, content) ->
+      footnote_definition refs state config name content
+    | Horizontal_Rule -> [ newline; raw_text "---"; newline ]
+    | Table t -> table refs state config t
+    | Comment s ->
+      List.flatten
+        [ raw_text_indent state config "<!---"
+        ; [ newline ]
+        ; raw_text_indent state config s
+        ; [ newline ]
+        ; raw_text_indent state config "-->"
+        ; [ newline ]
+        ]
+    | Raw_Html s -> raw_text_indent state config s @ [ newline ]
+    | Hiccup s -> [ raw_text s; Space ]
+  in
+  state.last_newline <- true;
+  content
 
 and heading_merely_have_embed { title; marker; priority; _ } =
   match (title, marker, priority) with
@@ -312,7 +279,7 @@ and heading_merely_have_embed { title; marker; priority; _ } =
   | _ -> None
 
 and heading refs state config h =
-  let { title; tags; marker; level; priority; unordered; meta; _ } = h in
+  let { title; tags; marker; priority; meta; _ } = h in
   let priority =
     match priority with
     | Some c -> "[#" ^ String.make 1 c ^ "]"
@@ -323,30 +290,8 @@ and heading refs state config h =
     | Some s -> s ^ ""
     | None -> ""
   in
-  let top_heading_level = Option.default level state.top_heading_level in
-  let _ =
-    if Option.is_none state.top_heading_level then
-      state.top_heading_level <- Some level
-  in
-  let level' =
-    if state.embed_parent_indent_level > 0 && top_heading_level >= 2 then
-      state.embed_parent_indent_level + level - top_heading_level + 1
-    else
-      state.embed_parent_indent_level + level
-  in
-  state.current_level <- level';
   let f () =
-    let heading_or_list =
-      match (config.heading_to_list, config.ignore_heading_list_marker) with
-      | true, false ->
-        if unordered then
-          [ Indent state.current_level; raw_text "-" ]
-        else
-          [ Indent (2 * state.current_level); raw_text "-" ]
-      | true, true -> [ Indent state.current_level ]
-      | false, _ -> [ raw_text @@ String.make level' '#' ]
-    in
-
+    let heading_or_list = [ Indent (state.current_level, 0); raw_text "-" ] in
     heading_or_list
     @ [ Space; raw_text marker; Space; raw_text priority; Space ]
     @ flatten_map (fun e -> Space :: inline refs state config e) title
@@ -358,18 +303,7 @@ and heading refs state config h =
       ; newline
       ]
   in
-  let heading =
-    match heading_merely_have_embed h with
-    | Some embed ->
-      (* this heading merely have one embed page(or block),
-         so override it by embed page(or block) *)
-      let r, succ = macro_embed ~outdent:true refs state config embed in
-      if succ then
-        r
-      else
-        f ()
-    | None -> f ()
-  in
+  let heading = f () in
   let properties =
     if config.exporting_keep_properties then
       drawer state config "PROPERTIES" meta.properties
@@ -439,41 +373,44 @@ and list refs state config l =
 and example state sl =
   flatten_map
     (fun l ->
-      [ Indent (state.current_level + 1); RawText "    "; RawText l; newline ])
+      [ indent_with_2_spacemore state.current_level
+      ; RawText "    "
+      ; RawText l
+      ; newline
+      ])
     sl
 
 and src state config { lines; language; _ } =
   List.flatten
-    [ [ Indent (state.current_level + 1)
+    [ [ indent_with_2_spacemore state.current_level
       ; raw_text "```"
       ; Space
       ; raw_text @@ Option.default "" language
       ; newline
       ]
     ; flatten_map (raw_text_indent state config) lines
-    ; [ Indent (state.current_level + 1); raw_text "```"; newline ]
+    ; [ indent_with_2_spacemore state.current_level; raw_text "```"; newline ]
     ]
 
 and quote refs state config tl =
-  let indent = Indent (state.current_level + 1) in
   flatten_map
     (fun l ->
       List.flatten
-        [ [ indent; raw_text ">"; Space ]
+        [ [ indent_with_2_spacemore state.current_level; raw_text ">"; Space ]
         ; block refs state config l
         ; [ newline ]
         ])
     tl
 
 and latex_env state config name options content =
-  [ Indent (state.current_level + 1)
+  [ indent_with_2_spacemore state.current_level
   ; raw_text @@ "\\begin{" ^ name ^ "}"
   ; raw_text @@ Option.default "" options
   ; newline
   ]
   @ raw_text_indent state config content
   @ [ newline
-    ; Indent (state.current_level + 1)
+    ; indent_with_2_spacemore state.current_level
     ; raw_text @@ "\\end{" ^ name ^ "}"
     ; newline
     ]
@@ -508,7 +445,7 @@ and table refs state config { header; groups; _ } =
     in
     let header_line =
       List.flatten
-        [ [ Indent (state.current_level + 1) ]
+        [ [ indent_with_2_spacemore state.current_level ]
         ; flatten_map
             (fun col ->
               Space :: raw_text "|" :: Space
@@ -523,7 +460,7 @@ and table refs state config { header; groups; _ } =
              List.flatten
                [ flatten_map
                    (fun col ->
-                     Indent (state.current_level + 1)
+                     indent_with_2_spacemore state.current_level
                      :: Space :: raw_text "|" :: Space
                      :: flatten_map (inline refs state config) col)
                    row
@@ -535,7 +472,7 @@ and table refs state config { header; groups; _ } =
       [ [ TwoNewlines ]
       ; header_line
       ; [ newline
-        ; Indent (state.current_level + 1)
+        ; indent_with_2_spacemore state.current_level
         ; raw_text separated_line
         ; newline
         ]
@@ -543,10 +480,25 @@ and table refs state config { header; groups; _ } =
       ; [ newline ]
       ]
 
-and blocks_aux refs state config tl =
-  flatten_map (fun t -> Space :: block refs state config t) tl
+let rec blocks_aux refs state config (v : Tree_type.value) =
+  let open Zip in
+  match v with
+  | Leaf (b, _) -> block refs state config b
+  | Branch [] -> []
+  | Branch (Leaf (h, _) :: t) ->
+    let state' = { state with current_level = state.current_level + 1 } in
+    let heading = block refs state' config h in
+    List.flatten @@ (heading :: CCList.map (blocks_aux refs state' config) t)
+  | Branch l ->
+    let state' = { state with current_level = state.current_level + 1 } in
+    List.flatten @@ CCList.map (blocks_aux refs state' config) l
 
-let blocks refs config tl = blocks_aux refs (default_state ()) config tl
+let blocks refs config tl =
+  let open Tree_type in
+  let z = of_blocks tl in
+  let z' = replace_embed_and_refs z refs in
+  let v = to_value z' in
+  blocks_aux refs (default_state ()) config v
 
 let directive kvs =
   if List.length kvs = 0 then
@@ -566,313 +518,6 @@ let directive kvs =
         kvs
     @ sep_line
 
-(* 1.  [...;space; space]         -> [...;space]
-   2.  [...;newline;newline]      -> [...;newline]
-   3.  [...;space; newline]       -> [...;newline]
-   4.  [...;newline;space]        -> [...;newline]
-   5.  [...;"XXX\n";space]        -> [...;"XXX\n"]
-   6.  [...;space;"\nXXX"]        -> [...;"\nXXX"]
-   7.  [...;"XXX\n";newline]      -> [...;"XXX\n"]
-   8.  [...;newline;"\nXXX"]      -> [...;"\nXXX"]
-   9.  [...;"XXX<space>";space]   -> [...;"XXX<space>"]
-   10. [...;space;"<space>XXX"]   -> [...;"<space>XXX"]
-   11. [...;"XXX<space>";newline] -> [...;"XXX<space>";newline]
-   12. [...;space;"XXX"]          -> [...;space;"XXX"]
-   13. [...;newline;"XXX"]        -> [...;newline;"XXX"]
-   14. [...;space;indent]         -> [...;indent]
-   15. [...;indent;indent]        -> [...;indent]
-   16. [...;newline;indent]       -> [...;newline;indent]
-   17. [...;indent;space]         -> [...;indent]
-   18. [...;indent;newline]       -> [...;newline]
-   19. [...;"XXX\n";indent]       -> [...;"XXX\n";indent]
-   20. [...;"XXX<space>";indent]  -> [...;"XXX<space>"]
-   21. [...;indent;"XXX"]         -> [...;indent;"XXX"]
-   22. [...;indent;"\nXXX"]       -> [...;"\nXXX"]
-   23. [...;"XXX";indent]         -> [...;"XXX"] // XXX is not endwith '\n'
- * *)
-let merge_adjacent_space_newline =
-  let suffix_newline_num s =
-    let len = String.length s in
-    if len = 0 then
-      None
-    else if len = 1 && s.[0] = '\n' then
-      Some 1
-    else if len > 1 && s.[len - 1] = '\n' && s.[len - 2] = '\n' then
-      Some 2
-    else if len > 1 && s.[len - 1] = '\n' then
-      Some 1
-    else
-      None
-  in
-  let to_t = function
-    | `Space -> Space
-    | `Newline -> Newline
-    | `TwoNewlines -> TwoNewlines
-    | `OneNewline -> OneNewline
-    | `Indent n -> Indent n
-  in
-  fun tl ->
-    List.rev
-    @@ (fun (r, _, _, _, _) -> r)
-    @@ List.fold_left
-         (fun ( result
-              , before
-              , before_space_text
-              , before_newline_text
-              , start_of_line ) e ->
-           match
-             (e, before, before_space_text, before_newline_text, start_of_line)
-           with
-           | Space, _, _, Some _, _ ->
-             (* 5 *) (result, [], false, before_newline_text, start_of_line)
-           | Space, _, true, None, _ ->
-             (* 9 *) (result, [], true, None, start_of_line)
-           | Space, `Space :: _, false, None, _ ->
-             (* 1 *)
-             (result, [ `Space ], false, None, start_of_line)
-           | Space, `Newline :: _, false, None, _ ->
-             (* 4 *)
-             (result, [ `Newline ], false, None, start_of_line)
-           | Space, `Indent n :: _, false, None, _ ->
-             (* 17 *)
-             (result, [ `Indent n ], false, None, start_of_line)
-           | Space, `OneNewline :: _, false, None, _ ->
-             (result, [ `OneNewline ], false, None, start_of_line)
-           | Space, `TwoNewlines :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, start_of_line)
-           | Space, [], false, None, _ ->
-             (* 12 *)
-             (result, [ `Space ], false, None, start_of_line)
-           | Newline, _, _, Some _, _ ->
-             (*  7 *) (result, [], false, before_newline_text, true)
-           | Newline, _, true, None, _ ->
-             (* 11 *)
-             (result, [ `Newline ], false, None, true)
-           | Newline, `Space :: _, false, None, _ ->
-             (* 3 *)
-             (result, [ `Newline ], false, None, true)
-           | Newline, `Newline :: _, false, None, _ ->
-             (* 2 *)
-             (result, [ `Newline ], false, None, true)
-           | Newline, `Indent _ :: _, false, None, _ ->
-             (* 18 *)
-             (result, [ `Newline ], false, None, true)
-           | Newline, `OneNewline :: _, false, None, _ ->
-             (result, [ `OneNewline ], false, None, true)
-           | Newline, `TwoNewlines :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | Newline, [], false, None, _ ->
-             (result, [ `Newline ], false, None, true)
-           | OneNewline, _, _, Some _, _ ->
-             (* before_newline_text can't erase OneNewline *)
-             (result, [ `OneNewline ], false, None, true)
-           | OneNewline, _, true, None, _ ->
-             (result, [ `OneNewline ], false, None, true)
-           | OneNewline, `Space :: _, false, None, _ ->
-             (result, [ `OneNewline ], false, None, true)
-           | OneNewline, `Newline :: _, false, None, _ ->
-             (result, [ `OneNewline ], false, None, true)
-           | OneNewline, `Indent _ :: _, false, None, _ ->
-             (result, [ `OneNewline ], false, None, true)
-           | OneNewline, `TwoNewlines :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | OneNewline, `OneNewline :: _, false, None, _ ->
-             (result, [ `OneNewline ], false, None, true)
-           | OneNewline, [], false, None, _ ->
-             (result, [ `OneNewline ], false, None, true)
-           | TwoNewlines, _, _, Some 2, _ ->
-             (result, [], false, before_newline_text, true)
-           | TwoNewlines, _, _, Some _, _ ->
-             (result, [ `OneNewline ], false, before_newline_text, true)
-           | TwoNewlines, _, true, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | TwoNewlines, `Space :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | TwoNewlines, `Newline :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | TwoNewlines, `Indent _ :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | TwoNewlines, `OneNewline :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | TwoNewlines, `TwoNewlines :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | TwoNewlines, [], false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, true)
-           | Indent 0, a, b, c, _ ->
-             (* ignore *)
-             (result, a, b, c, start_of_line)
-           | Indent n, before, _, _, true ->
-             ( CCList.append (CCList.map to_t before) result
-             , [ `Indent n ]
-             , false
-             , None
-             , false )
-           | Indent n, _, _, Some _, _ ->
-             (* 19 *)
-             (result, [ `Indent n ], false, None, start_of_line)
-           | Indent _, _, true, None, false ->
-             (* 20 *)
-             (result, before, true, None, start_of_line)
-           | Indent _, `Space :: _, false, None, false ->
-             (* 14 *)
-             (result, [ `Space ], false, None, start_of_line)
-           | Indent n, `Indent _ :: _, false, None, false ->
-             (* 15 *)
-             (result, [ `Indent n ], false, None, start_of_line)
-           | Indent n, `Newline :: _, false, None, false ->
-             (* 16 *)
-             (Newline :: result, [ `Indent n ], false, None, true)
-           | Indent n, `OneNewline :: _, false, None, false ->
-             (OneNewline :: result, [ `Indent n ], false, None, true)
-           | Indent n, `TwoNewlines :: _, false, None, false ->
-             (TwoNewlines :: result, [ `Indent n ], false, None, true)
-           | Indent _, [], false, None, false ->
-             (* 23 *)
-             (result, [], false, None, false)
-           | RawText "", _, _, _, _ ->
-             ( result
-             , before
-             , before_space_text
-             , before_newline_text
-             , start_of_line )
-           | RawText s, `Space :: _, _, _, _ when s.[0] = '\n' || s.[0] = ' ' ->
-             (* 6,10 *)
-             let last_char = s.[String.length s - 1] in
-             ( e :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `Space :: _, _, _, _ ->
-             (* 12 *)
-             let last_char = s.[String.length s - 1] in
-             ( e :: Space :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `Newline :: _, _, _, _ when s.[0] = '\n' ->
-             (* 8 *)
-             let last_char = s.[String.length s - 1] in
-             ( e :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `Newline :: _, _, _, _ ->
-             (* 13 *)
-             let last_char = s.[String.length s - 1] in
-             ( e :: Newline :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `OneNewline :: _, _, _, _ when s.[0] = '\n' ->
-             let last_char = s.[String.length s - 1] in
-             ( e :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `OneNewline :: _, _, _, _ ->
-             let last_char = s.[String.length s - 1] in
-             ( e :: OneNewline :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `TwoNewlines :: _, _, _, _ ->
-             let result =
-               if String.length s = 1 then
-                 if s.[0] = '\n' then
-                   TwoNewlines :: result
-                 else
-                   e :: TwoNewlines :: result
-               else if s.[0] = '\n' && s.[1] = '\n' then
-                 e :: result
-               else if s.[0] = '\n' then
-                 RawText (String.sub s 1 (String.length s - 1))
-                 :: TwoNewlines :: result
-               else
-                 e :: TwoNewlines :: result
-             in
-             let last_char = s.[String.length s - 1] in
-             ( result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `Indent _ :: _, _, _, _ when s.[0] = '\n' ->
-             (* 22 *)
-             let last_char = s.[String.length s - 1] in
-             ( e :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, `Indent n :: _, _, _, _ ->
-             (* 21 *)
-             let last_char = s.[String.length s - 1] in
-             ( e :: Indent n :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' )
-           | RawText s, [], _, _, _ ->
-             let last_char = s.[String.length s - 1] in
-             ( e :: result
-             , []
-             , last_char = ' '
-             , suffix_newline_num s
-             , last_char = '\n' ))
-         ([], [ `Space ], false, None, true)
-         tl
-
-let remove_fst_space_newline = function
-  | [] -> []
-  | Space :: t -> t
-  | Newline :: t -> t
-  | l -> l
-
-let remove_greatest_common_prefix_indent config tl =
-  if not config.heading_to_list then
-    tl
-  else
-    let find_greatest_common_prefix_indent tl =
-      List.fold_left
-        (fun r e ->
-          match e with
-          | Indent n when n < r -> n
-          | _ -> r)
-        999 tl
-    in
-    let prefix = find_greatest_common_prefix_indent tl in
-    CCList.map
-      (fun e ->
-        match e with
-        | Indent n when n < prefix -> Indent 0
-        | Indent n -> Indent (n - prefix)
-        | _ -> e)
-      tl
-
-let to_string config tl =
-  String.concat ""
-  @@ CCList.map
-       (function
-         | Space -> " "
-         | Newline -> "\n"
-         | TwoNewlines -> "\n\n"
-         | OneNewline -> "\n"
-         | Indent n ->
-           if config.heading_to_list then
-             String.make n ' '
-           else
-             ""
-         | RawText s -> s)
-       (remove_fst_space_newline
-          (remove_greatest_common_prefix_indent config
-             (merge_adjacent_space_newline (merge_adjacent_space_newline tl))))
-
 module MarkdownExporter = struct
   let name = "markdown"
 
@@ -884,8 +529,7 @@ module MarkdownExporter = struct
         Reference.{ parsed_embed_blocks = []; parsed_embed_pages = [] }
         refs
     in
-    let doc_blocks = CCList.map fst doc.blocks in
     let directives = directive doc.directives in
-    let blocks = blocks refs config doc_blocks in
-    output_string output (to_string config (CCList.append directives blocks))
+    let blocks = blocks refs config doc.blocks in
+    output_string output (to_string (CCList.append directives blocks))
 end

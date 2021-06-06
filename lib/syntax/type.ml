@@ -109,3 +109,5 @@ and blocks = t_with_pos_meta list [@@deriving yojson]
 
 let pp fmt t =
   Format.pp_print_string fmt @@ Yojson.Safe.pretty_to_string @@ to_yojson t
+
+let dummy_pos = { start_pos = 0; end_pos = 0 }

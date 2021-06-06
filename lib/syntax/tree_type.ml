@@ -101,4 +101,261 @@ let of_blocks (blocks : Type.blocks) =
         | _ -> insert_normal_block_exn block loc)
       init t
 
+let of_blocks_without_pos (blocks : Type.t list) =
+  List.map
+    (fun b -> (b, ({ start_pos = 0; end_pos = 0 } : Type.pos_meta)))
+    blocks
+  |> of_blocks
+
 let to_value = Z.root
+
+(** replace (block|page)'s (embed|refs) *)
+
+let heading_merely_have_embed ({ title; marker; priority; _ } : Type.heading) =
+  match (title, marker, priority) with
+  | [ Macro hd ], None, None when hd.name = "embed" -> Some hd
+  | _ -> None
+
+let extract_macro_or_block_ref (il : Inline.t list) =
+  List.find_map
+    (fun i ->
+      match i with
+      | Inline.Macro m when m.name = "embed" -> Some (`Macro m)
+      | Inline.Block_reference s -> Some (`Block_ref s)
+      | _ -> None)
+    il
+
+let macro_embed macro_argument (refs : Reference.parsed_t) =
+  match macro_argument with
+  | [] -> None
+  | h :: _ ->
+    let arg = String.trim h in
+    let value =
+      try String.(trim @@ sub arg 2 (length arg - 4)) with _ -> ""
+    in
+    if starts_with arg "[[" then
+      let pagename = value in
+      match List.assoc_opt pagename refs.parsed_embed_pages with
+      | Some tl ->
+        let t = of_blocks_without_pos tl |> to_value in
+        Some t
+      | None -> None
+    else if starts_with arg "((" then
+      let block_uuid = value in
+      match List.assoc_opt block_uuid refs.parsed_embed_blocks with
+      | Some (tl, _) ->
+        let t = of_blocks_without_pos tl |> to_value in
+        Some t
+      | None -> None
+    else
+      None
+
+let block_refs_embed arg (refs : Reference.parsed_t) =
+  let block_uuid = String.trim arg in
+  match List.assoc_opt block_uuid refs.parsed_embed_blocks with
+  | Some (_, tl) ->
+    let t = of_blocks_without_pos tl |> Z.root |> Z.of_l in
+    let t =
+      to_value
+      @@ Z.edit t ~f:(fun e ->
+             match e with
+             | Z.Branch (Z.Branch (Z.Leaf (Type.Heading h, _) :: tail) :: tail')
+               ->
+               Z.Branch
+                 (Z.Branch
+                    (Z.Leaf (Type.Paragraph h.title, Type.dummy_pos) :: tail)
+                 :: tail')
+             | _ -> e)
+    in
+    Some t
+  | None -> None
+
+(*
+   1. [Heading [Macro]; Paragraph...]
+         ^
+      -> [[1st-expanded-macro-type-list]
+          [2nd-expanded-macro-type-list]
+          [<last-expanded-macro-type-list>; Paragraph...]]
+   2. [Heading [Inline1;Macro;Inline2]; Paragraph...]
+         ^
+      -> [Heading [Inline1];
+          <expanded-macro-type-list>;
+          Paragraph [Inline2];
+          Paragraph...]
+ *)
+let replace_only_embed t expanded_macro =
+  match Z.up t with
+  | None -> Z.replace t ~item:expanded_macro (* should not be here *)
+  | Some t' -> (
+    match expanded_macro with
+    | Z.Branch l -> (
+      let last, butlast = butlast l in
+      let t'' =
+        List.fold_left
+          (fun t item ->
+            match Z.insert_left t ~item with
+            | None -> t
+            | Some t' -> t')
+          t' butlast
+      in
+      match last with
+      | None -> t''
+      | Some (Z.Leaf _ as last') ->
+        let rights = Z.rights t in
+        let t''' = Z.replace t'' ~item:(Z.branch (last' :: rights)) in
+        Z.up t''' |? t'''
+        (* return up t, we need to expand macros in macro*)
+      | Some (Z.Branch last') ->
+        let rights = Z.rights t in
+        let t''' = Z.replace t'' ~item:(Z.branch (last' @ rights)) in
+        Z.up t''' |? t'''
+      (* return up t, we need to expand macros in macro*))
+    | Z.Leaf _ as l ->
+      let rights = Z.rights t in
+      Z.replace t' ~item:(Z.branch (l :: rights)))
+
+(** [Inline1;Inline2;Macro;Inline3]
+   -> ([Inline1;Inline2], [Inline3]) *)
+let split_by_macro inline_list macro =
+  CCList.find_idx
+    (fun inline ->
+      match inline with
+      | Inline.Macro macro' when macro' = macro -> true
+      | _ -> false)
+    inline_list
+  >>| fun (index, _) ->
+  (CCList.take index inline_list, CCList.drop (index + 1) inline_list)
+
+let split_by_block_ref inline_list block_ref =
+  CCList.find_idx
+    (fun inline ->
+      match inline with
+      | Inline.Block_reference s when s = block_ref -> true
+      | _ -> false)
+    inline_list
+  >>| fun (index, _) ->
+  (CCList.take index inline_list, CCList.drop (index + 1) inline_list)
+
+let split_by_macro_or_block_ref inline_list macro_or_block_ref =
+  match macro_or_block_ref with
+  | `Macro macro -> split_by_macro inline_list macro
+  | `Block_ref s -> split_by_block_ref inline_list s
+
+(* TODO: zip.ml add insert_rights and insert_lefts  *)
+let insert_right z ~expanded_macro =
+  match expanded_macro with
+  | Z.Branch l ->
+    CCList.fold_right (fun item z -> Z.insert_right z ~item |? z) l z
+  | Z.Leaf _ as l -> Z.insert_right z ~item:l |? z
+
+let insert_right_block_ref z ~expanded_block_ref =
+  match expanded_block_ref with
+  | Z.Branch l ->
+    CCList.fold_right (fun l z -> insert_right z ~expanded_macro:l) l z
+  | Z.Leaf _ as l -> Z.insert_right z ~item:l |? z
+
+let replace_block_ref (t : Type.t_with_pos_meta Z.t) expanded_block_ref block_id
+    =
+  match Z.node t with
+  | Branch _ -> t
+  | Leaf (block, _pos) -> (
+    match block with
+    | Paragraph il -> (
+      match split_by_block_ref il block_id with
+      | None -> t
+      | Some (left, right) ->
+        Z.replace t ~item:(Z.leaf (Type.Paragraph left, Type.dummy_pos))
+        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+        >>| insert_right_block_ref ~expanded_block_ref
+        |> default t)
+    | Heading h -> (
+      let ({ title; _ } : Type.heading) = h in
+      match split_by_block_ref title block_id with
+      | None -> t
+      | Some (left, right) ->
+        Z.replace t
+          ~item:(Z.leaf (Type.Heading { h with title = left }, Type.dummy_pos))
+        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+        >>| insert_right_block_ref ~expanded_block_ref
+        |> default t)
+    | _ -> t)
+
+let replace_macro (t : Type.t_with_pos_meta Z.t) expanded_macro
+    macro_or_block_ref =
+  match Z.node t with
+  | Branch _ -> t
+  | Leaf (block, _pos) -> (
+    match block with
+    | Paragraph il -> (
+      match split_by_macro_or_block_ref il macro_or_block_ref with
+      | None -> t
+      | Some (left, right) ->
+        Z.replace t ~item:(Z.leaf (Type.Paragraph left, Type.dummy_pos))
+        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+        >>| insert_right ~expanded_macro
+        |> default t)
+    | Heading h -> (
+      let ({ title; _ } : Type.heading) = h in
+      match split_by_macro_or_block_ref title macro_or_block_ref with
+      | None -> t
+      | Some (left, right) ->
+        Z.replace t
+          ~item:(Z.leaf (Type.Heading { h with title = left }, Type.dummy_pos))
+        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+        >>| insert_right ~expanded_macro
+        |> default t)
+    | Table _ -> t (* TODO: macro in table *)
+    | _ -> t)
+
+let replace_embed_and_refs (t : Type.t_with_pos_meta Z.t)
+    (refs : Reference.parsed_t) =
+  let root = Z.of_l (to_value t) in
+  let rec aux z =
+    if Z.is_end z then
+      z
+    else
+      let z' = Z.next z in
+      match Z.node z' with
+      | Z.Branch _ -> aux z'
+      | Z.Leaf (block, _pos) -> (
+        match block with
+        | Type.Heading h -> (
+          match heading_merely_have_embed h with
+          | Some embed -> (
+            match macro_embed embed.arguments refs with
+            | Some l ->
+              let z'' = replace_only_embed z' l in
+              aux z''
+            | None -> aux z')
+          | None ->
+            let ({ title; _ } : Type.heading) = h in
+            extract_macro_or_block_ref title
+            >>= (fun macro_or_block_ref ->
+                  match macro_or_block_ref with
+                  | `Macro macro as macro' ->
+                    macro_embed macro.arguments refs >>= fun expanded_macro ->
+                    return @@ replace_macro z' expanded_macro macro'
+                  | `Block_ref block_ref ->
+                    block_refs_embed block_ref refs >>= fun expanded_macro ->
+                    return @@ replace_block_ref z' expanded_macro block_ref)
+            |> default z' |> aux)
+        | Type.Paragraph il ->
+          extract_macro_or_block_ref il
+          >>= (fun macro_or_block_ref ->
+                match macro_or_block_ref with
+                | `Macro macro as macro' ->
+                  macro_embed macro.arguments refs >>= fun expanded_macro ->
+                  return @@ replace_macro z' expanded_macro macro'
+                | `Block_ref block_ref ->
+                  block_refs_embed block_ref refs >>= fun expanded_macro ->
+                  return @@ replace_block_ref z' expanded_macro block_ref)
+          |> default z' |> aux
+        | Type.Custom _
+        | Type.Quote _
+        | Type.List _
+        | Type.Footnote_Definition _
+        | Type.Table _ ->
+          aux z' (* TODO: replace macro|ref in table & footnote_definition *)
+        | _ -> aux z')
+  in
+  aux root
