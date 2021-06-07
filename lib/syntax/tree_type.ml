@@ -250,11 +250,6 @@ let split_by_block_ref inline_list block_ref =
   >>| fun (index, _) ->
   (CCList.take index inline_list, CCList.drop (index + 1) inline_list)
 
-let split_by_macro_or_block_ref inline_list macro_or_block_ref =
-  match macro_or_block_ref with
-  | `Macro macro -> split_by_macro inline_list macro
-  | `Block_ref s -> split_by_block_ref inline_list s
-
 let insert_right z ~expanded_macro =
   match expanded_macro with
   | Z.Branch items -> Z.insert_rights z ~items |? z

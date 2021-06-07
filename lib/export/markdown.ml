@@ -2,7 +2,6 @@ open Prelude
 open Type
 open Inline
 open Document
-open Reference
 open Conf
 open Output
 
