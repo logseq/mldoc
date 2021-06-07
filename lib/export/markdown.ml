@@ -321,9 +321,10 @@ and list refs state config l =
       l)
   @@ List.flatten
   @@ CCList.map
-       (fun { content; items; number; name; checkbox; indent; _ } ->
+       (fun { content; items; number; name; checkbox; _ } ->
+         let state' = { state with current_level = state.current_level + 1 } in
          let name' = flatten_map (inline refs state config) name in
-         let content' = flatten_map (block refs state config) content in
+         let content' = flatten_map (block refs state' config) content in
          (* Definition Lists content if name isn't empty  *)
          let content'' =
            if name' <> [] then
@@ -332,7 +333,7 @@ and list refs state config l =
                   (fun l ->
                     List.flatten
                       [ [ raw_text ": " ]
-                      ; block refs state config l
+                      ; block refs state' config l
                       ; [ newline ]
                       ])
                   content
@@ -354,9 +355,8 @@ and list refs state config l =
            | Some true -> raw_text "[X]"
            | Some false -> raw_text "[ ]"
            | None -> raw_text ""
-         and indent' =
-           raw_text @@ String.make ((2 * state.current_level) + indent) ' '
-         and items' = list refs state config items in
+         and indent' = raw_text @@ String.make state'.current_level '\t'
+         and items' = list refs state' config items in
          List.flatten
            [ [ indent' ]
            ; [ number' ]
