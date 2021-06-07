@@ -5,7 +5,7 @@ open Type
 open Conf
 
 let indent_parser =
-  peek_spaces
+  peek_spaces_or_tabs
   >>| (function
         | s -> String.length s)
   <|> return 0
