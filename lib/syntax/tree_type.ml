@@ -255,17 +255,14 @@ let split_by_macro_or_block_ref inline_list macro_or_block_ref =
   | `Macro macro -> split_by_macro inline_list macro
   | `Block_ref s -> split_by_block_ref inline_list s
 
-(* TODO: zip.ml add insert_rights and insert_lefts  *)
 let insert_right z ~expanded_macro =
   match expanded_macro with
-  | Z.Branch l ->
-    CCList.fold_right (fun item z -> Z.insert_right z ~item |? z) l z
+  | Z.Branch items -> Z.insert_rights z ~items |? z
   | Z.Leaf _ as l -> Z.insert_right z ~item:l |? z
 
 let insert_right_block_ref z ~expanded_block_ref =
   match expanded_block_ref with
-  | Z.Branch l ->
-    CCList.fold_right (fun l z -> insert_right z ~expanded_macro:l) l z
+  | Z.Branch items -> Z.insert_rights z ~items |? z
   | Z.Leaf _ as l -> Z.insert_right z ~item:l |? z
 
 let replace_block_ref (t : Type.t_with_pos_meta Z.t) expanded_block_ref block_id
