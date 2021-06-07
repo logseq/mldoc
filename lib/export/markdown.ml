@@ -70,12 +70,12 @@ let raw_text_indent state config s =
   else
     indent_with_2_spacemore state.current_level :: indent state config s
 
-let rec inline refs state config (t : Inline.t) : t list =
+let rec inline state config (t : Inline.t) : t list =
   let content =
     indent_with_2_spacemore state.current_level
     ::
     (match t with
-    | Emphasis em -> emphasis refs state config em
+    | Emphasis em -> emphasis state config em
     | Break_Line ->
       state.last_newline <- true;
       [ raw_text "\n" ]
@@ -99,8 +99,8 @@ let rec inline refs state config (t : Inline.t) : t list =
     | Link l -> inline_link l
     | Nested_link l -> inline_nested_link l
     | Target s -> map_raw_text [ "<<"; s; ">>" ]
-    | Subscript tl -> inline_subscript refs state config tl
-    | Superscript tl -> inline_superscript refs state config tl
+    | Subscript tl -> inline_subscript state config tl
+    | Superscript tl -> inline_superscript state config tl
     | Footnote_Reference fr -> footnote_reference fr
     | Cookie c -> cookie c
     | Latex_Fragment lf -> latex_fragment lf
@@ -134,7 +134,7 @@ let rec inline refs state config (t : Inline.t) : t list =
   in
   content
 
-and emphasis refs state config (typ, tl) =
+and emphasis state config (typ, tl) =
   let outside_em_symbol = state.outside_em_symbol in
   let wrap_with tl s =
     let outside_em_symbol =
@@ -145,7 +145,7 @@ and emphasis refs state config (typ, tl) =
     List.flatten
       [ [ raw_text s ]
       ; List.flatten
-        @@ CCList.map (inline refs { state with outside_em_symbol } config) tl
+        @@ CCList.map (inline { state with outside_em_symbol } config) tl
       ; [ raw_text s ]
       ]
   in
@@ -167,25 +167,24 @@ and emphasis refs state config (typ, tl) =
   | `Underline ->
     List.flatten
     @@ CCList.map
-         (fun e ->
-           Space :: inline refs { state with outside_em_symbol } config e)
+         (fun e -> Space :: inline { state with outside_em_symbol } config e)
          tl
 
 and inline_link { full_text; _ } = [ raw_text full_text ]
 
 and inline_nested_link { content; _ } = [ raw_text content ]
 
-and inline_subscript refs state config tl =
+and inline_subscript state config tl =
   List.flatten
     [ [ raw_text "_{" ]
-    ; flatten_map (fun e -> Space :: inline refs state config e) tl
+    ; flatten_map (fun e -> Space :: inline state config e) tl
     ; [ raw_text "}" ]
     ]
 
-and inline_superscript refs state config tl =
+and inline_superscript state config tl =
   List.flatten
     [ [ raw_text "^{" ]
-    ; flatten_map (fun e -> Space :: inline refs state config e) tl
+    ; flatten_map (fun e -> Space :: inline state config e) tl
     ; [ raw_text "}" ]
     ]
 
@@ -224,20 +223,20 @@ and timestamp t =
 
 and block_reference block_uuid = map_raw_text [ "(("; block_uuid; "))" ]
 
-and block refs state config t =
+and block state config t =
   let content =
     match t with
     | Paragraph l ->
-      flatten_map (fun e -> Space :: inline refs state config e) l @ [ newline ]
+      flatten_map (fun e -> Space :: inline state config e) l @ [ newline ]
     | Paragraph_line l -> raw_text_indent state config l @ [ newline ]
     | Paragraph_Sep n -> [ raw_text @@ String.make n '\n' ]
-    | Heading h -> heading refs state config h
-    | List l -> list refs state config l
+    | Heading h -> heading state config h
+    | List l -> list state config l
     | Directive _ -> []
     | Results -> []
     | Example sl -> example state sl
     | Src cb -> src state config cb
-    | Quote tl -> quote refs state config tl
+    | Quote tl -> quote state config tl
     | Export _ -> []
     | CommentBlock _ -> []
     | Custom _ -> []
@@ -254,9 +253,9 @@ and block refs state config t =
         (* hide Property_Drawers *)
         []
     | Footnote_Definition (name, content) ->
-      footnote_definition refs state config name content
+      footnote_definition state config name content
     | Horizontal_Rule -> [ newline; raw_text "---"; newline ]
-    | Table t -> table refs state config t
+    | Table t -> table state config t
     | Comment s ->
       List.flatten
         [ raw_text_indent state config "<!---"
@@ -277,8 +276,8 @@ and heading_merely_have_embed { title; marker; priority; _ } =
   | [ Macro hd ], None, None when hd.name = "embed" -> Some hd
   | _ -> None
 
-and heading refs state config h =
-  let { title; tags; marker; priority; meta; _ } = h in
+and heading state config h =
+  let { title; tags; marker; priority; meta; unordered; level; _ } = h in
   let priority =
     match priority with
     | Some c -> "[#" ^ String.make 1 c ^ "]"
@@ -290,10 +289,19 @@ and heading refs state config h =
     | None -> ""
   in
   let f () =
-    let heading_or_list = [ Indent (state.current_level, 0); raw_text "-" ] in
+    let heading_or_list =
+      match (config.heading_to_list, config.ignore_heading_list_marker) with
+      | true, false -> [ Indent (state.current_level, 0); raw_text "-" ]
+      | true, true -> [ Indent (state.current_level, 0) ]
+      | false, _ ->
+        if unordered || level <= 0 then
+          [ Indent (state.current_level, 0); raw_text "-" ]
+        else
+          [ raw_text @@ String.make level '#' ]
+    in
     heading_or_list
     @ [ Space; raw_text marker; Space; raw_text priority; Space ]
-    @ flatten_map (fun e -> Space :: inline refs state config e) title
+    @ flatten_map (fun e -> Space :: inline state config e) title
     @ [ Space
       ; (if List.length tags > 0 then
           raw_text @@ ":" ^ String.concat ":" tags ^ ":"
@@ -312,7 +320,7 @@ and heading refs state config h =
   in
   List.append heading properties
 
-and list refs state config l =
+and list state config l =
   (fun l ->
     if List.length l > 0 then
       l @ [ TwoNewlines ]
@@ -322,8 +330,8 @@ and list refs state config l =
   @@ CCList.map
        (fun { content; items; number; name; checkbox; _ } ->
          let state' = { state with current_level = state.current_level + 1 } in
-         let name' = flatten_map (inline refs state config) name in
-         let content' = flatten_map (block refs state' config) content in
+         let name' = flatten_map (inline state config) name in
+         let content' = flatten_map (block state' config) content in
          (* Definition Lists content if name isn't empty  *)
          let content'' =
            if name' <> [] then
@@ -331,10 +339,7 @@ and list refs state config l =
              @@ CCList.map
                   (fun l ->
                     List.flatten
-                      [ [ raw_text ": " ]
-                      ; block refs state' config l
-                      ; [ newline ]
-                      ])
+                      [ [ raw_text ": " ]; block state' config l; [ newline ] ])
                   content
            else
              content'
@@ -354,8 +359,12 @@ and list refs state config l =
            | Some true -> raw_text "[X]"
            | Some false -> raw_text "[ ]"
            | None -> raw_text ""
-         and indent' = raw_text @@ String.make state'.current_level '\t'
-         and items' = list refs state' config items in
+         and indent' =
+           if state'.current_level > 0 then
+             raw_text @@ String.make state'.current_level '\t'
+           else
+             raw_text ""
+         and items' = list state' config items in
          List.flatten
            [ [ indent' ]
            ; [ number' ]
@@ -391,12 +400,12 @@ and src state config { lines; language; _ } =
     ; [ indent_with_2_spacemore state.current_level; raw_text "```"; newline ]
     ]
 
-and quote refs state config tl =
+and quote state config tl =
   flatten_map
     (fun l ->
       List.flatten
         [ [ indent_with_2_spacemore state.current_level; raw_text ">"; Space ]
-        ; block refs state config l
+        ; block state config l
         ; [ newline ]
         ])
     tl
@@ -430,12 +439,12 @@ and drawer state config name kvs =
       ; [ raw_text ":END:"; newline ]
       ]
 
-and footnote_definition refs state config name content =
-  let content' = flatten_map (inline refs state config) content in
+and footnote_definition state config name content =
+  let content' = flatten_map (inline state config) content in
   List.flatten
     [ [ raw_text @@ "[^" ^ name ^ "]"; Space ]; content'; [ newline ] ]
 
-and table refs state config { header; groups; _ } =
+and table state config { header; groups; _ } =
   match header with
   | None -> []
   | Some header ->
@@ -448,7 +457,7 @@ and table refs state config { header; groups; _ } =
         ; flatten_map
             (fun col ->
               Space :: raw_text "|" :: Space
-              :: flatten_map (inline refs state config) col)
+              :: flatten_map (inline state config) col)
             header
         ; [ Space; raw_text "|" ]
         ]
@@ -461,7 +470,7 @@ and table refs state config { header; groups; _ } =
                    (fun col ->
                      indent_with_2_spacemore state.current_level
                      :: Space :: raw_text "|" :: Space
-                     :: flatten_map (inline refs state config) col)
+                     :: flatten_map (inline state config) col)
                    row
                ; [ Space; raw_text "|"; newline ]
                ]))
@@ -479,25 +488,25 @@ and table refs state config { header; groups; _ } =
       ; [ newline ]
       ]
 
-let rec blocks_aux refs state config (v : Tree_type.value) =
+let rec blocks_aux state config (v : Tree_type.value) =
   let open Zip in
   match v with
-  | Leaf (b, _) -> block refs state config b
+  | Leaf (b, _) -> block state config b
   | Branch [] -> []
   | Branch (Leaf (h, _) :: t) ->
     let state' = { state with current_level = state.current_level + 1 } in
-    let heading = block refs state' config h in
-    List.flatten @@ (heading :: CCList.map (blocks_aux refs state' config) t)
+    let heading = block state' config h in
+    List.flatten @@ (heading :: CCList.map (blocks_aux state' config) t)
   | Branch l ->
     let state' = { state with current_level = state.current_level + 1 } in
-    List.flatten @@ CCList.map (blocks_aux refs state' config) l
+    List.flatten @@ CCList.map (blocks_aux state' config) l
 
 let blocks refs config tl =
   let open Tree_type in
   let z = of_blocks tl in
-  let z' = replace_embed_and_refs z refs in
+  let z' = replace_embed_and_refs z ~refs in
   let v = to_value z' in
-  blocks_aux refs (default_state ()) config v
+  blocks_aux (default_state ()) config v
 
 let directive kvs =
   if List.length kvs = 0 then

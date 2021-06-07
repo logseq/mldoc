@@ -276,27 +276,6 @@ let remove_fst_space_newline = function
   | Newline :: t -> t
   | l -> l
 
-(* let remove_greatest_common_prefix_indent config tl =
- *   if not config.heading_to_list then
- *     tl
- *   else
- *     let find_greatest_common_prefix_indent tl =
- *       List.fold_left
- *         (fun r e ->
- *           match e with
- *           | Indent n when n < r -> n
- *           | _ -> r)
- *         999 tl
- *     in
- *     let prefix = find_greatest_common_prefix_indent tl in
- *     CCList.map
- *       (fun e ->
- *         match e with
- *         | Indent n when n < prefix -> Indent 0
- *         | Indent n -> Indent (n - prefix)
- *         | _ -> e)
- *       tl *)
-
 let to_string tl =
   String.concat ""
   @@ CCList.map
@@ -306,7 +285,19 @@ let to_string tl =
          | TwoNewlines -> "\n\n"
          | OneNewline -> "\n"
          | Indent (tabs, spaces) ->
-           String.make tabs '\t' ^ String.make spaces ' '
+           let tabs' =
+             if tabs > 0 then
+               String.make tabs '\t'
+             else
+               ""
+           in
+           let spaces' =
+             if spaces > 0 then
+               String.make spaces ' '
+             else
+               ""
+           in
+           tabs' ^ spaces'
          | RawText s -> s)
        (remove_fst_space_newline
           (merge_adjacent_space_newline (merge_adjacent_space_newline tl)))

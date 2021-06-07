@@ -8,7 +8,7 @@ val of_blocks_without_pos : Type.t list -> t
 
 val to_value : t -> value
 
-val replace_embed_and_refs : t -> Reference.parsed_t -> t
+val replace_embed_and_refs : t -> refs:Reference.parsed_t -> t
 
 val to_blocks : t -> Type.blocks
 

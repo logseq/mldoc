@@ -99,25 +99,47 @@ let _ =
          | Error error, _ -> Js_of_ocaml.Js.string error
          | _, Error error -> Js_of_ocaml.Js.string error
 
-       method parseAndExportOPML input config_json title =
+       method parseAndExportOPML input config_json title references =
          let str = Js.to_string input in
          let config_json = Js.to_string config_json in
          let config_json = Yojson.Safe.from_string config_json in
          let title = Js.to_string title in
+         let references_json =
+           Js.to_string references |> Yojson.Safe.from_string
+         in
          let buffer = Buffer.create 1024 in
-         match Conf.of_yojson config_json with
-         | Ok config ->
+         match
+           (Conf.of_yojson config_json, Reference.of_yojson references_json)
+         with
+         | Ok config, Ok references ->
            let config = { config with ignore_heading_list_marker = true } in
            let ast = parse config str in
            let document = Document.from_ast (Some title) ast in
+           let parsed_embed_blocks =
+             CCList.map
+               (fun (k, (content_include_children, content)) ->
+                 ( k
+                 , ( fst @@ unzip @@ parse config content_include_children
+                   , fst @@ unzip @@ parse config content ) ))
+               references.embed_blocks
+           in
+           let parsed_embed_pages =
+             CCList.map
+               (fun (k, v) -> (k, fst @@ unzip @@ parse config v))
+               references.embed_pages
+           in
+           let refs : Reference.parsed_t =
+             { parsed_embed_blocks; parsed_embed_pages }
+           in
            let _ =
              Sys_js.set_channel_flusher stdout (fun s ->
                  Buffer.add_string buffer s)
            in
-           generate "opml" config document stdout;
+           generate "opml" ~refs config document stdout;
            flush stdout;
            Js.string (Buffer.contents buffer)
-         | Error error -> Js.string ("json->config err: " ^ error)
+         | Error error, _ -> Js.string ("json->config err: " ^ error)
+         | _, Error error -> Js.string ("json->refs err: " ^ error)
 
        method astExportMarkdown ast config_json references =
          let ast = Js.to_string ast |> Yojson.Safe.from_string in
