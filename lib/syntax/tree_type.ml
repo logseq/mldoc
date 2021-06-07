@@ -312,7 +312,7 @@ let replace_macro (t : Type.t_with_pos_meta Z.t) expanded_macro macro =
     | Table _ -> t (* TODO: macro in table *)
     | _ -> t)
 
-let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) refs =
+let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
   let root = Z.of_l (to_value t) in
   let rec aux z =
     if Z.is_end z then
@@ -356,7 +356,7 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) refs =
           |> default z' |> aux
         | Type.Quote tl ->
           let t = of_blocks_without_pos tl in
-          let t' = replace_embed_and_refs t refs in
+          let t' = replace_embed_and_refs t ~refs in
           let tl' = to_blocks_without_pos t' in
           Z.replace z' ~item:(Z.Leaf (Type.Quote tl', Type.dummy_pos)) |> aux
         | Type.List items ->
@@ -367,7 +367,7 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) refs =
                 let content =
                   replace_embed_and_refs
                     (of_blocks_without_pos item.content)
-                    refs
+                    ~refs
                   |> to_blocks_without_pos
                 in
                 { item with content; items = nested_items_t })

@@ -20,9 +20,7 @@ let rec block_tree_to_plain_tree (blocks : Tree_type.value) : string Zip.l =
   match blocks with
   | Leaf (t, _pos) ->
     leaf
-      Markdown.(
-        Output.to_string
-        @@ block empty_references (default_state ()) default_config t)
+      Markdown.(Output.to_string @@ block (default_state ()) default_config t)
   | Branch [] -> Branch []
   | Branch l -> branch @@ CCList.map block_tree_to_plain_tree l
 
@@ -101,10 +99,15 @@ module OPMLExporter = struct
 
   let default_filename = change_ext "opml"
 
-  let export ~refs:_ _config (doc : Document.t) output =
-    let title = Option.(doc.filename |? (doc.title |? "untitled")) in
+  let export ~refs _config (doc : Document.t) output =
+    let open Option in
+    let refs =
+      refs |? Reference.{ parsed_embed_blocks = []; parsed_embed_pages = [] }
+    in
+    let title = doc.filename |? (doc.title |? "untitled") in
     let output_buf = Xmlm.make_output ~indent:(Some 2) (`Channel output) in
-    doc.blocks |> Tree_type.of_blocks |> Tree_type.to_value
-    |> block_tree_to_plain_tree
+    doc.blocks |> Tree_type.of_blocks
+    |> Tree_type.replace_embed_and_refs ~refs
+    |> Tree_type.to_value |> block_tree_to_plain_tree
     |> output_with_header output_buf { title }
 end
