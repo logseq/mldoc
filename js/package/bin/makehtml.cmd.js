@@ -74,7 +74,7 @@ function run () {
     // process the input
     messenger.printMsg('Parsing file...');
     // TODO: add config options
-    html = MO.parseHtml(content, JSON.stringify({"toc": true,
+    html = MO.exportToHtml(content, JSON.stringify({"toc": true,
                                                  "heading_number": true,
                                                  "keep_line_break": false,
                                                  "format": format,

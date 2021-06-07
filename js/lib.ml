@@ -41,7 +41,7 @@ let _ =
              input)
          | Error e -> Js_of_ocaml.Js.string ("Config error: " ^ e)
 
-       method parseHtml input config_json =
+       method exportToHtml input config_json =
          let str = Js.to_string input in
          let config_json = Js.to_string config_json in
          let buffer = Buffer.create 1024 in
