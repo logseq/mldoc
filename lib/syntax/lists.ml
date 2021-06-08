@@ -162,7 +162,7 @@ let rec list_parser config content_parsers items last_indent =
             | Some _ -> true
             | None -> false
           in
-          let content = CCList.map String.trim content in
+          let content = List.map String.trim content in
           let content = String.concat "\n" content in
           let name, content =
             if ordered then
@@ -174,7 +174,7 @@ let rec list_parser config content_parsers items last_indent =
             match parse_string ~consume:All content_parsers content with
             | Ok result ->
               let result = Paragraph.concat_paragraph_lines config result in
-              CCList.map fst result
+              List.map fst result
             | Error _e -> [ Paragraph [ Inline.Plain content ] ]
           in
           let item =

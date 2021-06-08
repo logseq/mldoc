@@ -12,7 +12,7 @@ let macros = ref []
 (* #+OPTIONS:   num:nil toc:2 *)
 let options = ref []
 
-let concatmap f l = List.concat (CCList.map f l)
+let concatmap f l = List.concat (List.map f l)
 
 let list_element = function
   | [] -> "ul"
@@ -203,7 +203,7 @@ let construct_numbering config ?(toc = false) level numbering =
     if level <= num_option then
       match numbering with
       | Some l ->
-        let numbering = CCList.map string_of_int l |> String.concat "." in
+        let numbering = List.map string_of_int l |> String.concat "." in
         if toc then
           Xml.data (numbering ^ ". ")
         else
@@ -314,7 +314,7 @@ let rec list_item config x =
 and table config { header; groups; col_groups } =
   let tr elm cols =
     Xml.block "tr"
-      (CCList.map
+      (List.map
          (fun col ->
            Xml.block elm
              ~attr:[ ("scope", "col"); ("class", "org-left") ]
@@ -323,7 +323,7 @@ and table config { header; groups; col_groups } =
   in
   let col_groups =
     try
-      CCList.map
+      List.map
         (fun number ->
           let col_elem = Xml.block "col" ~attr:[ ("class", "org-left") ] [] in
           Xml.block "colgroup" (repeat number col_elem))
@@ -336,9 +336,7 @@ and table config { header; groups; col_groups } =
     | Some cols -> Xml.block "thead" [ tr "th" cols ]
   in
   let groups =
-    CCList.map
-      (fun group -> Xml.block "tbody" (CCList.map (tr "td") group))
-      groups
+    List.map (fun group -> Xml.block "tbody" (List.map (tr "td") group)) groups
   in
   Xml.block
     ~attr:
@@ -351,7 +349,7 @@ and table config { header; groups; col_groups } =
     "table"
     (col_groups @ (head :: groups))
 
-and blocks config l = CCList.map (block config) l
+and blocks config l = List.map (block config) l
 
 and block config t =
   let open List in
@@ -415,14 +413,14 @@ and block config t =
 let toc config content =
   let toc_option = get_int_option "toc" in
   let rec go content =
-    match Prelude.hd_opt content with
+    match hd_opt content with
     | None -> Xml.empty
     | Some { level; _ } ->
       if level > toc_option then
         Xml.empty
       else
         let items =
-          CCList.map
+          List.map
             (fun { title; level; anchor; numbering; items } ->
               let numbering =
                 construct_numbering config ~toc:true level (Some numbering)
@@ -448,7 +446,7 @@ let collect_macros directives =
   let collected =
     directives
     |> List.filter (fun (name, _) -> String.uppercase_ascii name = "MACRO")
-    |> CCList.map (fun (_, df) ->
+    |> List.map (fun (_, df) ->
            let name, definition = splitl (fun c -> c <> ' ') df in
            (name, String.trim definition))
   in
@@ -463,7 +461,7 @@ let collect_options directives =
           directives
       in
       snd options |> String.split_on_char ' '
-      |> CCList.map (fun s ->
+      |> List.map (fun s ->
              match String.split_on_char ':' s with
              | [] -> ("", "")
              | [ k; v ] -> (k, v)
@@ -494,7 +492,7 @@ module HtmlExporter = struct
      *   | None -> Xml.empty
      *   | Some s -> Xml.block "h1" ~attr:["class", "title"]
      *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
-    let doc_blocks = CCList.map fst doc.blocks in
+    let doc_blocks = List.map fst doc.blocks in
     let blocks = blocks config doc_blocks in
     let blocks =
       if Conf.(config.toc) then

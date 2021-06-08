@@ -251,7 +251,9 @@ let count_substring str sub =
   aux 0 0
 
 (* Copied from https://github.com/c-cube/ocaml-containers/blob/master/src/core/CCList.ml *)
-module CCList = struct
+module List = struct
+  include List
+
   (* max depth for direct recursion *)
   let direct_depth_default_ = 1000
 
@@ -323,6 +325,8 @@ module CCList = struct
     | [ x ] -> x :: l2
     | [ x; y ] -> x :: y :: l2
     | _ -> direct direct_depth_append_ l1 l2
+
+  let ( @ ) = append
 
   let direct_depth_filter_ = 10_000
 
@@ -406,7 +410,7 @@ end
 
 let ( @ ) = List.append
 
-let clear_indents s = CCList.map String.trim (lines s)
+let clear_indents s = List.map String.trim (lines s)
 
 (** Copied from https://github.com/c-cube/ocaml-containers/blob/master/src/core/CCString.ml *)
 module String = struct

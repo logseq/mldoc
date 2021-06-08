@@ -33,7 +33,7 @@ let parse =
   >>= fun lines ->
   let start_indent, _content = List.hd lines in
   let lines =
-    CCList.map
+    List.map
       (fun (i, c) ->
         if i > start_indent then
           String.make (i - start_indent) ' ' ^ c

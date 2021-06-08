@@ -73,7 +73,7 @@ let _ =
          | Ok config, Ok references ->
            let ast = parse config str in
            let parsed_embed_blocks =
-             CCList.map
+             List.map
                (fun (k, (content_include_children, content)) ->
                  ( k
                  , ( fst @@ unzip @@ parse config content_include_children
@@ -81,7 +81,7 @@ let _ =
                references.embed_blocks
            in
            let parsed_embed_pages =
-             CCList.map
+             List.map
                (fun (k, v) -> (k, fst @@ unzip @@ parse config v))
                references.embed_pages
            in
@@ -116,7 +116,7 @@ let _ =
            let ast = parse config str in
            let document = Document.from_ast (Some title) ast in
            let parsed_embed_blocks =
-             CCList.map
+             List.map
                (fun (k, (content_include_children, content)) ->
                  ( k
                  , ( fst @@ unzip @@ parse config content_include_children
@@ -124,7 +124,7 @@ let _ =
                references.embed_blocks
            in
            let parsed_embed_pages =
-             CCList.map
+             List.map
                (fun (k, v) -> (k, fst @@ unzip @@ parse config v))
                references.embed_pages
            in
@@ -157,7 +157,7 @@ let _ =
          with
          | Ok config, Ok references, Ok ast ->
            let parsed_embed_blocks =
-             CCList.map
+             List.map
                (fun (k, (content_include_children, content)) ->
                  ( k
                  , ( fst @@ unzip @@ parse config content_include_children
@@ -165,7 +165,7 @@ let _ =
                references.embed_blocks
            in
            let parsed_embed_pages =
-             CCList.map
+             List.map
                (fun (k, v) -> (k, fst @@ unzip @@ parse config v))
                references.embed_pages
            in

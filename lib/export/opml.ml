@@ -22,7 +22,7 @@ let rec block_tree_to_plain_tree (blocks : Tree_type.value) : string Zip.l =
     leaf
       Markdown.(Output.to_string @@ block (default_state ()) default_config t)
   | Branch [] -> Branch []
-  | Branch l -> branch @@ CCList.map block_tree_to_plain_tree l
+  | Branch l -> branch @@ List.map block_tree_to_plain_tree l
 
 let attr ?(uri = "") local value : Xmlm.attribute = ((uri, local), value)
 
@@ -30,7 +30,7 @@ let tag name attrs : Xmlm.tag = (("", name), attrs)
 
 (* only concat Leaf list, ignore Branch elem *)
 let zipl_to_string_list l =
-  CCList.map
+  List.map
     (fun e ->
       match e with
       | Zip.Leaf s -> s

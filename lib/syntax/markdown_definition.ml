@@ -42,7 +42,7 @@ let definition_parse config =
     | Error _e -> [ Inline.Plain name ]
   in
   let content =
-    CCList.map
+    List.map
       (fun line ->
         match
           parse_string ~consume:All (Inline.parse config) (String.trim line)

@@ -1,3 +1,4 @@
+open Prelude
 open Type
 
 type toc = toc_item list [@@deriving yojson]
@@ -50,8 +51,6 @@ let compute_heading_numbering level toc =
   match toc with
   | [] -> [ 1 ]
   | p :: _ ->
-    let open List in
-    let open Prelude in
     if p.level = level then
       drop_last 1 p.numbering @ [ last p.numbering + 1 ]
     else if p.level < level then
@@ -61,8 +60,8 @@ let compute_heading_numbering level toc =
       (* breakout *)
       let diff = p.level - level in
       let offset = List.length p.numbering - (diff + 1) in
-      let before, after = Prelude.split_n offset p.numbering in
-      before @ [ hd after + 1 ]
+      let before, after = split_n offset p.numbering in
+      before @ [ List.hd after + 1 ]
 
 let ast_to_json ast = toc_item_to_yojson ast |> Yojson.Safe.to_string
 
@@ -71,10 +70,10 @@ let rec toc_append_item parent depth item =
     { parent with items = parent.items @ [ item ] }
   else
     let item =
-      let parent' = Prelude.last parent.items in
+      let parent' = last parent.items in
       toc_append_item parent' (depth - 1) item
     in
-    { parent with items = Prelude.drop_last 1 parent.items @ [ item ] }
+    { parent with items = drop_last 1 parent.items @ [ item ] }
 
 let toc_tree items =
   let rec go acc = function
