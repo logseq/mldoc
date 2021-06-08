@@ -686,7 +686,7 @@ let markdown_link config =
         @@ fix (fun m -> List.cons <$> label_part_choices <*> m <|> return [])
         >>| fun l ->
           ( concat_plains l
-          , CCList.map
+          , List.map
               (function
                 | Plain s -> s
                 | Code s -> "`" ^ s ^ "`"
@@ -734,7 +734,7 @@ let markdown_link config =
              ])
       in
       let label =
-        CCList.map
+        List.map
           (function
             | Plain s as e -> (
               match parse_string ~consume:All parser s with
@@ -796,12 +796,12 @@ let nested_emphasis ?state config =
       in
       Emphasis
         ( typ
-        , CCList.map
+        , List.map
             (function
               | Plain s as e -> (
                 match parse_string ~consume:All parser s with
                 | Ok [ Plain _ ] -> [ e ]
-                | Ok result -> CCList.map aux_nested_emphasis result
+                | Ok result -> List.map aux_nested_emphasis result
                 | Error _error -> [ e ])
               | s -> [ s ])
             l
@@ -1268,4 +1268,4 @@ let rec ascii = function
   | Entity e -> e.Entity.unicode
   | _ -> ""
 
-and asciis l = String.concat "" (CCList.map ascii l)
+and asciis l = String.concat "" (List.map ascii l)

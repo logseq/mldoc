@@ -1,3 +1,5 @@
+open Prelude
+
 (* taken from mlorg *)
 
 type t =
@@ -127,7 +129,7 @@ let output ?(offset = 0) fd inlines prep_inlines exceptions space_significants
                   children)
         then (
           (if children <> [] then
-            match Prelude.last_opt children with
+            match last_opt children with
             | Some (Data _) -> output_string fd "\n"
             | Some _
             | None ->

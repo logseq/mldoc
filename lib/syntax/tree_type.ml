@@ -231,24 +231,24 @@ let replace_only_embed t expanded_macro =
 (** [Inline1;Inline2;Macro;Inline3]
    -> ([Inline1;Inline2], [Inline3]) *)
 let split_by_macro inline_list macro =
-  CCList.find_idx
+  List.find_idx
     (fun inline ->
       match inline with
       | Inline.Macro macro' when macro' = macro -> true
       | _ -> false)
     inline_list
   >>| fun (index, _) ->
-  (CCList.take index inline_list, CCList.drop (index + 1) inline_list)
+  (List.take index inline_list, List.drop (index + 1) inline_list)
 
 let split_by_block_ref inline_list block_ref =
-  CCList.find_idx
+  List.find_idx
     (fun inline ->
       match inline with
       | Inline.Block_reference s when s = block_ref -> true
       | _ -> false)
     inline_list
   >>| fun (index, _) ->
-  (CCList.take index inline_list, CCList.drop (index + 1) inline_list)
+  (List.take index inline_list, List.drop (index + 1) inline_list)
 
 let insert_right z ~expanded_macro =
   match expanded_macro with
@@ -361,7 +361,7 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
           Z.replace z' ~item:(Z.Leaf (Type.Quote tl', Type.dummy_pos)) |> aux
         | Type.List items ->
           let rec list_aux items =
-            CCList.map
+            List.map
               (fun (item : Type.list_item) ->
                 let nested_items_t = list_aux item.items in
                 let content =

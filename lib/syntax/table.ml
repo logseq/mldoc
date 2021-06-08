@@ -34,7 +34,7 @@ let separated_line =
   <* spaces
   <* eol
 
-let split_into_columns s = String.split_on_char '|' s |> CCList.map String.trim
+let split_into_columns s = String.split_on_char '|' s |> List.map String.trim
 
 let row_line =
   let open String in
@@ -58,7 +58,7 @@ let group config =
           (* new row *)
           row_line >>= fun row ->
           let row =
-            CCList.map
+            List.map
               (fun col ->
                 result_default [ Inline.Plain col ]
                   (parse_string ~consume:All (Inline.parse config) col))

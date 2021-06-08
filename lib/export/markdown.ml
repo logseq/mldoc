@@ -22,7 +22,7 @@ let newline = Newline
 
 let map_raw_text = List.map raw_text
 
-let flatten_map f l = List.flatten (CCList.map f l)
+let flatten_map f l = List.flatten (List.map f l)
 
 type refs = Reference.parsed_t
 
@@ -145,7 +145,7 @@ and emphasis state config (typ, tl) =
     List.flatten
       [ [ raw_text s ]
       ; List.flatten
-        @@ CCList.map (inline { state with outside_em_symbol } config) tl
+        @@ List.map (inline { state with outside_em_symbol } config) tl
       ; [ raw_text s ]
       ]
   in
@@ -166,7 +166,7 @@ and emphasis state config (typ, tl) =
         "*")
   | `Underline ->
     List.flatten
-    @@ CCList.map
+    @@ List.map
          (fun e -> Space :: inline { state with outside_em_symbol } config e)
          tl
 
@@ -327,7 +327,7 @@ and list state config l =
     else
       l)
   @@ List.flatten
-  @@ CCList.map
+  @@ List.map
        (fun { content; items; number; name; checkbox; _ } ->
          let state' = { state with current_level = state.current_level + 1 } in
          let name' = flatten_map (inline state config) name in
@@ -336,7 +336,7 @@ and list state config l =
          let content'' =
            if name' <> [] then
              List.flatten
-             @@ CCList.map
+             @@ List.map
                   (fun l ->
                     List.flatten
                       [ [ raw_text ": " ]; block state' config l; [ newline ] ])
@@ -496,10 +496,10 @@ let rec blocks_aux state config (v : Tree_type.value) =
   | Branch (Leaf (h, _) :: t) ->
     let state' = { state with current_level = state.current_level + 1 } in
     let heading = block state' config h in
-    List.flatten @@ (heading :: CCList.map (blocks_aux state' config) t)
+    List.flatten @@ (heading :: List.map (blocks_aux state' config) t)
   | Branch l ->
     let state' = { state with current_level = state.current_level + 1 } in
-    List.flatten @@ CCList.map (blocks_aux state' config) l
+    List.flatten @@ List.map (blocks_aux state' config) l
 
 let blocks refs config tl =
   let open Tree_type in
@@ -539,5 +539,5 @@ module MarkdownExporter = struct
     in
     let directives = directive doc.directives in
     let blocks = blocks refs config doc.blocks in
-    output_string output (to_string (CCList.append directives blocks))
+    output_string output (to_string (List.append directives blocks))
 end

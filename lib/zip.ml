@@ -131,7 +131,7 @@ module Zipper : S = struct
     }
 
   let of_list l =
-    let value = branch @@ CCList.map (fun e -> leaf e) l in
+    let value = branch @@ List.map (fun e -> leaf e) l in
     of_l value
 
   let node t = t.value

@@ -144,7 +144,7 @@ let merge_adjacent_space_newline =
              (* ignore *)
              (result, a, b, c, start_of_line)
            | Indent n, before, _, _, true ->
-             ( CCList.append (CCList.map to_t before) result
+             ( List.append (List.map to_t before) result
              , [ `Indent n ]
              , false
              , None
@@ -278,7 +278,7 @@ let remove_fst_space_newline = function
 
 let to_string tl =
   String.concat ""
-  @@ CCList.map
+  @@ List.map
        (function
          | Space -> " "
          | Newline -> "\n"
