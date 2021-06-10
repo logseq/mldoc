@@ -41,6 +41,13 @@ let _ =
              input)
          | Error e -> Js_of_ocaml.Js.string ("Config error: " ^ e)
 
+       method parseOPML input =
+         let str = Js.to_string input in
+         try Opml_parser.parse str |> ast_to_json |> Js.string
+         with error ->
+           print_endline (Printexc.to_string error);
+           input
+
        method exportToHtml input config_json =
          let str = Js.to_string input in
          let config_json = Js.to_string config_json in

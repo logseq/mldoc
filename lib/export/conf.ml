@@ -18,7 +18,7 @@ type t =
     (* hiccup: bool; *)
     toc : bool
   ; heading_number : bool
-  ; keep_line_break : bool
+  ; keep_line_break : bool (* FIXME: is this option deprecated? *)
   ; format : format
   ; heading_to_list : bool (* export heading as list *)
   ; exporting_keep_properties : bool

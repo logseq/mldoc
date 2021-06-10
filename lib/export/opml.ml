@@ -58,8 +58,9 @@ let collect_outline_note_part (l : string Zip.l list) =
   in
   aux [] l
 
-let rec plain_tree_to_frag (plain_tree : string Zip.l) : string Zip.l Xmlm.frag
-    =
+let rec plain_tree_to_frag
+    (plain_tree : Markdown_transformer.String_Tree_Value.t) :
+    string Zip.l Xmlm.frag =
   let open Zip in
   match plain_tree with
   | Leaf s -> outline_frag s
@@ -108,6 +109,7 @@ module OPMLExporter = struct
     let output_buf = Xmlm.make_output ~indent:(Some 2) (`Channel output) in
     doc.blocks |> Tree_type.of_blocks
     |> Tree_type.replace_embed_and_refs ~refs
-    |> Tree_type.to_value |> block_tree_to_plain_tree
+    |> Tree_type.to_value
+    |> Markdown_transformer.String_Tree_Value.of_value ~config:default_config
     |> output_with_header output_buf { title }
 end
