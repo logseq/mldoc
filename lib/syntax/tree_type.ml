@@ -109,6 +109,8 @@ let of_blocks_without_pos (blocks : Type.t list) =
 
 let to_value = Z.root
 
+let of_value = Z.of_l
+
 let to_blocks t =
   let root_t = Z.of_l (to_value t) in
   let rec aux r t =

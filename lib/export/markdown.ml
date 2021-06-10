@@ -526,6 +526,17 @@ let directive kvs =
         kvs
     @ sep_line
 
+module String_Tree_Value = struct
+  type t = string Zip.l
+
+  let rec of_value v ~config =
+    match v with
+    | Zip.Leaf (t, _pos) ->
+      Zip.leaf @@ Output.to_string @@ block (default_state ()) config t
+    | Zip.Branch [] -> Zip.Branch []
+    | Zip.Branch l -> Zip.branch @@ List.map (of_value ~config) l
+end
+
 module MarkdownExporter = struct
   let name = "markdown"
 

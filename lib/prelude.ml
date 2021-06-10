@@ -406,6 +406,8 @@ module List = struct
         safe f l' acc
     in
     direct direct_depth_default_ f l acc
+
+  let flatten l = fold_right append l []
 end
 
 let ( @ ) = List.append
