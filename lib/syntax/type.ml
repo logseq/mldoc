@@ -103,7 +103,11 @@ and t =
 
 and t_with_pos_meta = t * pos_meta [@@deriving yojson]
 
+and t_with_content = t * string [@@deriving yojson]
+
 and blocks = t_with_pos_meta list [@@deriving yojson]
+
+and blocks_with_content = t_with_content list [@@deriving yojson]
 
 (* and blocks = t list [@@deriving yojson] *)
 

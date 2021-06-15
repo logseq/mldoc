@@ -6,7 +6,7 @@ module String_Tree_Value : sig
 
   val of_value : Tree_type.value -> config:Conf.t -> t
 
-  val to_value : t -> Tree_type.value
+  val to_value : t -> Tree_type.value_with_content
 end = struct
   type t = string Z.l
 
@@ -45,14 +45,23 @@ end = struct
       | Z.Branch (Z.Branch _ :: _ as l) -> Z.branch @@ List.map (aux ~level) l
       | Z.Branch (Z.Leaf h :: t) ->
         (* FIXME: feel bad to operations(concat "-") on string directly here  *)
-        let ast = Mldoc_parser.parse default_config ("- " ^ h) in
+        let h = "- " ^ h in
+        let ast = Mldoc_parser.parse default_config h in
         let body, rest = collect_body_part t in
         let body_ast =
           List.map
             (function
               | Z.Leaf e ->
                 let ast = Mldoc_parser.parse default_config e in
-                Some ast
+                let ast' =
+                  List.map
+                    (fun (ast, (pos : Type.pos_meta)) ->
+                      ( ast
+                      , String.sub e pos.start_pos (pos.end_pos - pos.start_pos)
+                      ))
+                    ast
+                in
+                Some ast'
               | Z.Branch _ -> None)
             body
           |> List.concat_map (function
@@ -70,7 +79,16 @@ end = struct
           | Type.Heading h -> Type.Heading { h with level }
           | _ -> head
         in
-        let head_ast' = (head', pos) in
+        let head_content =
+          String.sub h (2 + pos.start_pos) (pos.end_pos - 2 - pos.start_pos)
+        in
+        let head_ast' = (head', head_content) in
+        let body_ast' =
+          List.map
+            (fun (ast, (pos : Type.pos_meta)) ->
+              (ast, String.sub h pos.start_pos (pos.end_pos - pos.start_pos)))
+            body_ast'
+        in
         let body_ast'' = body_ast' @ body_ast in
         Z.branch
         @@ (Z.leaf head_ast' :: List.map Z.leaf body_ast'')
