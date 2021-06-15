@@ -5,6 +5,9 @@ open! Prelude
 
 let ast_to_json ast = Type.blocks_to_yojson ast |> Yojson.Safe.to_string
 
+let ast_with_content_to_json ast =
+  Opml_parser.headers_and_blocks_to_yojson ast |> Yojson.Safe.to_string
+
 let generate backend ?refs config doc output =
   let export = Exporters.find backend in
   Exporters.run export ~refs config doc output
@@ -43,7 +46,7 @@ let _ =
 
        method parseOPML input =
          let str = Js.to_string input in
-         try Opml_parser.parse str |> ast_to_json |> Js.string
+         try Opml_parser.parse str |> ast_with_content_to_json |> Js.string
          with error ->
            print_endline (Printexc.to_string error);
            input

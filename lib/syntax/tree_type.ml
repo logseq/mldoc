@@ -2,9 +2,13 @@ open! Prelude
 open Option
 module Z = Zip
 
-type t = Type.t_with_pos_meta Z.t
+(* type t = Type.t_with_pos_meta Z.t *)
+
+type 'a t = 'a Z.t
 
 type value = Type.t_with_pos_meta Z.l
+
+type value_with_content = Type.t_with_content Z.l
 
 (*
    - Heading (level=1)
@@ -111,6 +115,8 @@ let to_value = Z.root
 
 let of_value = Z.of_l
 
+let of_value_with_content = Z.of_l
+
 let to_blocks t =
   let root_t = Z.of_l (to_value t) in
   let rec aux r t =
@@ -124,6 +130,8 @@ let to_blocks t =
   aux [] root_t |> List.rev
 
 let to_blocks_without_pos t = to_blocks t |> List.split |> fst
+
+let to_blocks_with_content = to_blocks
 
 (** replace (block|page)'s (embed|refs) *)
 
