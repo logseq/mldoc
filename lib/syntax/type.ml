@@ -16,6 +16,7 @@ type heading =
   ; anchor : string
   ; meta : meta
   ; unordered : bool  (** whether it's an unordered list (starts with `-`) **)
+  ; size : int option
   }
 [@@deriving yojson]
 

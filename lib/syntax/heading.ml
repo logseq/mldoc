@@ -25,25 +25,33 @@ let marker =
 
 let org_level = take_while1 (fun c -> c = '*')
 
+(* return (level, is_unordered, size) *)
 let level config =
   match config.format with
   | Org ->
     org_level >>= fun s ->
     let len = String.length s in
-    return (len, false)
+    return (len, false, None)
   | Markdown ->
     let markdown_heading =
       Markdown_level.parse >>| fun s ->
       let len = String.length s in
-      (len, false)
+      (len, false, Some len)
     in
     let unordered =
-      optional tabs_or_ws <* char '-' >>| fun result ->
-      match result with
-      | Some s ->
-        let len = String.length s in
-        (len + 1, true)
-      | None -> (1, true)
+      lift2
+        (fun result size ->
+          match (result, size) with
+          | Some s, None ->
+            let len = String.length s in
+            (len + 1, true, None)
+          | None, None -> (1, true, None)
+          | Some s, Some size ->
+            let len = String.length s in
+            (len + 1, true, Some (String.length size))
+          | None, Some size -> (1, true, Some (String.length size)))
+        (optional tabs_or_ws <* char '-')
+        (optional @@ (spaces *> take_while1 (fun c -> c = '#')))
     in
     markdown_heading <|> unordered
 
@@ -90,7 +98,7 @@ let anchor_link s =
 let parse config =
   let p =
     lift4
-      (fun (level, unordered) marker priority title ->
+      (fun (level, unordered, size) marker priority title ->
         let title =
           match title with
           | None -> []
@@ -138,6 +146,7 @@ let parse config =
           ; meta
           ; numbering = None
           ; unordered
+          ; size
           })
       (level config <?> "Heading level")
       (optional (ws *> marker <?> "Heading marker"))
