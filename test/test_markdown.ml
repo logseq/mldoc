@@ -568,6 +568,39 @@ let block =
                    }
                  ]) )
         ] )
+  ; ( "unordered list"
+    , testcases
+        [ ( "with size (1)"
+          , `Quick
+          , check_aux "- ## TODO text"
+              (Type.Heading
+                 { Type.title = [ Inline.Plain "text" ]
+                 ; tags = []
+                 ; marker = Some "TODO"
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = "text"
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = Some 2
+                 }) )
+        ; ( "with size (2)"
+          , `Quick
+          , check_aux "- ##"
+              (Type.Heading
+                 { Type.title = []
+                 ; tags = []
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = ""
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = Some 2
+                 }) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]
