@@ -600,6 +600,21 @@ let block =
                  ; unordered = true
                  ; size = Some 2
                  }) )
+        ; ( "followed by #tag"
+          , `Quick
+          , check_aux "- #tag"
+              (Type.Heading
+                 { Type.title = [ Inline.Tag "tag" ]
+                 ; tags = []
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = ""
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = None
+                 }) )
         ] )
   ]
 

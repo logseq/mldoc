@@ -51,7 +51,10 @@ let level config =
             (len + 1, true, Some (String.length size))
           | None, Some size -> (1, true, Some (String.length size)))
         (optional tabs_or_ws <* char '-')
-        (optional @@ (spaces *> take_while1 (fun c -> c = '#')))
+        (optional
+        @@ (spaces *> take_while1 (fun c -> c = '#')
+           <* (unsafe_lookahead (satisfy is_space_eol) *> return ()
+              <|> end_of_input)))
     in
     markdown_heading <|> unordered
 
