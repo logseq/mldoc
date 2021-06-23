@@ -133,6 +133,19 @@ let to_blocks_without_pos t = to_blocks t |> List.split |> fst
 
 let to_blocks_with_content = to_blocks
 
+(** operations on tree_type *)
+
+let rec remove_properties (z : Type.t t) =
+  let open Zip in
+  let open Option in
+  if is_end z then
+    z
+  else
+    match node z with
+    | Leaf (Type.Property_Drawer _) ->
+      remove z |? z |> next |> remove_properties
+    | _ -> remove_properties (next z)
+
 (** replace (block|page)'s (embed|refs) *)
 
 let heading_merely_have_embed ({ title; marker; priority; _ } : Type.heading) =
@@ -178,21 +191,27 @@ let block_refs_embed arg (refs : Reference.parsed_t) =
   let block_uuid = String.trim arg in
   match List.assoc_opt block_uuid refs.parsed_embed_blocks with
   | Some (_, tl) ->
-    let t = of_blocks_without_pos tl |> Z.root |> Z.of_l in
-    let t =
-      to_value
-      @@ Z.edit t ~f:(fun e ->
-             match e with
-             | Z.Branch (Z.Branch (Z.Leaf (Type.Heading h, _) :: tail) :: tail')
-               ->
-               Z.Branch
-                 (Z.Branch
-                    (Z.Leaf (Type.Paragraph h.title, Type.dummy_pos) :: tail)
-                 :: tail')
-             | _ -> e)
-    in
-    Some t
+    Some
+      (match tl with
+      | Type.Heading h :: t -> Type.Paragraph h.title :: t
+      | _ -> tl)
   | None -> None
+
+(*   let t = of_blocks_without_pos tl |> Z.root |> Z.of_l in
+ *   let t =
+ *     to_value
+ *     @@ Z.edit t ~f:(fun e ->
+ *            match e with
+ *            | Z.Branch (Z.Branch (Z.Leaf (Type.Heading h, _) :: tail) :: tail')
+ *              ->
+ *              Z.Branch
+ *                (Z.Branch
+ *                   (Z.Leaf (Type.Paragraph h.title, Type.dummy_pos) :: tail)
+ *                :: tail')
+ *            | _ -> e)
+ *   in
+ *   Some t
+ * | None -> None *)
 
 (*
    1. [Heading [Macro]; Paragraph...]
@@ -265,10 +284,32 @@ let insert_right z ~expanded_macro =
   | Z.Branch items -> Z.insert_rights z ~items |? z
   | Z.Leaf _ as l -> Z.insert_right z ~item:l |? z
 
-let insert_right_block_ref z ~expanded_block_ref =
-  match expanded_block_ref with
-  | Z.Branch items -> Z.insert_rights z ~items |? z
-  | Z.Leaf _ as l -> Z.insert_right z ~item:l |? z
+(* merge rightmost (paragraph or heading) of [lefts] with leftmost (paragraph & heading) of [mids].
+   merge rightmost paragraph of [mids] with leftmost paragraph of [rights].*)
+let merge_paragraphs_and_headings lefts mids rights =
+  let rightmost_l, lefts_butlast = butlast lefts in
+  let lefts', mids' =
+    match (rightmost_l, mids) with
+    | Some (Type.Paragraph inlines1), Type.Paragraph inlines2 :: t ->
+      (lefts_butlast, Type.Paragraph (inlines1 @ inlines2) :: t)
+    | Some (Type.Heading h), Type.Paragraph inlines :: t ->
+      (lefts_butlast, Type.Heading { h with title = h.title @ inlines } :: t)
+    | Some (Type.Paragraph inlines1), Type.Heading h :: t ->
+      (lefts_butlast, Type.Paragraph (inlines1 @ h.title) :: t)
+    | Some (Type.Heading h1), Type.Heading h2 :: t ->
+      (lefts_butlast, Type.Heading { h1 with title = h1.title @ h2.title } :: t)
+    | _ -> (lefts, mids)
+  in
+  let rightmost_m, mids_butlast = butlast mids' in
+  let mids'', rights' =
+    match (rightmost_m, rights) with
+    | Some (Type.Paragraph inlines1), Type.Paragraph inlines2 :: t ->
+      (mids_butlast, Type.Paragraph (inlines1 @ inlines2) :: t)
+    | Some (Type.Heading h), Type.Paragraph inlines :: t ->
+      (mids_butlast, Type.Heading { h with title = h.title @ inlines } :: t)
+    | _ -> (mids', rights)
+  in
+  lefts' @ mids'' @ rights'
 
 let replace_block_ref (t : Type.t_with_pos_meta Z.t) expanded_block_ref block_id
     =
@@ -280,20 +321,36 @@ let replace_block_ref (t : Type.t_with_pos_meta Z.t) expanded_block_ref block_id
       match split_by_block_ref il block_id with
       | None -> t
       | Some (left, right) ->
-        Z.replace t ~item:(Z.leaf (Type.Paragraph left, Type.dummy_pos))
-        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
-        >>| insert_right_block_ref ~expanded_block_ref
-        |> default t)
+        let lefts = [ Type.Paragraph left ] in
+        let rights = [ Type.Paragraph right ] in
+        let merged =
+          merge_paragraphs_and_headings lefts expanded_block_ref rights
+        in
+        Z.insert_rights t
+          ~items:(List.map (fun p -> Z.leaf (p, Type.dummy_pos)) merged)
+        >>= Z.remove |> default t
+        (* Z.replace t ~item:(Z.leaf (Type.Paragraph left, Type.dummy_pos))
+         * |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+         * >>| insert_right_block_ref ~expanded_block_ref
+         * |> default t *))
     | Heading h -> (
       let ({ title; _ } : Type.heading) = h in
       match split_by_block_ref title block_id with
       | None -> t
       | Some (left, right) ->
-        Z.replace t
-          ~item:(Z.leaf (Type.Heading { h with title = left }, Type.dummy_pos))
-        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
-        >>| insert_right_block_ref ~expanded_block_ref
-        |> default t)
+        let lefts = [ Type.Heading { h with title = left } ] in
+        let rights = [ Type.Paragraph right ] in
+        let merged =
+          merge_paragraphs_and_headings lefts expanded_block_ref rights
+        in
+        Z.insert_rights t
+          ~items:(List.map (fun p -> Z.leaf (p, Type.dummy_pos)) merged)
+        >>= Z.remove |> default t
+      (*   Z.replace t
+       *   ~item:(Z.leaf (Type.Heading { h with title = left }, Type.dummy_pos))
+       * |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+       * >>| insert_right_block_ref ~expanded_block_ref
+       * |> default t *))
     | _ -> t)
 
 let replace_macro (t : Type.t_with_pos_meta Z.t) expanded_macro macro =
@@ -351,7 +408,10 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
                     return @@ replace_macro z' expanded_macro macro
                   | `Block_ref block_ref ->
                     block_refs_embed block_ref refs >>= fun expanded_macro ->
-                    return @@ replace_block_ref z' expanded_macro block_ref)
+                    return
+                    @@ replace_block_ref z'
+                         (Type_op.remove_properties expanded_macro)
+                         block_ref)
             |> default z' |> aux)
         | Type.Paragraph il ->
           extract_macro_or_block_ref il
@@ -362,7 +422,10 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
                   return @@ replace_macro z' expanded_macro macro
                 | `Block_ref block_ref ->
                   block_refs_embed block_ref refs >>= fun expanded_macro ->
-                  return @@ replace_block_ref z' expanded_macro block_ref)
+                  return
+                  @@ replace_block_ref z'
+                       (Type_op.remove_properties expanded_macro)
+                       block_ref)
           |> default z' |> aux
         | Type.Quote tl ->
           let t = of_blocks_without_pos tl in
