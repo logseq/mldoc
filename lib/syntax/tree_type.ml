@@ -197,22 +197,6 @@ let block_refs_embed arg (refs : Reference.parsed_t) =
       | _ -> tl)
   | None -> None
 
-(*   let t = of_blocks_without_pos tl |> Z.root |> Z.of_l in
- *   let t =
- *     to_value
- *     @@ Z.edit t ~f:(fun e ->
- *            match e with
- *            | Z.Branch (Z.Branch (Z.Leaf (Type.Heading h, _) :: tail) :: tail')
- *              ->
- *              Z.Branch
- *                (Z.Branch
- *                   (Z.Leaf (Type.Paragraph h.title, Type.dummy_pos) :: tail)
- *                :: tail')
- *            | _ -> e)
- *   in
- *   Some t
- * | None -> None *)
-
 (*
    1. [Heading [Macro]; Paragraph...]
          ^
@@ -328,11 +312,7 @@ let replace_block_ref (t : Type.t_with_pos_meta Z.t) expanded_block_ref block_id
         in
         Z.insert_rights t
           ~items:(List.map (fun p -> Z.leaf (p, Type.dummy_pos)) merged)
-        >>= Z.remove |> default t
-        (* Z.replace t ~item:(Z.leaf (Type.Paragraph left, Type.dummy_pos))
-         * |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
-         * >>| insert_right_block_ref ~expanded_block_ref
-         * |> default t *))
+        >>= Z.remove |> default t)
     | Heading h -> (
       let ({ title; _ } : Type.heading) = h in
       match split_by_block_ref title block_id with
@@ -345,12 +325,7 @@ let replace_block_ref (t : Type.t_with_pos_meta Z.t) expanded_block_ref block_id
         in
         Z.insert_rights t
           ~items:(List.map (fun p -> Z.leaf (p, Type.dummy_pos)) merged)
-        >>= Z.remove |> default t
-      (*   Z.replace t
-       *   ~item:(Z.leaf (Type.Heading { h with title = left }, Type.dummy_pos))
-       * |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
-       * >>| insert_right_block_ref ~expanded_block_ref
-       * |> default t *))
+        >>= Z.remove |> default t)
     | _ -> t)
 
 let replace_macro (t : Type.t_with_pos_meta Z.t) expanded_macro macro =
