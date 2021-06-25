@@ -24,6 +24,7 @@ type t =
   ; exporting_keep_properties : bool
         [@default false] (* keep properties when exporting *)
   ; ignore_heading_list_marker : bool [@default false]
+  ; inline_type_with_pos : bool [@default false]
   }
 [@@deriving yojson]
 

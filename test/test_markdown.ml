@@ -6,6 +6,7 @@ let default_config : Conf.t =
   ; heading_to_list = false
   ; exporting_keep_properties = false
   ; ignore_heading_list_marker = false
+  ; inline_type_with_pos = false
   }
 
 let check_mldoc_type =
@@ -18,6 +19,8 @@ let check_aux source expect =
 let testcases =
   List.map (fun (case, level, f) -> Alcotest.test_case case level f)
 
+let paragraph l = Type.Paragraph (Type_op.inline_list_with_none_pos l)
+
 let inline =
   let open Type in
   let module I = Inline in
@@ -26,7 +29,7 @@ let inline =
         [ ( "normal"
           , `Quick
           , check_aux "http://testtest/asdasd"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -40,7 +43,7 @@ let inline =
         ; ( "normal-2"
           , `Quick
           , check_aux "[test  normal](http://testtest/asdasd)"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -54,7 +57,7 @@ let inline =
         ; ( "inline-code-in-label"
           , `Quick
           , check_aux "[test `normal`](http://testtest/asdasd)"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -68,7 +71,7 @@ let inline =
         ; ( "with-*"
           , `Quick
           , check_aux "http://testtest/asd*asd"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -82,7 +85,7 @@ let inline =
         ; ( "spaces-around-link-line"
           , `Quick
           , check_aux " http://testtest/asdasd "
-              (Paragraph
+              (paragraph
                  [ I.Plain " "
                  ; I.Link
                      { url =
@@ -98,7 +101,7 @@ let inline =
         ; ( "endwith '.'"
           , `Quick
           , check_aux "http://test/f.o.o/b.a.r. "
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -113,7 +116,7 @@ let inline =
         ; ( "include brackets"
           , `Quick
           , check_aux "http://test/(foo)bar"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -127,7 +130,7 @@ let inline =
         ; ( "include brackets (2)"
           , `Quick
           , check_aux "http://test/[(foo)b]ar"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -141,7 +144,7 @@ let inline =
         ; ( "include brackets (3)"
           , `Quick
           , check_aux "http://test/[foo)b]ar"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex { protocol = "http"; link = "//test/[foo" }
@@ -155,7 +158,7 @@ let inline =
         ; ( "include brackets (4)"
           , `Quick
           , check_aux "http://te(s)t/foobar"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url = I.Complex { protocol = "http"; link = "//te" }
                      ; label = [ Plain "http://te" ]
@@ -171,7 +174,7 @@ let inline =
         [ ( "normal"
           , `Quick
           , check_aux "[label here](http://foobar/path?query=123)"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -187,7 +190,7 @@ let inline =
         ; ( "also support org-link syntax"
           , `Quick
           , check_aux "[[http://foobar/path?query=123][label here]]"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -203,7 +206,7 @@ let inline =
         ; ( "label with page-ref"
           , `Quick
           , check_aux "[abc [[d ef]] gh](../assets/0000.pdf)"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url = I.Search "../assets/0000.pdf"
                      ; label = [ Plain "abc [[d ef]] gh" ]
@@ -215,7 +218,7 @@ let inline =
         ; ( "with title"
           , `Quick
           , check_aux "[abc [[d]( ef]] gh](../assets/0000.pdf \"title\")"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url = I.Search "../assets/0000.pdf"
                      ; label = [ Plain "abc [[d]( ef]] gh" ]
@@ -228,7 +231,7 @@ let inline =
         ; ( "include brackets"
           , `Quick
           , check_aux "[label](abc(def)gh)"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url = I.Search "abc(def)gh"
                      ; label = [ Plain "label" ]
@@ -240,7 +243,7 @@ let inline =
         ; ( "include brackets (2)"
           , `Quick
           , check_aux "[中文](https://a.b.c.d/e/f%20g(1).h)"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url =
                          I.Complex
@@ -256,7 +259,7 @@ let inline =
         ; ( "page-ref before link"
           , `Quick
           , check_aux "[[a]][b](c)"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url = I.Search "a"
                      ; label = [ Plain "" ]
@@ -275,7 +278,7 @@ let inline =
         ; ( "url and title"
           , `Quick
           , check_aux "[a](bbb[[ccc \"dd\"]] \"e f\")"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url = I.Search "bbb[[ccc \"dd\"]]"
                      ; label = [ Plain "a" ]
@@ -287,7 +290,7 @@ let inline =
         ; ( "url part include page ref"
           , `Quick
           , check_aux "[a](bbb[[ccc \"dd\"]][[ff gg hh]] \"ee\")"
-              (Paragraph
+              (paragraph
                  [ I.Link
                      { url = I.Search "bbb[[ccc \"dd\"]][[ff gg hh]]"
                      ; label = [ Plain "a" ]
@@ -302,19 +305,19 @@ let inline =
         [ ( "double"
           , `Quick
           , check_aux "{{test foo}}"
-              (Paragraph
+              (paragraph
                  [ I.Macro { I.Macro.name = "test"; arguments = [ "foo" ] } ])
           )
         ; ( "three"
           , `Quick
           , check_aux "{{{test foo}}}"
-              (Paragraph
+              (paragraph
                  [ I.Macro { I.Macro.name = "test"; arguments = [ "foo" ] } ])
           )
         ; ( "query"
           , `Quick
           , check_aux "{{query (and [[test]])}}"
-              (Paragraph
+              (paragraph
                  [ I.Macro
                      { I.Macro.name = "query"
                      ; arguments = [ "(and [[test]])" ]
@@ -323,14 +326,14 @@ let inline =
         ; ( "embed"
           , `Quick
           , check_aux "{{{embed [[page]]}}}"
-              (Paragraph
+              (paragraph
                  [ I.Macro
                      { I.Macro.name = "embed"; arguments = [ "[[page]]" ] }
                  ]) )
         ; ( "query nested link"
           , `Quick
           , check_aux "{{{query [[page [[nested]]]]}}}"
-              (Paragraph
+              (paragraph
                  [ I.Macro
                      { I.Macro.name = "query"
                      ; arguments = [ "[[page [[nested]]]]" ]
@@ -339,7 +342,7 @@ let inline =
         ; ( "args"
           , `Quick
           , check_aux "{{macroname [[A,B]], ((C,D)), E}}"
-              (Paragraph
+              (paragraph
                  [ I.Macro
                      { I.Macro.name = "macroname"
                      ; arguments = [ "[[A,B]]"; "((C,D))"; "E" ]
@@ -390,26 +393,26 @@ let inline =
     , testcases
         [ ( "normal"
           , `Quick
-          , check_aux "`codes here`" (Paragraph [ I.Code "codes here" ]) )
+          , check_aux "`codes here`" (paragraph [ I.Code "codes here" ]) )
         ; ( "overlap-with-emphasis"
           , `Quick
-          , check_aux "*aa`*`" (Paragraph [ I.Plain "*aa"; I.Code "*" ]) )
+          , check_aux "*aa`*`" (paragraph [ I.Plain "*aa"; I.Code "*" ]) )
         ; ( "overlap-with-emphasis-2"
           , `Quick
-          , check_aux "**aa`**`" (Paragraph [ I.Plain "**aa"; I.Code "**" ]) )
+          , check_aux "**aa`**`" (paragraph [ I.Plain "**aa"; I.Code "**" ]) )
         ; ( "overlap-with-emphasis-3"
           , `Quick
-          , check_aux "_a`_`" (Paragraph [ I.Plain "_a"; I.Code "_" ]) )
+          , check_aux "_a`_`" (paragraph [ I.Plain "_a"; I.Code "_" ]) )
         ; ( "overlap-with-emphasis-4"
           , `Quick
-          , check_aux "__a`__`" (Paragraph [ I.Plain "__a"; I.Code "__" ]) )
+          , check_aux "__a`__`" (paragraph [ I.Plain "__a"; I.Code "__" ]) )
         ; ( "overlap-with-emphasis-5"
           , `Quick
-          , check_aux "`as*d`*" (Paragraph [ I.Code "as*d"; I.Plain "*" ]) )
+          , check_aux "`as*d`*" (paragraph [ I.Code "as*d"; I.Plain "*" ]) )
         ; ( "overlap-with-link"
           , `Quick
           , check_aux "[as`d](`http://dwdw)"
-              (Paragraph
+              (paragraph
                  [ I.Plain "[as"
                  ; I.Code "d]("
                  ; I.Link
@@ -424,32 +427,32 @@ let inline =
         ; ( "overlap-with-link-2"
           , `Quick
           , check_aux "[as`d](http://dwdw)`"
-              (Paragraph [ I.Plain "[as"; I.Code "d](http://dwdw)" ]) )
+              (paragraph [ I.Plain "[as"; I.Code "d](http://dwdw)" ]) )
         ] )
   ; ( "emphasis"
     , testcases
         [ ( "normal"
           , `Quick
           , check_aux "*abc*"
-              (Paragraph [ I.Emphasis (`Italic, [ Plain "abc" ]) ]) )
+              (paragraph [ I.Emphasis (`Italic, [ Plain "abc" ]) ]) )
         ; ( "normal-2"
           , `Quick
           , check_aux "**abc**"
-              (Paragraph [ I.Emphasis (`Bold, [ Plain "abc" ]) ]) )
+              (paragraph [ I.Emphasis (`Bold, [ Plain "abc" ]) ]) )
         ; ( "normal-3"
           , `Quick
           , check_aux "_a_,"
-              (Paragraph [ I.Emphasis (`Italic, [ Plain "a" ]); I.Plain "," ])
+              (paragraph [ I.Emphasis (`Italic, [ Plain "a" ]); I.Plain "," ])
           )
         ; ( "inline-code-inside"
           , `Quick
           , check_aux "*asd`qwe`*"
-              (Paragraph
+              (paragraph
                  [ I.Emphasis (`Italic, [ I.Plain "asd"; I.Code "qwe" ]) ]) )
         ; ( "inline-code-inside-2"
           , `Quick
           , check_aux "***asd`qwe`***"
-              (Paragraph
+              (paragraph
                  [ I.Emphasis
                      ( `Italic
                      , [ I.Emphasis (`Bold, [ I.Plain "asd"; I.Code "qwe" ]) ]
@@ -457,25 +460,25 @@ let inline =
                  ]) )
         ; ( "not emphasis (1)"
           , `Quick
-          , check_aux "a * b*" (Paragraph [ I.Plain "a * b*" ]) )
+          , check_aux "a * b*" (paragraph [ I.Plain "a * b*" ]) )
         ; ( "not emphasis (2)"
           , `Quick
-          , check_aux "a_b_c" (Paragraph [ I.Plain "a_b_c" ]) )
+          , check_aux "a_b_c" (paragraph [ I.Plain "a_b_c" ]) )
         ; ( "contains underline"
           , `Quick
           , check_aux "_a _ a_"
-              (Paragraph [ I.Emphasis (`Italic, [ I.Plain "a _ a" ]) ]) )
+              (paragraph [ I.Emphasis (`Italic, [ I.Plain "a _ a" ]) ]) )
         ; ( "contains star"
           , `Quick
           , check_aux "*a * a*"
-              (Paragraph [ I.Emphasis (`Italic, [ I.Plain "a * a" ]) ]) )
+              (paragraph [ I.Emphasis (`Italic, [ I.Plain "a * a" ]) ]) )
         ; ( "left flanking delimiter"
           , `Quick
-          , check_aux "hello_world_" (Paragraph [ I.Plain "hello_world_" ]) )
+          , check_aux "hello_world_" (paragraph [ I.Plain "hello_world_" ]) )
         ; ( "left flanking delimiter (2)"
           , `Quick
           , check_aux "hello,_world_"
-              (Paragraph
+              (paragraph
                  [ I.Plain "hello,"; I.Emphasis (`Italic, [ I.Plain "world" ]) ])
           )
         ] )
@@ -483,28 +486,28 @@ let inline =
     , testcases
         [ ( "endwith '.'"
           , `Quick
-          , check_aux "#tag." (Paragraph [ I.Tag "tag"; I.Plain "." ]) )
+          , check_aux "#tag." (paragraph [ I.Tag "tag"; I.Plain "." ]) )
         ; ( "endwith ','"
           , `Quick
-          , check_aux "#tag," (Paragraph [ I.Tag "tag"; I.Plain "," ]) )
+          , check_aux "#tag," (paragraph [ I.Tag "tag"; I.Plain "," ]) )
         ; ( "endwith '\"'"
           , `Quick
-          , check_aux "#tag\"" (Paragraph [ I.Tag "tag"; I.Plain "\"" ]) )
+          , check_aux "#tag\"" (paragraph [ I.Tag "tag"; I.Plain "\"" ]) )
         ; ( "endwith several periods"
           , `Quick
-          , check_aux "#tag,.?" (Paragraph [ I.Tag "tag"; I.Plain ",.?" ]) )
-        ; ("with '.'", `Quick, check_aux "#a.b.c" (Paragraph [ I.Tag "a.b.c" ]))
+          , check_aux "#tag,.?" (paragraph [ I.Tag "tag"; I.Plain ",.?" ]) )
+        ; ("with '.'", `Quick, check_aux "#a.b.c" (paragraph [ I.Tag "a.b.c" ]))
         ; ( "with '.' and endwith '.'"
           , `Quick
-          , check_aux "#a.b.c." (Paragraph [ I.Tag "a.b.c"; I.Plain "." ]) )
+          , check_aux "#a.b.c." (paragraph [ I.Tag "a.b.c"; I.Plain "." ]) )
         ; ( "with '.' and endwith '.' (2)"
           , `Quick
           , check_aux "#a.b.c. defg"
-              (Paragraph [ I.Tag "a.b.c"; I.Plain ". defg" ]) )
+              (paragraph [ I.Tag "a.b.c"; I.Plain ". defg" ]) )
         ; ( "with page-ref"
           , `Quick
           , check_aux "#a.[[b c d ]].e."
-              (Paragraph [ I.Tag "a.[[b c d ]].e"; I.Plain "." ]) )
+              (paragraph [ I.Tag "a.[[b c d ]].e"; I.Plain "." ]) )
         ] )
   ]
 
@@ -524,7 +527,7 @@ let block =
           , `Quick
           , check_aux ">foo\n>bar"
               (Quote
-                 [ Paragraph
+                 [ paragraph
                      [ I.Plain "foo"
                      ; I.Break_Line
                      ; I.Plain "bar"
@@ -545,7 +548,7 @@ let block =
           , `Quick
           , check_aux "+ line1\n  - heading"
               (List
-                 [ { content = [ Paragraph [ I.Plain "line1" ] ]
+                 [ { content = [ paragraph [ I.Plain "line1" ] ]
                    ; items = []
                    ; number = None
                    ; name = []
@@ -558,7 +561,7 @@ let block =
           , `Quick
           , check_aux "+ line1\n  -"
               (List
-                 [ { content = [ Paragraph [ I.Plain "line1" ] ]
+                 [ { content = [ paragraph [ I.Plain "line1" ] ]
                    ; items = []
                    ; number = None
                    ; name = []
@@ -574,7 +577,8 @@ let block =
           , `Quick
           , check_aux "- ## TODO text"
               (Type.Heading
-                 { Type.title = [ Inline.Plain "text" ]
+                 { Type.title =
+                     Type_op.inline_list_with_none_pos [ Inline.Plain "text" ]
                  ; tags = []
                  ; marker = Some "TODO"
                  ; level = 1
@@ -604,7 +608,8 @@ let block =
           , `Quick
           , check_aux "- #tag"
               (Type.Heading
-                 { Type.title = [ Inline.Tag "tag" ]
+                 { Type.title =
+                     Type_op.inline_list_with_none_pos [ Inline.Tag "tag" ]
                  ; tags = []
                  ; marker = None
                  ; level = 1

@@ -1,7 +1,8 @@
+open! Prelude
 open Angstrom
 open Parsers
 open Type
-open! Prelude
+open Pos
 
 (* inline and footnotes *)
 
@@ -22,7 +23,8 @@ let parse_lines config lines pos1 pos2 =
   let paragraph =
     match parse_string ~consume:All (Inline.parse config) content with
     | Ok result -> Paragraph result
-    | Error _ -> Paragraph [ Inline.Plain content ]
+    | Error _ ->
+      Paragraph (Type_op.inline_list_with_none_pos [ Inline.Plain content ])
   in
   (paragraph, { start_pos = pos1; end_pos = pos2 })
 

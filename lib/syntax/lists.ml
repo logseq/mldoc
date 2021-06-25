@@ -137,7 +137,7 @@ let definition config s =
       let name =
         match parse_string ~consume:All (Inline.parse config) name with
         | Ok inlines -> inlines
-        | Error _e -> [ Inline.Plain name ]
+        | Error _e -> Type_op.inline_list_with_none_pos [ Inline.Plain name ]
       in
       (name, description)
     | None -> ([], description))
@@ -175,7 +175,10 @@ let rec list_parser config content_parsers items last_indent =
             | Ok result ->
               let result = Paragraph.concat_paragraph_lines config result in
               List.map fst result
-            | Error _e -> [ Paragraph [ Inline.Plain content ] ]
+            | Error _e ->
+              [ Paragraph
+                  (Type_op.inline_list_with_none_pos [ Inline.Plain content ])
+              ]
           in
           let item =
             { content

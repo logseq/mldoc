@@ -1,10 +1,4 @@
-type inline_list = Inline.t list [@@deriving yojson]
-
-type pos_meta =
-  { start_pos : int
-  ; end_pos : int
-  }
-[@@deriving yojson]
+type inline_list = Inline.t_with_pos list [@@deriving yojson]
 
 type heading =
   { title : inline_list  (** The title as inline formatted content *)
@@ -30,7 +24,7 @@ and list_item =
   { content : t list  (** The contents of the current item *)
   ; items : list_item list
   ; number : int option [@default None]  (** Its number *)
-  ; name : Inline.t list  (** Definition name *)
+  ; name : Inline.t_with_pos list  (** Definition name *)
   ; checkbox : bool option [@default None]  (** Was it checked *)
   ; indent : int  (** Indentation of the current item. *)
   ; ordered : bool
@@ -56,13 +50,14 @@ and code_block =
   ; language : string option [@default None]
         (** The language the code is written in *)
   ; options : string list option [@default None]
-  ; pos_meta : pos_meta
+  ; pos_meta : Pos.pos_meta
   }
 [@@deriving yojson]
 (** Code blocks *)
 
 and t =
-  | Paragraph of Inline.t list  (** A paragraph containing only inline text *)
+  | Paragraph of Inline.t_with_pos list
+      (** A paragraph containing only inline text *)
   | Paragraph_line of string  (** Internal usage *)
   | Paragraph_Sep of int
   | Heading of heading  (** A heading *)
@@ -102,7 +97,7 @@ and t =
   | Hiccup of string
 [@@deriving yojson]
 
-and t_with_pos_meta = t * pos_meta [@@deriving yojson]
+and t_with_pos_meta = t * Pos.pos_meta [@@deriving yojson]
 
 and t_with_content = t * string [@@deriving yojson]
 
@@ -114,5 +109,3 @@ and blocks_with_content = t_with_content list [@@deriving yojson]
 
 let pp fmt t =
   Format.pp_print_string fmt @@ Yojson.Safe.pretty_to_string @@ to_yojson t
-
-let dummy_pos = { start_pos = 0; end_pos = 0 }

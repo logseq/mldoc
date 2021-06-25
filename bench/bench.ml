@@ -21,6 +21,7 @@ let main () =
                ; heading_to_list = false
                ; exporting_keep_properties = false
                ; ignore_heading_list_marker = false
+               ; inline_type_with_pos = false
                }
              in
              ignore (parse config doc_org))
@@ -33,6 +34,7 @@ let main () =
                ; heading_to_list = false
                ; exporting_keep_properties = false
                ; ignore_heading_list_marker = false
+               ; inline_type_with_pos = false
                }
              in
              ignore (parse config syntax_org))
@@ -45,6 +47,7 @@ let main () =
                ; heading_to_list = false
                ; exporting_keep_properties = false
                ; ignore_heading_list_marker = false
+               ; inline_type_with_pos = false
                }
              in
              ignore (parse config syntax_md))

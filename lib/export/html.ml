@@ -1,4 +1,4 @@
-open Prelude
+open! Prelude
 open Type
 open Inline
 open Document
@@ -184,7 +184,7 @@ and inline config t =
       match
         Angstrom.parse_string ~consume:All (Inline.parse config) content
       with
-      | Ok inlines -> map_inline config inlines
+      | Ok inlines -> map_inline config (List.map fst inlines)
       | Error _e -> [ Xml.empty ]
     with Not_found -> [ Xml.empty ])
   | _ -> [ Xml.empty ]
@@ -253,13 +253,16 @@ let heading config
   Xml.block
     (Printf.sprintf "h%d" level)
     ~attr:[ ("id", anchor) ]
-    ((numbering :: marker :: priority :: map_inline config title) @ [ tags ])
+    (numbering :: marker :: priority
+     :: map_inline config (Type_op.inline_list_strip_pos title)
+    @ [ tags ])
 
 let rec list_item config x =
   let content =
     match x.content with
     | [] -> [ Xml.empty ]
-    | Paragraph i :: rest -> map_inline config i @ blocks config rest
+    | Paragraph i :: rest ->
+      map_inline config (Type_op.inline_list_strip_pos i) @ blocks config rest
     | _ -> blocks config x.content
   in
   let checked, checked_html =
@@ -293,7 +296,8 @@ let rec list_item config x =
         Xml.block
           ~attr:[ ("checked", string_of_bool checked) ]
           "dl"
-          [ Xml.block "dt" (map_inline config inlines)
+          [ Xml.block "dt"
+              (map_inline config (Type_op.inline_list_strip_pos inlines))
           ; Xml.block "dd" (content @ [ items ])
           ]
     in
@@ -354,7 +358,8 @@ and blocks config l = List.map (block config) l
 and block config t =
   let open List in
   match t with
-  | Paragraph l -> Xml.block "p" (map_inline config l)
+  | Paragraph l ->
+    Xml.block "p" (map_inline config (Type_op.inline_list_strip_pos l))
   | Horizontal_Rule -> Xml.block "hr" []
   | Heading h -> heading config h
   | List l -> Xml.block (list_element l) (concatmap (list_item config) l)
@@ -397,7 +402,9 @@ and block config t =
     let encode_name = Uri.pct_encode name in
     Xml.block "div" ~attr:[ ("class", "footdef") ]
       [ Xml.block "div" ~attr:[ ("class", "footpara") ]
-          [ block config (Paragraph definition) ]
+          [ block config
+              (Paragraph (Type_op.inline_list_with_none_pos definition))
+          ]
       ; Xml.block "sup"
           [ Xml.block "a"
               ~attr:
@@ -428,7 +435,8 @@ let toc config content =
               let link =
                 Xml.block "a"
                   ~attr:[ ("href", "#" ^ anchor) ]
-                  (numbering :: map_inline config title)
+                  (numbering
+                  :: map_inline config (Type_op.inline_list_strip_pos title))
               in
               Xml.block "li" [ link; go items ])
             content

@@ -18,6 +18,7 @@ end = struct
     ; heading_to_list = false
     ; exporting_keep_properties = false
     ; ignore_heading_list_marker = false
+    ; inline_type_with_pos = false
     }
 
   let rec of_value v ~config =
@@ -55,7 +56,7 @@ end = struct
                 let ast = Mldoc_parser.parse default_config e in
                 let ast' =
                   List.map
-                    (fun (ast, (pos : Type.pos_meta)) ->
+                    (fun (ast, (pos : Pos.pos_meta)) ->
                       ( ast
                       , String.sub e pos.start_pos (pos.end_pos - pos.start_pos)
                       ))
@@ -85,7 +86,7 @@ end = struct
         let head_ast' = (head', head_content) in
         let body_ast' =
           List.map
-            (fun (ast, (pos : Type.pos_meta)) ->
+            (fun (ast, (pos : Pos.pos_meta)) ->
               (ast, String.sub h pos.start_pos (pos.end_pos - pos.start_pos)))
             body_ast'
         in

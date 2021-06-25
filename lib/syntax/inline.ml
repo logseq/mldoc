@@ -1,7 +1,8 @@
+open! Prelude
 open Angstrom
 open Parsers
-open Prelude
 open Conf
+open Pos
 
 (* TODO:
    1. Performance:
@@ -101,7 +102,7 @@ and t =
   | Spaces of string
   | Plain of string
   | Link of link
-  | Nested_link of Nested_link.t
+  | Nested_link of Nested_link.t_with_pos
   | Target of string
   | Subscript of t list
   | Superscript of t list
@@ -119,6 +120,26 @@ and t =
   | Inline_Hiccup of string
   | Inline_Html of string
 [@@deriving yojson]
+
+and t_with_pos = t * pos_meta option
+
+let t_with_pos_to_yojson (t_with_pos : t_with_pos) : Yojson.Safe.t =
+  let t, pos = t_with_pos in
+  let t_yojson = to_yojson t in
+  match pos with
+  | None -> t_yojson
+  | Some pos' ->
+    let pos_yojson = pos_meta_to_yojson pos' in
+    `List [ t_yojson; pos_yojson ]
+
+let t_with_pos_of_yojson (json : Yojson.Safe.t) =
+  let open Ppx_deriving_yojson_runtime in
+  match json with
+  | `List [ (`List _ as t); pos ] ->
+    of_yojson t >>= fun t' ->
+    pos_meta_of_yojson pos >|= fun pos' -> (t', Some pos')
+  | `List _ as t -> of_yojson t >|= fun t' -> (t', None)
+  | _ -> Result.Error "invalid_arg: Inline.t_with_pos_of_yojson"
 
 type inner_state = { mutable last_plain_char : char option }
 
@@ -212,12 +233,24 @@ let plain ?state config =
         ) else
           fail "plain" )
 
-let concat_plains l =
+let concat_plains_without_pos (l : t list) =
   List.fold_left
     (fun r e ->
       match (r, e) with
       | Plain h :: t, Plain e -> Plain (h ^ e) :: t
       | _ -> e :: r)
+    [] l
+  |> List.rev
+
+let concat_plains (l : t_with_pos list) =
+  List.fold_left
+    (fun r (e, pos) ->
+      match (r, e, pos) with
+      | (Plain h, None) :: t, Plain e, _ -> (Plain (h ^ e), None) :: t
+      | (Plain h, _) :: t, Plain e, None -> (Plain (h ^ e), None) :: t
+      | (Plain h, Some { start_pos; _ }) :: t, Plain e, Some { end_pos; _ } ->
+        (Plain (h ^ e), Some { start_pos; end_pos }) :: t
+      | _ -> (e, pos) :: r)
     [] l
   |> List.rev
 
@@ -331,9 +364,9 @@ let md_em_parser ?(nested = false) ?(include_md_code = true) pattern typ =
      )
   >>| fun l ->
   if nested then
-    Emphasis (`Italic, [ Emphasis (`Bold, concat_plains l) ])
+    Emphasis (`Italic, [ Emphasis (`Bold, concat_plains_without_pos l) ])
   else
-    Emphasis (typ, concat_plains l)
+    Emphasis (typ, concat_plains_without_pos l)
 
 let org_em_parser = md_em_parser ~include_md_code:false
 
@@ -468,7 +501,7 @@ let gen_script config s f =
   <* char '}' <|> p1
   >>| fun s ->
   match parse_string ~consume:All p s with
-  | Ok result -> f @@ concat_plains result
+  | Ok result -> f @@ concat_plains_without_pos result
   | Error _e -> f [ Plain s ]
 
 let subscript config = gen_script config "_" (fun x -> Subscript x)
@@ -611,7 +644,7 @@ let org_link config =
       in
       let label =
         match parse_string ~consume:All parser label_text with
-        | Ok result -> concat_plains result
+        | Ok result -> concat_plains_without_pos result
         | Error _e -> [ Plain label_text ]
       in
       let title = None in
@@ -685,7 +718,7 @@ let markdown_link config =
     <|> ( between_string "[" "]("
         @@ fix (fun m -> List.cons <$> label_part_choices <*> m <|> return [])
         >>| fun l ->
-          ( concat_plains l
+          ( concat_plains_without_pos l
           , List.map
               (function
                 | Plain s -> s
@@ -742,7 +775,7 @@ let markdown_link config =
               | Error _ -> [ e ])
             | s -> [ s ])
           label_t
-        |> List.concat |> concat_plains
+        |> List.concat |> concat_plains_without_pos
       in
       let title =
         if String.equal title "" || String.equal title "\"\"" then
@@ -776,7 +809,7 @@ let link config =
 
 (* page reference *)
 
-let nested_link = Nested_link.parse >>| fun s -> Nested_link s
+let nested_link config = Nested_link.parse config >>| fun s -> Nested_link s
 
 let nested_emphasis ?state config =
   let rec aux_nested_emphasis = function
@@ -790,7 +823,7 @@ let nested_emphasis ?state config =
              ; subscript config
              ; superscript config
              ; link config
-             ; nested_link
+             ; nested_link config
              ; plain config
              ])
       in
@@ -805,7 +838,7 @@ let nested_emphasis ?state config =
                 | Error _error -> [ e ])
               | s -> [ s ])
             l
-          |> List.concat |> concat_plains )
+          |> List.concat |> concat_plains_without_pos )
     | Subscript _ as s -> s
     | Superscript _ as s -> s
     | Link _ as l -> l
@@ -837,9 +870,9 @@ let statistics_cookie =
 *)
 let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 
-let macro_arg =
-  Nested_link.parse
-  >>| (fun l -> l.content)
+let macro_arg config =
+  Nested_link.parse config
+  >>| (fun (l, _) -> l.content)
   <|> string "[[" *> take_while1 (fun c -> c <> ']')
   <* string "]]"
   >>| (fun s -> "[[" ^ s ^ "]]")
@@ -847,13 +880,13 @@ let macro_arg =
       >>| fun s -> "((" ^ s ^ "))" )
   <|> take_while1 (fun c -> not @@ List.mem c [ ',' ])
 
-let macro_args =
+let macro_args config =
   let args_p =
-    sep_by (char ',') (optional spaces *> macro_arg <* optional spaces)
+    sep_by (char ',') (optional spaces *> macro_arg config <* optional spaces)
   in
   optional spaces *> args_p
 
-let macro =
+let macro config =
   let p =
     take_while1 (function
       | '}'
@@ -869,7 +902,7 @@ let macro =
       if String.length args == 0 then
         return (Macro { name; arguments = [] })
       else
-        match parse_string macro_args ~consume:All args with
+        match parse_string (macro_args config) ~consume:All args with
         | Ok arguments -> return (Macro { name; arguments })
         | Error e -> fail e)
     | Error _e -> fail "macro name"
@@ -1028,7 +1061,7 @@ let markdown_image config =
       in
       let label =
         match parse_string ~consume:All parser label_text with
-        | Ok result -> concat_plains result
+        | Ok result -> concat_plains_without_pos result
         | Error _e -> [ Plain label_text ]
       in
       let title = None in
@@ -1078,7 +1111,7 @@ let incr_id id =
 let footnote_inline_definition config ?(break = false) definition =
   let choices =
     [ markdown_image config
-    ; nested_link
+    ; nested_link config
     ; link config
     ; email
     ; link_inline
@@ -1103,7 +1136,7 @@ let footnote_inline_definition config ?(break = false) definition =
   let parser = many1 (choice choices) in
   match parse_string ~consume:All parser definition with
   | Ok result ->
-    let result = concat_plains result in
+    let result = concat_plains_without_pos result in
     result
   | Error _e -> [ Plain definition ]
 
@@ -1171,7 +1204,7 @@ let inline_hiccup = Hiccup.parse >>| fun s -> Inline_Hiccup s
 let inline_html = Raw_html.parse >>| fun s -> Inline_Html s
 
 (* TODO: configurable, re-order *)
-let inline_choices state config =
+let inline_choices state config : t_with_pos Angstrom.t =
   let is_markdown = config.format = Conf.Markdown in
   let p =
     if is_markdown then
@@ -1186,11 +1219,11 @@ let inline_choices state config =
       | '$' -> latex_fragment config
       | '\\' -> latex_fragment config <|> entity
       | '[' ->
-        nested_link <|> link config <|> timestamp
+        nested_link config <|> link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
       | '<' -> quick_link config <|> timestamp <|> inline_html <|> email
-      | '{' -> macro
+      | '{' -> macro config
       | '!' -> markdown_image config
       | '@' -> export_snippet
       | '`' -> code config
@@ -1220,11 +1253,11 @@ let inline_choices state config =
         >>| (fun _ -> Hard_Break_Line)
         <|> latex_fragment config <|> entity
       | '[' ->
-        nested_link <|> link config <|> timestamp
+        nested_link config <|> link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
       | '<' -> target <|> radio_target <|> timestamp <|> inline_html <|> email
-      | '{' -> macro
+      | '{' -> macro config
       | '!' -> markdown_image config
       | '@' -> export_snippet
       | '=' -> code config <|> verbatim
@@ -1239,7 +1272,13 @@ let inline_choices state config =
       | '(' -> block_reference config
       | _ -> link_inline
   in
-  p <|> plain ~state config
+  let p' = p <|> plain ~state config in
+  if config.inline_type_with_pos then
+    lift3
+      (fun start_pos t end_pos -> (t, Some { start_pos; end_pos }))
+      pos p' pos
+  else
+    (fun t -> (t, None)) <$> p'
 
 let parse config =
   let state = { last_plain_char = None } in

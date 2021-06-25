@@ -39,7 +39,7 @@ let definition_parse config =
   let name =
     match parse_string ~consume:All (Inline.parse config) name with
     | Ok inlines -> inlines
-    | Error _e -> [ Inline.Plain name ]
+    | Error _e -> Type_op.inline_list_with_none_pos [ Inline.Plain name ]
   in
   let content =
     List.map
@@ -48,7 +48,8 @@ let definition_parse config =
           parse_string ~consume:All (Inline.parse config) (String.trim line)
         with
         | Ok content -> Paragraph content
-        | Error _e -> Paragraph [ Inline.Plain line ])
+        | Error _e ->
+          Paragraph (Type_op.inline_list_with_none_pos [ Inline.Plain line ]))
       lines
   in
   let list =

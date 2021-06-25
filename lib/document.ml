@@ -4,7 +4,7 @@ open Type
 type toc = toc_item list [@@deriving yojson]
 
 and toc_item =
-  { title : Inline.t list
+  { title : Inline.t_with_pos list
   ; level : int
   ; anchor : string
   ; numbering : int list
@@ -143,7 +143,7 @@ let from_ast filename ast =
         aut directives ((h, pos_meta) :: blocks) (toc_item :: toc) tl
       | Paragraph inlines ->
         let blocks =
-          match get_timestamps inlines with
+          match get_timestamps (Type_op.inline_list_strip_pos inlines) with
           | [] -> (h, pos_meta) :: blocks
           | timestamps ->
             update_meta (fun heading ->

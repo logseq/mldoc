@@ -6,13 +6,16 @@ let default_config : Conf.t =
   ; heading_to_list = false
   ; exporting_keep_properties = false
   ; ignore_heading_list_marker = false
+  ; inline_type_with_pos = false
   }
 
 let refs : Reference.parsed_t =
   { parsed_embed_blocks =
       [ ( "ref1"
         , ( [ Type.Heading
-                { Type.title = [ Inline.Plain "ref1-text" ]
+                { Type.title =
+                    Type_op.inline_list_with_none_pos
+                      [ Inline.Plain "ref1-text" ]
                 ; tags = []
                 ; marker = None
                 ; level = 1
@@ -27,7 +30,9 @@ let refs : Reference.parsed_t =
                 [ ("id", "60d2ead8-23c1-4617-b2df-4ef0dcfbbf2e") ]
             ]
           , [ Type.Heading
-                { Type.title = [ Inline.Plain "ref1-text" ]
+                { Type.title =
+                    Type_op.inline_list_with_none_pos
+                      [ Inline.Plain "ref1-text" ]
                 ; tags = []
                 ; marker = None
                 ; level = 1
