@@ -101,16 +101,13 @@ let anchor_link s =
 let parse config =
   let p =
     lift4
-      (fun (level, unordered, size) marker priority title ->
+      (fun (level, unordered, size) marker priority pos_and_title ->
         let title =
-          match title with
+          match pos_and_title with
           | None -> []
-          | Some title -> (
-            match
-              parse_string ~consume:All (Inline.parse config)
-                (String.trim title)
-            with
-            | Ok title -> title
+          | Some (pos, title) -> (
+            match parse_string ~consume:All (Inline.parse config) title with
+            | Ok title -> Type_op.inline_list_move_forward title pos
             | Error _e -> [])
         in
         let title, tags =
@@ -119,7 +116,7 @@ let parse config =
           | _ -> (
             let last_inline = List.nth title (List.length title - 1) in
             match last_inline with
-            | Inline.Plain s ->
+            | Inline.Plain s, _ ->
               let s = String.trim s in
               if String.length s > 1 && s.[String.length s - 1] = ':' then
                 let prefix, maybe_tags = splitr (fun c -> c <> ' ') s in
@@ -129,7 +126,9 @@ let parse config =
                     if prefix = "" then
                       drop_last 1 title
                     else
-                      drop_last 1 title @ [ Inline.Plain prefix ]
+                      drop_last 1 title
+                      @ Type_op.inline_list_with_dummy_pos
+                          [ Inline.Plain prefix ]
                   in
                   (title, remove is_blank tags)
                 | _ -> (title, [])
@@ -137,7 +136,9 @@ let parse config =
                 (title, [])
             | _ -> (title, []))
         in
-        let anchor = anchor_link (Inline.asciis title) in
+        let anchor =
+          anchor_link (Inline.asciis (Type_op.inline_list_strip_pos title))
+        in
         let meta = { timestamps = []; properties = [] } in
         Heading
           { level
@@ -154,7 +155,7 @@ let parse config =
       (level config <?> "Heading level")
       (optional (ws *> marker <?> "Heading marker"))
       (optional (ws *> priority <?> "Heading priority"))
-      (optional (ws *> title <?> "Heading title"))
+      (optional (ws *> Angstrom.both pos title <?> "Heading title"))
   in
   p <* (end_of_line <|> end_of_input)
 

@@ -13,6 +13,7 @@ let default_config =
   ; heading_to_list = true
   ; exporting_keep_properties = false
   ; ignore_heading_list_marker = true
+  ; inline_type_with_pos = false
   }
 
 let rec block_tree_to_plain_tree (blocks : Tree_type.value) : string Zip.l =

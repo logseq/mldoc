@@ -61,7 +61,8 @@ let group config =
             List.map
               (fun col ->
                 result_default [ Inline.Plain col ]
-                  (parse_string ~consume:All (Inline.parse config) col))
+                  (Result.map (List.map fst)
+                     (parse_string ~consume:All (Inline.parse config) col)))
               row
           in
           rows := row :: !rows;

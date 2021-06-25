@@ -97,7 +97,7 @@ let rec inline state config (t : Inline.t) : t list =
       ) else
         map_raw_text [ s ]
     | Link l -> inline_link l
-    | Nested_link l -> inline_nested_link l
+    | Nested_link l -> inline_nested_link @@ fst l
     | Target s -> map_raw_text [ "<<"; s; ">>" ]
     | Subscript tl -> inline_subscript state config tl
     | Superscript tl -> inline_superscript state config tl
@@ -227,7 +227,10 @@ and block state config t =
   let content =
     match t with
     | Paragraph l ->
-      flatten_map (fun e -> Space :: inline state config e) l @ [ newline ]
+      flatten_map
+        (fun e -> Space :: inline state config e)
+        (Type_op.inline_list_strip_pos l)
+      @ [ newline ]
     | Paragraph_line l -> raw_text_indent state config l @ [ newline ]
     | Paragraph_Sep n -> [ raw_text @@ String.make n '\n' ]
     | Heading h -> heading state config h
@@ -273,7 +276,7 @@ and block state config t =
 
 and heading_merely_have_embed { title; marker; priority; _ } =
   match (title, marker, priority) with
-  | [ Macro hd ], None, None when hd.name = "embed" -> Some hd
+  | [ (Macro hd, _) ], None, None when hd.name = "embed" -> Some hd
   | _ -> None
 
 and heading state config h =
@@ -301,7 +304,7 @@ and heading state config h =
     in
     heading_or_list
     @ [ Space; raw_text marker; Space; raw_text priority; Space ]
-    @ flatten_map (fun e -> Space :: inline state config e) title
+    @ flatten_map (fun e -> Space :: inline state config e) (List.map fst title)
     @ [ Space
       ; (if List.length tags > 0 then
           raw_text @@ ":" ^ String.concat ":" tags ^ ":"
@@ -330,7 +333,10 @@ and list state config l =
   @@ List.map
        (fun { content; items; number; name; checkbox; _ } ->
          let state' = { state with current_level = state.current_level + 1 } in
-         let name' = flatten_map (inline state config) name in
+         let name' =
+           flatten_map (inline state config)
+             (Type_op.inline_list_strip_pos name)
+         in
          let content' = flatten_map (block state' config) content in
          (* Definition Lists content if name isn't empty  *)
          let content'' =

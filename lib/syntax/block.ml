@@ -1,9 +1,10 @@
+open! Prelude
 open Angstrom
 open Parsers
-open Prelude
 open Type
 open Conf
 open Helper
+open Pos
 
 (* There are 2 kinds of blocks.
    1. `begin ... end`

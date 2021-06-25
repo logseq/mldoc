@@ -107,7 +107,7 @@ let of_blocks (blocks : Type.blocks) =
 
 let of_blocks_without_pos (blocks : Type.t list) =
   List.map
-    (fun b -> (b, ({ start_pos = 0; end_pos = 0 } : Type.pos_meta)))
+    (fun b -> (b, ({ start_pos = 0; end_pos = 0 } : Pos.pos_meta)))
     blocks
   |> of_blocks
 
@@ -149,7 +149,7 @@ let rec remove_properties (z : Type.t t) =
 (** replace (block|page)'s (embed|refs) *)
 
 let heading_merely_have_embed ({ title; marker; priority; _ } : Type.heading) =
-  match (title, marker, priority) with
+  match (Type_op.inline_list_strip_pos title, marker, priority) with
   | [ Macro hd ], None, None when hd.name = "embed" -> Some hd
   | _ -> None
 
@@ -302,29 +302,41 @@ let replace_block_ref (t : Type.t_with_pos_meta Z.t) expanded_block_ref block_id
   | Leaf (block, _pos) -> (
     match block with
     | Paragraph il -> (
-      match split_by_block_ref il block_id with
+      match split_by_block_ref (Type_op.inline_list_strip_pos il) block_id with
       | None -> t
       | Some (left, right) ->
-        let lefts = [ Type.Paragraph left ] in
-        let rights = [ Type.Paragraph right ] in
+        let lefts =
+          [ Type.Paragraph (Type_op.inline_list_with_none_pos left) ]
+        in
+        let rights =
+          [ Type.Paragraph (Type_op.inline_list_with_none_pos right) ]
+        in
         let merged =
           merge_paragraphs_and_headings lefts expanded_block_ref rights
         in
         Z.insert_rights t
-          ~items:(List.map (fun p -> Z.leaf (p, Type.dummy_pos)) merged)
+          ~items:(List.map (fun p -> Z.leaf (p, Pos.dummy_pos)) merged)
         >>= Z.remove |> default t)
     | Heading h -> (
       let ({ title; _ } : Type.heading) = h in
-      match split_by_block_ref title block_id with
+      match
+        split_by_block_ref (Type_op.inline_list_strip_pos title) block_id
+      with
       | None -> t
       | Some (left, right) ->
-        let lefts = [ Type.Heading { h with title = left } ] in
-        let rights = [ Type.Paragraph right ] in
+        let lefts =
+          [ Type.Heading
+              { h with title = Type_op.inline_list_with_none_pos left }
+          ]
+        in
+        let rights =
+          [ Type.Paragraph (Type_op.inline_list_with_none_pos right) ]
+        in
         let merged =
           merge_paragraphs_and_headings lefts expanded_block_ref rights
         in
         Z.insert_rights t
-          ~items:(List.map (fun p -> Z.leaf (p, Type.dummy_pos)) merged)
+          ~items:(List.map (fun p -> Z.leaf (p, Pos.dummy_pos)) merged)
         >>= Z.remove |> default t)
     | _ -> t)
 
@@ -334,21 +346,37 @@ let replace_macro (t : Type.t_with_pos_meta Z.t) expanded_macro macro =
   | Leaf (block, _pos) -> (
     match block with
     | Paragraph il -> (
-      match split_by_macro il macro with
+      match split_by_macro (Type_op.inline_list_strip_pos il) macro with
       | None -> t
       | Some (left, right) ->
-        Z.replace t ~item:(Z.leaf (Type.Paragraph left, Type.dummy_pos))
-        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+        Z.replace t
+          ~item:
+            (Z.leaf
+               ( Type.Paragraph (Type_op.inline_list_with_none_pos left)
+               , Pos.dummy_pos ))
+        |> Z.insert_right
+             ~item:
+               (Z.leaf
+                  ( Type.Paragraph (Type_op.inline_list_with_none_pos right)
+                  , Pos.dummy_pos ))
         >>| insert_right ~expanded_macro
         |> default t)
     | Heading h -> (
       let ({ title; _ } : Type.heading) = h in
-      match split_by_macro title macro with
+      match split_by_macro (Type_op.inline_list_strip_pos title) macro with
       | None -> t
       | Some (left, right) ->
         Z.replace t
-          ~item:(Z.leaf (Type.Heading { h with title = left }, Type.dummy_pos))
-        |> Z.insert_right ~item:(Z.leaf (Type.Paragraph right, Type.dummy_pos))
+          ~item:
+            (Z.leaf
+               ( Type.Heading
+                   { h with title = Type_op.inline_list_with_none_pos left }
+               , Pos.dummy_pos ))
+        |> Z.insert_right
+             ~item:
+               (Z.leaf
+                  ( Type.Paragraph (Type_op.inline_list_with_none_pos right)
+                  , Pos.dummy_pos ))
         >>| insert_right ~expanded_macro
         |> default t)
     | Table _ -> t (* TODO: macro in table *)
@@ -375,7 +403,7 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
             | None -> aux z')
           | None ->
             let ({ title; _ } : Type.heading) = h in
-            extract_macro_or_block_ref title
+            extract_macro_or_block_ref (Type_op.inline_list_strip_pos title)
             >>= (fun macro_or_block_ref ->
                   match macro_or_block_ref with
                   | `Macro macro ->
@@ -389,7 +417,7 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
                          block_ref)
             |> default z' |> aux)
         | Type.Paragraph il ->
-          extract_macro_or_block_ref il
+          extract_macro_or_block_ref (Type_op.inline_list_strip_pos il)
           >>= (fun macro_or_block_ref ->
                 match macro_or_block_ref with
                 | `Macro macro ->
@@ -406,7 +434,7 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
           let t = of_blocks_without_pos tl in
           let t' = replace_embed_and_refs t ~refs in
           let tl' = to_blocks_without_pos t' in
-          Z.replace z' ~item:(Z.Leaf (Type.Quote tl', Type.dummy_pos)) |> aux
+          Z.replace z' ~item:(Z.Leaf (Type.Quote tl', Pos.dummy_pos)) |> aux
         | Type.List items ->
           let rec list_aux items =
             List.map
@@ -422,7 +450,7 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
               items
           in
           Z.replace z'
-            ~item:(Z.Leaf (Type.List (list_aux items), Type.dummy_pos))
+            ~item:(Z.Leaf (Type.List (list_aux items), Pos.dummy_pos))
           |> aux
         | Type.Footnote_Definition _
         | Type.Table _ ->

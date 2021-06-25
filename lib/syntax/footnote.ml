@@ -1,3 +1,4 @@
+open! Prelude
 open Angstrom
 open Parsers
 open Type
@@ -61,7 +62,7 @@ let definition_parse config =
         match
           parse_string ~consume:All (Inline.parse config) definition_content
         with
-        | Ok inlines -> inlines
+        | Ok inlines -> List.map fst inlines
         | Error _e -> [ Inline.Plain definition_content ]
       in
       Footnote_Definition (name, definition))
