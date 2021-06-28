@@ -1,5 +1,6 @@
 open! Prelude
 open Pos
+open Type
 
 let remove_properties =
   List.filter (function
@@ -30,3 +31,23 @@ let inline_list_move_forward l forward_pos =
             ; end_pos = end_pos + forward_pos
             } ))
     l
+
+let rec type_move_forawrd t forward_pos =
+  match t with
+  | Paragraph l -> Paragraph (inline_list_move_forward l forward_pos)
+  | Heading h ->
+    Heading { h with title = inline_list_move_forward h.title forward_pos }
+  | List items ->
+    List
+      (List.map
+         (fun l ->
+           { l with
+             content =
+               List.map (fun t -> type_move_forawrd t forward_pos) l.content
+           ; name = inline_list_move_forward l.name forward_pos
+           })
+         items)
+  | Quote l -> Quote (List.map (fun t -> type_move_forawrd t forward_pos) l)
+  | Footnote_Definition (s, l) ->
+    Footnote_Definition (s, inline_list_move_forward l forward_pos)
+  | _ -> t

@@ -62,8 +62,9 @@ let definition_parse config =
         match
           parse_string ~consume:All (Inline.parse config) definition_content
         with
-        | Ok inlines -> List.map fst inlines
-        | Error _e -> [ Inline.Plain definition_content ]
+        | Ok inlines -> inlines
+        | Error _e ->
+          Type_op.inline_list_with_none_pos [ Inline.Plain definition_content ]
       in
       Footnote_Definition (name, definition))
     name_part footnote_definition

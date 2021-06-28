@@ -21,6 +21,9 @@ let testcases =
 
 let paragraph l = Type.Paragraph (Type_op.inline_list_with_none_pos l)
 
+let footnote_definition (s, l) =
+  Type.Footnote_Definition (s, Type_op.inline_list_with_none_pos l)
+
 let inline =
   let module I = Inline in
   [ ( "emphasis"
@@ -83,7 +86,7 @@ let block =
         [ ( "normal"
           , `Quick
           , check_aux "[fn:abc] 中文"
-              (Footnote_Definition ("abc", [ I.Plain "中文" ])) )
+              (footnote_definition ("abc", [ I.Plain "中文" ])) )
         ] )
   ; ( "quote"
     , testcases
