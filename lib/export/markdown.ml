@@ -446,7 +446,9 @@ and drawer state config name kvs =
       ]
 
 and footnote_definition state config name content =
-  let content' = flatten_map (inline state config) content in
+  let content' =
+    flatten_map (inline state config) (Type_op.inline_list_strip_pos content)
+  in
   List.flatten
     [ [ raw_text @@ "[^" ^ name ^ "]"; Space ]; content'; [ newline ] ]
 

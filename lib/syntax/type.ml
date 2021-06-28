@@ -88,7 +88,7 @@ and t =
   (* FIXME:  *)
   | Drawer of string * (string * string) list  (** A drawer *)
   | Property_Drawer of (string * string) list  (** A property drawer *)
-  | Footnote_Definition of string * Inline.t list
+  | Footnote_Definition of string * Inline.t_with_pos list
       (** The definition of a footnote : name and contents *)
   | Horizontal_Rule  (** Horizontal rule *)
   | Table of table  (** A block *)

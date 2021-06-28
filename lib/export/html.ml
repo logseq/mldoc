@@ -402,9 +402,7 @@ and block config t =
     let encode_name = Uri.pct_encode name in
     Xml.block "div" ~attr:[ ("class", "footdef") ]
       [ Xml.block "div" ~attr:[ ("class", "footpara") ]
-          [ block config
-              (Paragraph (Type_op.inline_list_with_none_pos definition))
-          ]
+          [ block config (Paragraph definition) ]
       ; Xml.block "sup"
           [ Xml.block "a"
               ~attr:
