@@ -158,7 +158,7 @@ let extract_macro_or_block_ref (il : Inline.t list) =
     (fun i ->
       match i with
       | Inline.Macro m when m.name = "embed" -> Some (`Macro m)
-      | Inline.Block_reference s -> Some (`Block_ref s)
+      | Inline.Link { url = Inline.Block_ref s; _ } -> Some (`Block_ref s)
       | _ -> None)
     il
 
@@ -257,7 +257,7 @@ let split_by_block_ref inline_list block_ref =
   List.find_idx
     (fun inline ->
       match inline with
-      | Inline.Block_reference s when s = block_ref -> true
+      | Inline.Link { url = Inline.Block_ref s; _ } when s = block_ref -> true
       | _ -> false)
     inline_list
   >>| fun (index, _) ->
