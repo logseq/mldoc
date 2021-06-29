@@ -264,7 +264,7 @@ let inline =
           , check_aux "[[a]][b](c)"
               (paragraph
                  [ I.Link
-                     { url = I.Search "a"
+                     { url = I.Page_ref "a"
                      ; label = [ Plain "" ]
                      ; title = None
                      ; full_text = "[[a]]"

@@ -120,7 +120,6 @@ let rec inline state config (t : Inline.t) : t list =
     | Inline_Source_Block { language; options; code } ->
       map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
     | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
-    | Block_reference uuid -> block_reference uuid
     | Inline_Hiccup s -> map_raw_text [ s ]
     | Inline_Html s -> map_raw_text [ s ])
   in

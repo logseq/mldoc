@@ -32,6 +32,8 @@ and url =
   | File of string
   | Search of string
   | Complex of complex
+  | Page_ref of string
+  | Block_ref of string
 [@@deriving yojson]
 
 and complex =
@@ -116,7 +118,6 @@ and t =
   | Export_Snippet of string * string
   | Inline_Source_Block of inline_source_block
   | Email of Email_address.t
-  | Block_reference of string  (** Block reference *)
   | Inline_Hiccup of string
   | Inline_Html of string
 [@@deriving yojson]
@@ -611,23 +612,29 @@ let quick_link config =
 (* 3. [[ecosystem [[great]] [[Questions]]]] *)
 
 let org_link config =
-  let url_part =
-    string "[[" *> take_while1 (fun c -> c <> ']') <* optional (string "][")
+  let link_type_and_url_part =
+    string "[[" *> take_while1 (fun c -> c <> ']') >>= fun url_part ->
+    string "][" *> return `Other_link <|> return `Page_ref_link
+    >>| fun link_type -> (link_type, url_part)
   in
+
   let label_part = take_while (fun c -> c <> ']') <* string "]]" in
   lift3
-    (fun url_text label_text metadata ->
+    (fun (link_type, url_text) label_text metadata ->
       let url =
-        let url = url_text in
-        if String.length url > 5 && String.sub url 0 5 = "file:" then
-          File url
-        else if label_text = "" then
-          Search url
-        else
-          try
-            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                Complex { protocol; link })
-          with _ -> Search url
+        match link_type with
+        | `Page_ref_link -> Page_ref url_text
+        | `Other_link -> (
+          let url = url_text in
+          if String.length url > 5 && String.sub url 0 5 = "file:" then
+            File url
+          else if label_text = "" then
+            Search url
+          else
+            try
+              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                  Complex { protocol; link })
+            with _ -> Search url)
       in
       let parser =
         many1
@@ -650,7 +657,7 @@ let org_link config =
       let title = None in
       let full_text = Printf.sprintf "[[%s]]%s" url_text metadata in
       Link { label; url; title; full_text; metadata })
-    url_part label_part metadata
+    link_type_and_url_part label_part metadata
 
 (* helper for markdown_link and markdown_image *)
 let link_url_part =
@@ -663,21 +670,28 @@ let link_url_part =
   else
     fail "link_url_part"
 
-(* return (url, title) *)
+(* return ((type, url), title) *)
 let link_url_part_inner =
   let url_part =
-    take_while1 (fun c -> non_space_eol c && c <> '[')
-    <|> page_ref
+    both (return `Block_ref_link) block_ref
+    <|> both
+          (return `Other_link)
+          (take_while1 (fun c -> non_space_eol c && c <> '['))
+    <|> both (return `Page_ref_link) page_ref
     <|> ( peek_char >>= fun c ->
           match c with
           | None -> fail "url1"
           | Some ' ' -> fail "url2"
-          | Some _ -> any_char_string )
+          | Some _ -> both (return `Other_link) any_char_string )
   in
   both
-    (fix (fun m ->
-         List.cons <$> url_part <*> m <|> (List.cons <$> url_part <*> return []))
-    >>| String.concat "")
+    ( fix (fun m ->
+          List.cons <$> url_part <*> m <|> (List.cons <$> url_part <*> return []))
+    >>| fun l ->
+      if List.length l = 1 then
+        List.hd l
+      else
+        (`Other_link, String.concat "" (List.map snd l)) )
     (take_while (fun _ -> true))
 
 (* link *)
@@ -729,29 +743,34 @@ let markdown_link config =
   in
   lift3
     (fun (label_t, label_text) url_text metadata ->
-      let url, title =
+      let link_type, url, title =
         match
           Angstrom.parse_string ~consume:All link_url_part_inner url_text
         with
-        | Ok (url, title) -> (url, title)
-        | Error _ -> (url_text, "")
+        | Ok ((link_type, url), title) -> (link_type, url, title)
+        | Error _ -> (`Other_link, url_text, "")
       in
       let url = String.trim url in
       let title = String.trim title in
       let lowercased_url = String.lowercase_ascii url in
       let url =
-        try
-          Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-              Complex { protocol; link })
-        with _ ->
-          if
-            String.length url > 3
-            && (ends_with lowercased_url ".md"
-               || ends_with lowercased_url ".markdown")
-          then
-            File url
-          else
-            Search url
+        match link_type with
+        | `Block_ref_link ->
+          Block_ref (String.sub url 2 (String.length url - 4))
+        | `Page_ref_link -> Page_ref (String.sub url 2 (String.length url - 4))
+        | `Other_link -> (
+          try
+            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                Complex { protocol; link })
+          with _ ->
+            if
+              String.length url > 3
+              && (ends_with lowercased_url ".md"
+                 || ends_with lowercased_url ".markdown")
+            then
+              File url
+            else
+              Search url)
       in
       let parser =
         many1
@@ -794,7 +813,7 @@ let markdown_link_or_page_ref config =
   <|> ( page_ref >>| fun s ->
         let inner_s = String.sub s 2 (String.length s - 4) in
         Link
-          { url = Search inner_s
+          { url = Page_ref inner_s
           ; label = [ Plain "" ]
           ; title = None
           ; full_text = s
@@ -1195,7 +1214,15 @@ let break_or_line =
 
 (* TODO: Allow to disable this *)
 let block_reference _config =
-  Block_reference.parse >>= fun s -> return @@ Block_reference s
+  block_ref >>| fun s ->
+  let inner_s = String.sub s 2 (String.length s - 4) in
+  Link
+    { label = []
+    ; url = Block_ref inner_s
+    ; title = None
+    ; full_text = s
+    ; metadata = ""
+    }
 
 let hash_tag = Hash_tag.parse >>| fun s -> Tag s
 
@@ -1288,7 +1315,9 @@ let parse config =
 
 let string_of_url = function
   | File s
-  | Search s ->
+  | Search s
+  | Page_ref s
+  | Block_ref s ->
     s
   | Complex { link; protocol = "file" } -> link
   | Complex { link; protocol } -> protocol ^ ":" ^ link

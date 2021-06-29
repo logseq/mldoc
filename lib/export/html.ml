@@ -45,6 +45,8 @@ let handle_image_link url href label =
         []
     ]
   | Search _
+  | Page_ref _
+  | Block_ref _
   | File _ ->
     [ Xml.block "img" ~attr:[ ("src", href); ("title", Inline.asciis label) ] []
     ]
