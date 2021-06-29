@@ -302,6 +302,18 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "page ref with label"
+          , `Quick
+          , check_aux "[label]([[page-ref]])"
+              (paragraph
+                 [ I.Link
+                     { url = I.Page_ref "page-ref"
+                     ; label = [ Plain "label" ]
+                     ; title = None
+                     ; full_text = "[label]([[page-ref]])"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ; ( "inline-macro"
     , testcases
