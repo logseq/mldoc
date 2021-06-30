@@ -2,7 +2,7 @@
 
 (* [[Introduction to [[Logseq]]]] *)
 
-open Prelude
+open! Prelude
 open Angstrom
 open Parsers
 
@@ -16,27 +16,69 @@ and t =
   { content : string
   ; children : children
   }
-[@@deriving yojson]
 
 and t_with_pos = t * Pos.pos_meta option
 
-let t_with_pos_to_yojson t_with_pos : Yojson.Safe.t =
-  let t, pos = t_with_pos in
-  let t_yojson = to_yojson t in
-  match pos with
-  | None -> t_yojson
-  | Some pos' ->
-    let pos_yojson = Pos.pos_meta_to_yojson pos' in
-    `List [ t_yojson; pos_yojson ]
+let rec to_yojson { content; children } : Yojson.Safe.t =
+  let child_to_yojson child =
+    match child with
+    | Label s -> `List [ `String "Label"; `String s ]
+    | Nested_link (t, None) -> `List [ `String "Nested_link"; to_yojson t ]
+    | Nested_link (t, Some pos) ->
+      `List
+        [ `String "Nested_link"
+        ; `List [ to_yojson t; Pos.pos_meta_to_yojson pos ]
+        ]
+  in
+  `Assoc
+    [ ("content", `String content)
+    ; ("children", `List (List.map child_to_yojson children))
+    ]
 
-let t_with_pos_of_yojson (json : Yojson.Safe.t) =
-  let open Ppx_deriving_yojson_runtime in
+let rec child_of_yojson (json : Yojson.Safe.t) =
+  let ( >>= ) = Ppx_deriving_yojson_runtime.( >>= ) in
   match json with
-  | `List [ t; pos ] ->
-    of_yojson t >>= fun t' ->
-    Pos.pos_meta_of_yojson pos >|= fun pos' -> (t', Some pos')
-  | `Assoc _ as t -> of_yojson t >|= fun t' -> (t', None)
-  | _ -> Result.Error "invalid_arg: Nested_link.t_with_pos_of_yojson"
+  | `List [ `String "Label"; `String s ] -> Ok (Label s)
+  | `List [ `String "Nested_link"; (`Assoc _ as t) ] ->
+    of_yojson t >>= fun t' -> Ok (Nested_link (t', None))
+  | `List [ `String "Nested_link"; `List [ t; pos ] ] ->
+    Pos.pos_meta_of_yojson pos >>= fun pos' ->
+    of_yojson t >>= fun t' -> Ok (Nested_link (t', Some pos'))
+  | _ -> Result.Error "invalid_arg: child_of_yojson"
+
+and of_yojson (json : Yojson.Safe.t) =
+  match json with
+  | `Assoc [ ("content", `String content); ("children", `List children) ] ->
+    let children' =
+      Prelude.List.map
+        (fun child ->
+          match child_of_yojson child with
+          | Ok v -> [ v ]
+          | _ -> [])
+        children
+      |> Prelude.List.flatten
+    in
+    Ok { content; children = children' }
+  | _ -> Result.Error "invalid_arg: Nested_link.of_yojson"
+
+let rec forward_pos t forward =
+  let open Pos in
+  let { children; _ } = t in
+  { t with
+    children =
+      List.map
+        (fun child ->
+          match child with
+          | Nested_link (t, Some pos) ->
+            Nested_link
+              ( forward_pos t forward
+              , Some
+                  { start_pos = pos.start_pos + forward
+                  ; end_pos = pos.end_pos + forward
+                  } )
+          | _ -> child)
+        children
+  }
 
 let open_brackets = "[["
 
@@ -90,8 +132,8 @@ let parse (config : Conf.t) =
       return @@ Nested_link ({ content = s; children = result }, pos))
   >>= function
   | Label _l -> fail "nested link"
-  | Nested_link ({ content; children }, pos) ->
+  | Nested_link ({ content; children }, _) ->
     if List.length children <= 1 then
       fail "nested link"
     else
-      return @@ ({ content; children }, pos)
+      return @@ { content; children }

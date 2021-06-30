@@ -105,9 +105,9 @@ let parse config =
         let title =
           match pos_and_title with
           | None -> []
-          | Some (pos, title) -> (
+          | Some (_pos, title) -> (
             match parse_string ~consume:All (Inline.parse config) title with
-            | Ok title -> Type_op.inline_list_move_forward title pos
+            | Ok title -> title
             | Error _e -> [])
         in
         let title, tags =

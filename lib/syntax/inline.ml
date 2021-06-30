@@ -104,7 +104,7 @@ and t =
   | Spaces of string
   | Plain of string
   | Link of link
-  | Nested_link of Nested_link.t_with_pos
+  | Nested_link of Nested_link.t
   | Target of string
   | Subscript of t list
   | Superscript of t list
@@ -134,7 +134,7 @@ let t_with_pos_to_yojson (t_with_pos : t_with_pos) : Yojson.Safe.t =
     `List [ t_yojson; pos_yojson ]
 
 let t_with_pos_of_yojson (json : Yojson.Safe.t) =
-  let open Ppx_deriving_yojson_runtime in
+  let ( >>= ), ( >|= ) = Ppx_deriving_yojson_runtime.(( >>= ), ( >|= )) in
   match json with
   | `List [ (`List _ as t); pos ] ->
     of_yojson t >>= fun t' ->
@@ -891,7 +891,7 @@ let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 
 let macro_arg config =
   Nested_link.parse config
-  >>| (fun (l, _) -> l.content)
+  >>| (fun l -> l.content)
   <|> string "[[" *> take_while1 (fun c -> c <> ']')
   <* string "]]"
   >>| (fun s -> "[[" ^ s ^ "]]")
@@ -1242,15 +1242,7 @@ let hash_tag config =
     | Ok l ->
       List.map
         (function
-          | Nested_link (link, pos) ->
-            Nested_link
-              ( link
-              , match pos with
-                | None -> None
-                | Some { start_pos; end_pos } ->
-                  Some
-                    { start_pos = start_pos + pos'; end_pos = end_pos + pos' }
-              )
+          | Nested_link link -> Nested_link (Nested_link.forward_pos link pos')
           | other -> other)
         (concat_plains_without_pos l)
     | Error _ -> [ Plain tagname ])
@@ -1262,7 +1254,7 @@ let hash_tag_value_string tag =
     String.concat ""
     @@ List.map
          (function
-           | Nested_link (t, _) -> t.content
+           | Nested_link t -> t.content
            | Link link -> link.full_text
            | Plain s -> s
            | _ -> "")
