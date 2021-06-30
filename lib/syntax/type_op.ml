@@ -19,18 +19,17 @@ let inline_list_strip_pos (l : ('a * pos_meta option) list) : 'a list =
 let inline_with_pos i start_pos end_pos =
   (i, Some ({ start_pos; end_pos } : Pos.pos_meta))
 
+let inline_move_forward (i, pos) ~forward_pos =
+  ( i
+  , match pos with
+    | None -> None
+    | Some { start_pos; end_pos } ->
+      Some
+        { start_pos = start_pos + forward_pos; end_pos = end_pos + forward_pos }
+  )
+
 let inline_list_move_forward l forward_pos =
-  List.map
-    (fun (i, pos) ->
-      ( i
-      , match pos with
-        | None -> None
-        | Some { start_pos; end_pos } ->
-          Some
-            { start_pos = start_pos + forward_pos
-            ; end_pos = end_pos + forward_pos
-            } ))
-    l
+  List.map (inline_move_forward ~forward_pos) l
 
 let rec type_move_forawrd t forward_pos =
   match t with

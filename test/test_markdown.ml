@@ -501,28 +501,48 @@ let inline =
     , testcases
         [ ( "endwith '.'"
           , `Quick
-          , check_aux "#tag." (paragraph [ I.Tag "tag"; I.Plain "." ]) )
+          , check_aux "#tag."
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain "." ]) )
         ; ( "endwith ','"
           , `Quick
-          , check_aux "#tag," (paragraph [ I.Tag "tag"; I.Plain "," ]) )
+          , check_aux "#tag,"
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain "," ]) )
         ; ( "endwith '\"'"
           , `Quick
-          , check_aux "#tag\"" (paragraph [ I.Tag "tag"; I.Plain "\"" ]) )
+          , check_aux "#tag\""
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain "\"" ]) )
         ; ( "endwith several periods"
           , `Quick
-          , check_aux "#tag,.?" (paragraph [ I.Tag "tag"; I.Plain ",.?" ]) )
-        ; ("with '.'", `Quick, check_aux "#a.b.c" (paragraph [ I.Tag "a.b.c" ]))
+          , check_aux "#tag,.?"
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain ",.?" ]) )
+        ; ( "with '.'"
+          , `Quick
+          , check_aux "#a.b.c" (paragraph [ I.Tag [ I.Plain "a.b.c" ] ]) )
         ; ( "with '.' and endwith '.'"
           , `Quick
-          , check_aux "#a.b.c." (paragraph [ I.Tag "a.b.c"; I.Plain "." ]) )
+          , check_aux "#a.b.c."
+              (paragraph [ I.Tag [ I.Plain "a.b.c" ]; I.Plain "." ]) )
         ; ( "with '.' and endwith '.' (2)"
           , `Quick
           , check_aux "#a.b.c. defg"
-              (paragraph [ I.Tag "a.b.c"; I.Plain ". defg" ]) )
+              (paragraph [ I.Tag [ I.Plain "a.b.c" ]; I.Plain ". defg" ]) )
         ; ( "with page-ref"
           , `Quick
           , check_aux "#a.[[b c d ]].e."
-              (paragraph [ I.Tag "a.[[b c d ]].e"; I.Plain "." ]) )
+              (paragraph
+                 [ I.Tag
+                     [ I.Plain "a."
+                     ; I.Link
+                         { url = I.Page_ref "b c d "
+                         ; label = [ I.Plain "" ]
+                         ; full_text = "[[b c d ]]"
+                         ; metadata = ""
+                         ; title = None
+                         }
+                     ; I.Plain ".e"
+                     ]
+                 ; I.Plain "."
+                 ]) )
         ] )
   ]
 
@@ -624,7 +644,8 @@ let block =
           , check_aux "- #tag"
               (Type.Heading
                  { Type.title =
-                     Type_op.inline_list_with_none_pos [ Inline.Tag "tag" ]
+                     Type_op.inline_list_with_none_pos
+                       [ Inline.Tag [ I.Plain "tag" ] ]
                  ; tags = []
                  ; marker = None
                  ; level = 1
