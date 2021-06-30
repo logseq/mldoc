@@ -97,7 +97,7 @@ let rec inline state config (t : Inline.t) : t list =
       ) else
         map_raw_text [ s ]
     | Link l -> inline_link l
-    | Nested_link l -> inline_nested_link @@ fst l
+    | Nested_link l -> inline_nested_link l
     | Target s -> map_raw_text [ "<<"; s; ">>" ]
     | Subscript tl -> inline_subscript state config tl
     | Superscript tl -> inline_superscript state config tl
