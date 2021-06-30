@@ -112,7 +112,10 @@ and inline config t =
     in
     [ Xml.block (assoc kind l) (map_inline config data) ]
   | Entity e -> [ Xml.raw e.html ]
-  | Tag t -> [ Xml.block "a" ~attr:[ ("class", "tag") ] [ Xml.data t ] ]
+  | Tag t ->
+    [ Xml.block "a" ~attr:[ ("class", "tag") ]
+        [ Xml.data (Inline.hash_tag_value_string (Tag t)) ]
+    ]
   | Latex_Fragment (Displayed s) -> [ Xml.data ("\\[" ^ s ^ "\\]") ]
   | Latex_Fragment (Inline s) -> [ Xml.data ("\\(" ^ s ^ "\\)") ]
   | Target s -> [ Xml.block "a" ~attr:[ ("id", s) ] [ Xml.data s ] ]

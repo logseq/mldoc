@@ -100,7 +100,7 @@ and t =
   | Hard_Break_Line
   | Verbatim of string
   | Code of string
-  | Tag of string
+  | Tag of t list
   | Spaces of string
   | Plain of string
   | Link of link
@@ -1224,7 +1224,50 @@ let block_reference _config =
     ; metadata = ""
     }
 
-let hash_tag = Hash_tag.parse >>| fun s -> Tag s
+let hash_tag config =
+  let hashtag_name_part =
+    take_while1 (fun c -> non_space_eol c && c <> '[')
+    >>| (fun s -> Plain s)
+    <|> nested_link config <|> link config
+    <|> (any_char_string >>| fun s -> Plain s)
+  in
+  char '#' *> pos >>= fun pos' ->
+  Hash_tag.hashtag_name >>= fun tagname ->
+  return
+    (match
+       parse_string ~consume:All
+         (fix (fun m -> List.cons <$> hashtag_name_part <*> m <|> return []))
+         tagname
+     with
+    | Ok l ->
+      List.map
+        (function
+          | Nested_link (link, pos) ->
+            Nested_link
+              ( link
+              , match pos with
+                | None -> None
+                | Some { start_pos; end_pos } ->
+                  Some
+                    { start_pos = start_pos + pos'; end_pos = end_pos + pos' }
+              )
+          | other -> other)
+        (concat_plains_without_pos l)
+    | Error _ -> [ Plain tagname ])
+  >>| fun l -> Tag l
+
+let hash_tag_value_string tag =
+  match tag with
+  | Tag l ->
+    String.concat ""
+    @@ List.map
+         (function
+           | Nested_link (t, _) -> t.content
+           | Link link -> link.full_text
+           | Plain s -> s
+           | _ -> "")
+         l
+  | _ -> failwith "unreachable"
 
 let inline_hiccup = Hiccup.parse >>| fun s -> Inline_Hiccup s
 
@@ -1237,7 +1280,7 @@ let inline_choices state config : t_with_pos Angstrom.t =
     if is_markdown then
       peek_char_fail >>= function
       | '\n' -> breakline
-      | '#' -> hash_tag
+      | '#' -> hash_tag config
       | '*'
       | '~' ->
         nested_emphasis config
@@ -1267,7 +1310,7 @@ let inline_choices state config : t_with_pos Angstrom.t =
     else
       peek_char_fail >>= function
       | '\n' -> breakline
-      | '#' -> hash_tag
+      | '#' -> hash_tag config
       | '*'
       | '/'
       | '+' ->

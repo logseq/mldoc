@@ -1,3 +1,4 @@
+open! Prelude
 open Angstrom
 open Parsers
 
@@ -22,6 +23,3 @@ let hashtag_name =
       List.cons <$> hashtag_name_part <*> m
       <|> (List.cons <$> hashtag_name_part <*> return []))
   >>| String.concat ""
-
-(* TODO: how to express begin of line? Otherwise the tag should be prefixed by spaces *)
-let parse = char '#' *> hashtag_name

@@ -84,7 +84,7 @@ let rec inline state config (t : Inline.t) : t list =
       [ raw_text "  \n" ]
     | Verbatim s -> [ raw_text s ]
     | Code s -> map_raw_text [ "`"; s; "`" ] (* it's inline code *)
-    | Tag s -> map_raw_text [ "#"; s ]
+    | Tag s -> map_raw_text [ "#"; Inline.hash_tag_value_string (Tag s) ]
     | Spaces s ->
       if state.last_newline then
         []
