@@ -311,7 +311,7 @@ module List = struct
     in
     direct f direct_depth_default_ l
 
-  let direct_depth_append_ = 10_000
+  let direct_depth_append_ = 1000
 
   let append l1 l2 =
     let rec direct i l1 l2 =
@@ -328,7 +328,7 @@ module List = struct
 
   let ( @ ) = append
 
-  let direct_depth_filter_ = 10_000
+  let direct_depth_filter_ = 1000
 
   let filter p l =
     let rec direct i p l =
@@ -408,6 +408,8 @@ module List = struct
     direct direct_depth_default_ f l acc
 
   let flatten l = fold_right append l []
+
+  let concat = flatten
 end
 
 let ( @ ) = List.append
