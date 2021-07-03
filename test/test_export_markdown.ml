@@ -51,9 +51,9 @@ let refs : Reference.parsed_t =
   ; parsed_embed_pages = []
   }
 
-let check_aux source expect =
-  let tl = Mldoc_parser.parse default_config source in
-  let ol = Markdown.blocks refs default_config tl in
+let check_aux ?(config = default_config) source expect =
+  let tl = Mldoc_parser.parse config source in
+  let ol = Markdown.blocks refs config tl in
   fun _ ->
     Alcotest.check Alcotest.string "check exported string" expect
       (Output.to_string ol)
@@ -93,6 +93,23 @@ let export_md =
                \t  > line4\n\
                \t\t- line5\n\
                \t\t  [[line6]]" )
+        ; ( "indent style='spaces' (1)"
+          , `Quick
+          , check_aux
+              ~config:{ default_config with export_md_indent_style = "spaces" }
+              "- line1\n  line2\n  - > line3\n    > line4"
+              "line1\nline2\n\t> line3\n\t> line4\n" )
+        ; ( "indent style='spaces' (2)"
+          , `Quick
+          , check_aux
+              ~config:{ default_config with export_md_indent_style = "spaces" }
+              "- line1\n\
+              \  line2\n\
+              \  - > line3\n\
+              \    > line4\n\
+              \    - line5\n\
+              \      [[line6]]"
+              "line1\nline2\n\t> line3\n\t> line4\n\t\tline5\n\t\t[[line6]]" )
         ] )
   ]
 

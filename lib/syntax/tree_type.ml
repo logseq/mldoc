@@ -458,3 +458,18 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
         | _ -> aux z')
   in
   aux root
+
+let replace_heading_with_paragraph (t : Type.t_with_pos_meta Z.t) =
+  let root = Z.of_l (to_value t) in
+  let rec aux z =
+    if Z.is_end z then
+      z
+    else
+      let z' = Z.next z in
+      match Z.node z' with
+      | Z.Leaf (Type.Heading h, _pos) ->
+        aux
+        @@ Z.replace z' ~item:(Z.Leaf (Type.Paragraph h.title, Pos.dummy_pos))
+      | _ -> aux z'
+  in
+  aux root
