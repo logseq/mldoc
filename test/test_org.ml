@@ -7,6 +7,7 @@ let default_config : Conf.t =
   ; exporting_keep_properties = false
   ; ignore_heading_list_marker = false
   ; inline_type_with_pos = false
+  ; export_md_indent_style = ""
   }
 
 let check_mldoc_type =

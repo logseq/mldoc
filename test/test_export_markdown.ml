@@ -7,6 +7,7 @@ let default_config : Conf.t =
   ; exporting_keep_properties = false
   ; ignore_heading_list_marker = false
   ; inline_type_with_pos = false
+  ; export_md_indent_style = ""
   }
 
 let refs : Reference.parsed_t =
@@ -66,6 +67,32 @@ let export_md =
         [ ( "merge paragraph"
           , `Quick
           , check_aux "- text1 ((ref1)) text2" "- text1 ref1-text text2" )
+        ] )
+  ; ( "export md"
+    , testcases
+        [ ( "(1)"
+          , `Quick
+          , check_aux "- line1\n  line2\n  - line3\n  line4"
+              "- line1\n  line2\n\t- line3\n\t  line4" )
+        ; ( "(2)"
+          , `Quick
+          , check_aux "- line1\n  line2\n  - > line3\n    > line4"
+              "- line1\n  line2\n\t- > line3\n\t  > line4\n" )
+        ; ( "(3)"
+          , `Quick
+          , check_aux
+              "- line1\n\
+              \  line2\n\
+              \  - > line3\n\
+              \    > line4\n\
+              \    - line5\n\
+              \      [[line6]]"
+              "- line1\n\
+              \  line2\n\
+               \t- > line3\n\
+               \t  > line4\n\
+               \t\t- line5\n\
+               \t\t  [[line6]]" )
         ] )
   ]
 

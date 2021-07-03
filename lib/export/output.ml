@@ -140,7 +140,7 @@ let merge_adjacent_space_newline =
              (result, [ `TwoNewlines ], false, None, true)
            | TwoNewlines, [], false, None, _ ->
              (result, [ `TwoNewlines ], false, None, true)
-           | Indent (n, _), a, b, c, _ when n <= 0 ->
+           | Indent (n, space_n), a, b, c, _ when n <= 0 && space_n <= 0 ->
              (* ignore *)
              (result, a, b, c, start_of_line)
            | Indent n, before, _, _, true ->

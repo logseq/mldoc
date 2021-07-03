@@ -25,6 +25,7 @@ type t =
         [@default false] (* keep properties when exporting *)
   ; ignore_heading_list_marker : bool [@default false]
   ; inline_type_with_pos : bool [@default false]
+  ; export_md_indent_style : string [@default ""]
   }
 [@@deriving yojson]
 
