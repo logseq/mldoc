@@ -42,7 +42,13 @@ let default_state () =
   ; last_newline = false
   }
 
-let indent_with_2_spacemore n = Indent (n, 2)
+let indent_with_2_spacemore n config =
+  match config.export_md_indent_style with
+  | ""
+  | "dashes" ->
+    Indent (n, 2)
+  | "spaces" -> Indent (n, 0)
+  | _ -> Indent (n, 2)
 
 (* let indent_with_2_spacemore_if_start_of_line s =  *)
 
@@ -52,7 +58,7 @@ let raw_text_indent state config s =
       let ls =
         lines s
         |> flatten_map (fun l ->
-               [ indent_with_2_spacemore state.current_level
+               [ indent_with_2_spacemore state.current_level config
                ; raw_text (l ^ "\n")
                ])
       in
@@ -68,11 +74,11 @@ let raw_text_indent state config s =
   if state.current_level = 0 then
     [ raw_text s ]
   else
-    indent_with_2_spacemore state.current_level :: indent state config s
+    indent_with_2_spacemore state.current_level config :: indent state config s
 
 let rec inline state config (t : Inline.t) : t list =
   let content =
-    indent_with_2_spacemore state.current_level
+    indent_with_2_spacemore state.current_level config
     ::
     (match t with
     | Emphasis em -> emphasis state config em
@@ -236,7 +242,7 @@ and block state config t =
     | List l -> list state config l
     | Directive _ -> []
     | Results -> []
-    | Example sl -> example state sl
+    | Example sl -> example state config sl
     | Src cb -> src state config cb
     | Quote tl -> quote state config tl
     | Export _ -> []
@@ -383,10 +389,10 @@ and list state config l =
            ])
        l
 
-and example state sl =
+and example state config sl =
   flatten_map
     (fun l ->
-      [ indent_with_2_spacemore state.current_level
+      [ indent_with_2_spacemore state.current_level config
       ; RawText "    "
       ; RawText l
       ; newline
@@ -395,35 +401,41 @@ and example state sl =
 
 and src state config { lines; language; _ } =
   List.flatten
-    [ [ indent_with_2_spacemore state.current_level
+    [ [ indent_with_2_spacemore state.current_level config
       ; raw_text "```"
       ; Space
       ; raw_text @@ Option.default "" language
       ; newline
       ]
     ; flatten_map (raw_text_indent state config) lines
-    ; [ indent_with_2_spacemore state.current_level; raw_text "```"; newline ]
+    ; [ indent_with_2_spacemore state.current_level config
+      ; raw_text "```"
+      ; newline
+      ]
     ]
 
 and quote state config tl =
   flatten_map
     (fun l ->
       List.flatten
-        [ [ indent_with_2_spacemore state.current_level; raw_text ">"; Space ]
+        [ [ indent_with_2_spacemore state.current_level config
+          ; raw_text ">"
+          ; Space
+          ]
         ; block state config l
         ; [ newline ]
         ])
     tl
 
 and latex_env state config name options content =
-  [ indent_with_2_spacemore state.current_level
+  [ indent_with_2_spacemore state.current_level config
   ; raw_text @@ "\\begin{" ^ name ^ "}"
   ; raw_text @@ Option.default "" options
   ; newline
   ]
   @ raw_text_indent state config content
   @ [ newline
-    ; indent_with_2_spacemore state.current_level
+    ; indent_with_2_spacemore state.current_level config
     ; raw_text @@ "\\end{" ^ name ^ "}"
     ; newline
     ]
@@ -460,7 +472,7 @@ and table state config { header; groups; _ } =
     in
     let header_line =
       List.flatten
-        [ [ indent_with_2_spacemore state.current_level ]
+        [ [ indent_with_2_spacemore state.current_level config ]
         ; flatten_map
             (fun col ->
               Space :: raw_text "|" :: Space
@@ -475,7 +487,7 @@ and table state config { header; groups; _ } =
              List.flatten
                [ flatten_map
                    (fun col ->
-                     indent_with_2_spacemore state.current_level
+                     indent_with_2_spacemore state.current_level config
                      :: Space :: raw_text "|" :: Space
                      :: flatten_map (inline state config) col)
                    row
@@ -487,7 +499,7 @@ and table state config { header; groups; _ } =
       [ [ TwoNewlines ]
       ; header_line
       ; [ newline
-        ; indent_with_2_spacemore state.current_level
+        ; indent_with_2_spacemore state.current_level config
         ; raw_text separated_line
         ; newline
         ]
@@ -512,7 +524,15 @@ let blocks refs config tl =
   let open Tree_type in
   let z = of_blocks tl in
   let z' = replace_embed_and_refs z ~refs in
-  let v = to_value z' in
+  let z'' =
+    match config.export_md_indent_style with
+    | ""
+    | "dashes" ->
+      z'
+    | "spaces" -> replace_heading_with_paragraph z'
+    | _ -> z'
+  in
+  let v = to_value z'' in
   blocks_aux (default_state ()) config v
 
 let directive kvs =

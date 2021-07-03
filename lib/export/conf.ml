@@ -26,6 +26,7 @@ type t =
   ; ignore_heading_list_marker : bool [@default false]
   ; inline_type_with_pos : bool [@default false]
   ; export_md_indent_style : string [@default ""]
+        (* ""="dashes", "spaces", "no-indent" *)
   }
 [@@deriving yojson]
 
