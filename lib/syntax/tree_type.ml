@@ -473,3 +473,19 @@ let replace_heading_with_paragraph (t : Type.t_with_pos_meta Z.t) =
       | _ -> aux z'
   in
   aux root
+
+let flatten (t : Type.t_with_pos_meta Z.t) =
+  let value = to_value t in
+  let rec aux vl =
+    List.concat_map
+      (function
+        | Z.Branch l -> aux l
+        | Z.Leaf _ as v -> [ v ])
+      vl
+  in
+  let value' =
+    match value with
+    | Z.Branch l -> aux l
+    | Z.Leaf _ as v -> aux [ v ]
+  in
+  of_value (Z.Branch value')

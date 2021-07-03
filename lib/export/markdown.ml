@@ -47,10 +47,11 @@ let indent_with_2_spacemore n config =
   | ""
   | "dashes" ->
     Indent (n, 2)
-  | "spaces" -> Indent (n, 0)
+  | "spaces"
+  | "no-indent" ->
+    Indent (n, 0)
+    (* no need to add extra 2 spaces when indent-style="spaces" or "no-indent"  *)
   | _ -> Indent (n, 2)
-
-(* let indent_with_2_spacemore_if_start_of_line s =  *)
 
 let raw_text_indent state config s =
   let indent state config s =
@@ -530,6 +531,7 @@ let blocks refs config tl =
     | "dashes" ->
       z'
     | "spaces" -> replace_heading_with_paragraph z'
+    | "no-indent" -> replace_heading_with_paragraph (flatten z')
     | _ -> z'
   in
   let v = to_value z'' in
