@@ -36,6 +36,7 @@ let generate backend output _opts filename =
       ; exporting_keep_properties = true
       ; ignore_heading_list_marker = false
       ; inline_type_with_pos = false
+      ; export_md_indent_style = ""
       }
     in
     let ast = parse config (String.concat "\n" lines) in
