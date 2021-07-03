@@ -7,7 +7,7 @@ let default_config : Conf.t =
   ; exporting_keep_properties = false
   ; ignore_heading_list_marker = false
   ; inline_type_with_pos = false
-  ; export_md_indent_style = ""
+  ; export_md_indent_style = Conf.Dashes
   }
 
 let refs : Reference.parsed_t =
@@ -122,13 +122,15 @@ let export_md =
         ; ( "indent style='spaces' (1)"
           , `Quick
           , check_aux
-              ~config:{ default_config with export_md_indent_style = "spaces" }
+              ~config:
+                { default_config with export_md_indent_style = Conf.Spaces }
               "- line1\n  line2\n  - > line3\n    > line4"
               "line1\nline2\n\t> line3\n\t> line4\n" )
         ; ( "indent style='spaces' (2)"
           , `Quick
           , check_aux
-              ~config:{ default_config with export_md_indent_style = "spaces" }
+              ~config:
+                { default_config with export_md_indent_style = Conf.Spaces }
               "- line1\n\
               \  line2\n\
               \  - > line3\n\
@@ -140,7 +142,7 @@ let export_md =
           , `Quick
           , check_aux
               ~config:
-                { default_config with export_md_indent_style = "no-indent" }
+                { default_config with export_md_indent_style = Conf.NoIndent }
               "- line1\n\
               \  line2\n\
               \  - > line3\n\

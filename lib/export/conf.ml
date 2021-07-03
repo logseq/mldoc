@@ -13,6 +13,25 @@ let format_of_yojson json =
   | `String "Markdown" -> Ok Markdown
   | _ -> Error "invalid format"
 
+type indent_style =
+  | Dashes
+  | Spaces
+  | NoIndent
+
+let indent_style_to_yojson = function
+  | Dashes -> `String "dashes"
+  | Spaces -> `String "spaces"
+  | NoIndent -> `String "no-indent"
+
+let indent_style_of_yojson = function
+  | `String s -> (
+    match String.lowercase_ascii s with
+    | "dashes" -> Ok Dashes
+    | "spaces" -> Ok Spaces
+    | "no-indent" -> Ok NoIndent
+    | _ -> Ok Dashes)
+  | _ -> Ok Dashes
+
 type t =
   { (* html: bool; *)
     (* hiccup: bool; *)
@@ -25,8 +44,7 @@ type t =
         [@default false] (* keep properties when exporting *)
   ; ignore_heading_list_marker : bool [@default false]
   ; inline_type_with_pos : bool [@default false]
-  ; export_md_indent_style : string [@default ""]
-        (* ""="dashes", "spaces", "no-indent" *)
+  ; export_md_indent_style : indent_style [@default Dashes]
   }
 [@@deriving yojson]
 
