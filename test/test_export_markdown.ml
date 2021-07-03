@@ -93,6 +93,32 @@ let export_md =
                \t  > line4\n\
                \t\t- line5\n\
                \t\t  [[line6]]" )
+        ; ( "(4)"
+          , `Quick
+          , check_aux
+              "- line1\n\
+              \  line2\n\
+              \  - > line3\n\
+              \    > line4\n\
+              \    - line5\n\
+              \      [[line6]]\n\
+              \      -\n\
+               \tprop:: hahaha\n\
+               \t```\n\
+               \t  dwdw\n\
+               \t  jdiejdie\n\
+               \t```"
+              "- line1\n\
+              \  line2\n\
+               \t- > line3\n\
+               \t  > line4\n\
+               \t\t- line5\n\
+               \t\t  [[line6]]\n\
+               \t\t\t-\n\
+               \t\t\t  ```\n\
+               \t\t\t  dwdw\n\
+               \t\t\t  jdiejdie\n\
+               \t\t\t  ```" )
         ; ( "indent style='spaces' (1)"
           , `Quick
           , check_aux
@@ -110,6 +136,18 @@ let export_md =
               \    - line5\n\
               \      [[line6]]"
               "line1\nline2\n\t> line3\n\t> line4\n\t\tline5\n\t\t[[line6]]" )
+        ; ( "indent style='no-indent' (2)"
+          , `Quick
+          , check_aux
+              ~config:
+                { default_config with export_md_indent_style = "no-indent" }
+              "- line1\n\
+              \  line2\n\
+              \  - > line3\n\
+              \    > line4\n\
+              \    - line5\n\
+              \      [[line6]]"
+              "line1\nline2\n> line3\n> line4\nline5\n[[line6]]" )
         ] )
   ]
 
