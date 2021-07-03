@@ -44,14 +44,11 @@ let default_state () =
 
 let indent_with_2_spacemore n config =
   match config.export_md_indent_style with
-  | ""
-  | "dashes" ->
-    Indent (n, 2)
-  | "spaces"
-  | "no-indent" ->
+  | Dashes -> Indent (n, 2)
+  | Spaces
+  | NoIndent ->
+    (* no need to add extra 2 spaces when indent-style= Spaces or NoIndent  *)
     Indent (n, 0)
-    (* no need to add extra 2 spaces when indent-style="spaces" or "no-indent"  *)
-  | _ -> Indent (n, 2)
 
 let raw_text_indent state config s =
   let indent state config s =
@@ -527,12 +524,9 @@ let blocks refs config tl =
   let z' = replace_embed_and_refs z ~refs in
   let z'' =
     match config.export_md_indent_style with
-    | ""
-    | "dashes" ->
-      z'
-    | "spaces" -> replace_heading_with_paragraph z'
-    | "no-indent" -> replace_heading_with_paragraph (flatten z')
-    | _ -> z'
+    | Dashes -> z'
+    | Spaces -> replace_heading_with_paragraph z'
+    | NoIndent -> replace_heading_with_paragraph (flatten z')
   in
   let v = to_value z'' in
   blocks_aux (default_state ()) config v
