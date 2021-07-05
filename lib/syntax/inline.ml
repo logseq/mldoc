@@ -581,7 +581,7 @@ let link_inline =
     (fun protocol before_path remain metadata ->
       Link
         { label = [ Plain (protocol ^ "://" ^ before_path ^ remain) ]
-        ; url = Complex { protocol; link = "//" ^ before_path ^ remain }
+        ; url = Complex { protocol; link = before_path ^ remain }
         ; title = None
         ; full_text = protocol ^ "://" ^ before_path ^ remain ^ metadata
         ; metadata
@@ -597,7 +597,7 @@ let quick_link_aux ?(delims = inline_link_delims) _config =
     (fun protocol link metadata ->
       Link
         { label = [ Plain (protocol ^ "://" ^ link) ]
-        ; url = Complex { protocol; link = "//" ^ link }
+        ; url = Complex { protocol; link }
         ; title = None
         ; full_text = protocol ^ "://" ^ link ^ metadata
         ; metadata
@@ -632,7 +632,7 @@ let org_link config =
             Search url
           else
             try
-              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+              Scanf.sscanf url "%[^:]://%[^\n]" (fun protocol link ->
                   Complex { protocol; link })
             with _ -> Search url)
       in
@@ -760,7 +760,7 @@ let markdown_link config =
         | `Page_ref_link -> Page_ref (String.sub url 2 (String.length url - 4))
         | `Other_link -> (
           try
-            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+            Scanf.sscanf url "%[^:]://%[^\n]" (fun protocol link ->
                 Complex { protocol; link })
           with _ ->
             if
@@ -1061,7 +1061,7 @@ let markdown_image config =
           File url
         else
           try
-            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+            Scanf.sscanf url "%[^:]://%[^\n]" (fun protocol link ->
                 Complex { protocol; link })
           with _ -> Search url
       in
