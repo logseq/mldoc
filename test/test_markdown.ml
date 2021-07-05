@@ -37,7 +37,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"; link = "//testtest/asdasd" }
+                           { protocol = "http"; link = "testtest/asdasd" }
                      ; label = [ Plain "http://testtest/asdasd" ]
                      ; title = None
                      ; full_text = "http://testtest/asdasd"
@@ -51,7 +51,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"; link = "//testtest/asdasd" }
+                           { protocol = "http"; link = "testtest/asdasd" }
                      ; label = [ Plain "test  normal" ]
                      ; title = None
                      ; full_text = "[test  normal](http://testtest/asdasd)"
@@ -65,7 +65,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"; link = "//testtest/asdasd" }
+                           { protocol = "http"; link = "testtest/asdasd" }
                      ; label = [ Plain "test "; Code "normal" ]
                      ; title = None
                      ; full_text = "[test `normal`](http://testtest/asdasd)"
@@ -79,7 +79,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"; link = "//testtest/asd*asd" }
+                           { protocol = "http"; link = "testtest/asd*asd" }
                      ; label = [ Plain "http://testtest/asd*asd" ]
                      ; title = None
                      ; full_text = "http://testtest/asd*asd"
@@ -94,7 +94,7 @@ let inline =
                  ; I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"; link = "//testtest/asdasd" }
+                           { protocol = "http"; link = "testtest/asdasd" }
                      ; label = [ Plain "http://testtest/asdasd" ]
                      ; title = None
                      ; full_text = "http://testtest/asdasd"
@@ -109,7 +109,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"; link = "//test/f.o.o/b.a.r" }
+                           { protocol = "http"; link = "test/f.o.o/b.a.r" }
                      ; label = [ Plain "http://test/f.o.o/b.a.r" ]
                      ; title = None
                      ; full_text = "http://test/f.o.o/b.a.r"
@@ -123,8 +123,7 @@ let inline =
               (paragraph
                  [ I.Link
                      { url =
-                         I.Complex
-                           { protocol = "http"; link = "//test/(foo)bar" }
+                         I.Complex { protocol = "http"; link = "test/(foo)bar" }
                      ; label = [ Plain "http://test/(foo)bar" ]
                      ; title = None
                      ; full_text = "http://test/(foo)bar"
@@ -138,7 +137,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"; link = "//test/[(foo)b]ar" }
+                           { protocol = "http"; link = "test/[(foo)b]ar" }
                      ; label = [ Plain "http://test/[(foo)b]ar" ]
                      ; title = None
                      ; full_text = "http://test/[(foo)b]ar"
@@ -150,8 +149,7 @@ let inline =
           , check_aux "http://test/[foo)b]ar"
               (paragraph
                  [ I.Link
-                     { url =
-                         I.Complex { protocol = "http"; link = "//test/[foo" }
+                     { url = I.Complex { protocol = "http"; link = "test/[foo" }
                      ; label = [ Plain "http://test/[foo" ]
                      ; title = None
                      ; full_text = "http://test/[foo"
@@ -164,7 +162,7 @@ let inline =
           , check_aux "http://te(s)t/foobar"
               (paragraph
                  [ I.Link
-                     { url = I.Complex { protocol = "http"; link = "//te" }
+                     { url = I.Complex { protocol = "http"; link = "te" }
                      ; label = [ Plain "http://te" ]
                      ; title = None
                      ; full_text = "http://te"
@@ -182,9 +180,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"
-                           ; link = "//foobar/path?query=123"
-                           }
+                           { protocol = "http"; link = "foobar/path?query=123" }
                      ; label = [ Plain "label here" ]
                      ; title = None
                      ; full_text = "[label here](http://foobar/path?query=123)"
@@ -198,9 +194,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "http"
-                           ; link = "//foobar/path?query=123"
-                           }
+                           { protocol = "http"; link = "foobar/path?query=123" }
                      ; label = [ Plain "label here" ]
                      ; title = None
                      ; full_text = "[[http://foobar/path?query=123]]"
@@ -251,9 +245,7 @@ let inline =
                  [ I.Link
                      { url =
                          I.Complex
-                           { protocol = "https"
-                           ; link = "//a.b.c.d/e/f%20g(1).h"
-                           }
+                           { protocol = "https"; link = "a.b.c.d/e/f%20g(1).h" }
                      ; label = [ Plain "中文" ]
                      ; title = None
                      ; full_text = "[中文](https://a.b.c.d/e/f%20g(1).h)"
@@ -432,7 +424,7 @@ let inline =
                  [ I.Plain "[as"
                  ; I.Code "d]("
                  ; I.Link
-                     { url = Complex { protocol = "http"; link = "//dwdw" }
+                     { url = Complex { protocol = "http"; link = "dwdw" }
                      ; label = [ Plain "http://dwdw" ]
                      ; title = None
                      ; full_text = "http://dwdw"
