@@ -31,7 +31,7 @@ let level config =
   | Org ->
     org_level >>= fun s ->
     let len = String.length s in
-    return (len, false, None)
+    return (len, true, None)
   | Markdown ->
     let markdown_heading =
       Markdown_level.parse >>| fun s ->
