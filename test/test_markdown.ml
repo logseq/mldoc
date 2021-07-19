@@ -665,6 +665,10 @@ let block =
                  ; unordered = true
                  ; size = None
                  }) )
+        ; ( "drawer"
+          , `Quick
+          , check_aux "a:: 1\n#+b: 2"
+              (Type.Property_Drawer [ ("a", "1"); ("b", "2") ]) )
         ] )
   ]
 
