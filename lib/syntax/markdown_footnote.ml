@@ -13,7 +13,11 @@ Here's a simple footnote,[^1] and here's a longer one.[^bignote]
     `{ my code }`
 
     Add as many paragraphs as you like.
+
+
 *)
 
+(* To create a footnote reference, add a caret and an identifier inside brackets ([^1]).
+   Identifiers can be numbers or words, but they can’t contain spaces or tabs *)
 let reference =
-  string "[^" *> take_while1 (fun c -> c <> ']' && non_eol c) <* char ']'
+  string "[^" *> take_while1 (fun c -> c <> ']' && non_space_eol c) <* char ']'

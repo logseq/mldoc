@@ -537,6 +537,23 @@ let inline =
                  ; I.Plain "."
                  ]) )
         ] )
+  ; ( "footnote-reference"
+    , testcases
+        [ ( "footnote ref before link"
+          , `Quick
+          , check_aux "[^1][label](url)"
+              (paragraph
+                 [ I.Footnote_Reference
+                     { id = 1; name = "1"; definition = None }
+                 ; I.Link
+                     { url = I.Search "url"
+                     ; label = [ I.Plain "label" ]
+                     ; title = None
+                     ; full_text = "[label](url)"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ] )
   ]
 
 let block =
