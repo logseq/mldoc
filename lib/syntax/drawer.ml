@@ -14,7 +14,7 @@ There is a special kind of drawer that =mlorg= recognizes, it is the
 They are used to store information about a heading and can be used to
 filter on them. (Exporters don't use them as of today)
 *)
-
+open! Prelude
 open Angstrom
 open Parsers
 open Type
@@ -40,7 +40,7 @@ let property =
 let drawer_properties = many property
 
 (* TODO: support other drawers than properties *)
-let parse config =
+let parse1 config =
   let is_markdown = Conf.is_markdown config in
   let drawer_name =
     spaces
@@ -62,3 +62,28 @@ let parse config =
     Markdown_property.parse <|> p'
   else
     p'
+
+(* #+NAME: VALUE like orgmode property *)
+let name =
+  between_string "#+" ":" (take_while1 (fun c -> c <> ':' && non_eol c))
+
+let parse2 =
+  let p =
+    lift2
+      (fun name value -> Property_Drawer [ (name, value) ])
+      name (spaces *> optional_line)
+  in
+  between_eols p
+
+(* combine
+   :PROPERTIES: :END: properties and #+NAME: VALUE properties *)
+let parse config =
+  many1 (parse1 config <|> parse2) >>= fun properties ->
+  return
+  @@ Property_Drawer
+       (List.fold_left
+          (fun r e ->
+            match e with
+            | Property_Drawer kvs -> List.append r kvs
+            | _ -> failwith "unreachable")
+          [] properties)

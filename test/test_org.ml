@@ -110,6 +110,15 @@ let block =
           , check_aux "#+BEGIN_EXAMPLE\nfoo\nbar\n#+END_EXAMPLE"
               (Example [ "foo"; "\n"; "bar"; "\n" ]) )
         ] )
+  ; ( "drawer"
+    , testcases
+        [ ( "properties"
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\n:XXX: 1\n:yyy: 2\n:END:\n#+ZZZ: 3\n#+UUU: 4"
+              (Property_Drawer
+                 [ ("XXX", "1"); ("yyy", "2"); ("ZZZ", "3"); ("UUU", "4") ]) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ block; inline ]
