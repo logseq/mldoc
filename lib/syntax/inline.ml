@@ -1281,8 +1281,8 @@ let inline_choices state config : t_with_pos Angstrom.t =
       | '$' -> latex_fragment config
       | '\\' -> latex_fragment config <|> entity
       | '[' ->
-        nested_link config <|> link config <|> timestamp
-        <|> inline_footnote_or_reference config
+        inline_footnote_or_reference config
+        <|> nested_link config <|> link config <|> timestamp
         <|> statistics_cookie <|> inline_hiccup
       | '<' -> quick_link config <|> timestamp <|> inline_html <|> email
       | '{' -> macro config
