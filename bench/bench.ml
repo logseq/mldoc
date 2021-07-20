@@ -20,7 +20,6 @@ let main () =
                ; format = Org
                ; heading_to_list = false
                ; exporting_keep_properties = false
-               ; ignore_heading_list_marker = false
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
                }
@@ -34,7 +33,6 @@ let main () =
                ; format = Org
                ; heading_to_list = false
                ; exporting_keep_properties = false
-               ; ignore_heading_list_marker = false
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
                }
@@ -48,7 +46,6 @@ let main () =
                ; format = Markdown
                ; heading_to_list = false
                ; exporting_keep_properties = false
-               ; ignore_heading_list_marker = false
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
                }

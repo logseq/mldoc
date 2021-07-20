@@ -122,7 +122,6 @@ let _ =
            (Conf.of_yojson config_json, Reference.of_yojson references_json)
          with
          | Ok config, Ok references ->
-           let config = { config with ignore_heading_list_marker = true } in
            let ast = parse config str in
            let document = Document.from_ast (Some title) ast in
            let parsed_embed_blocks =

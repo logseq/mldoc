@@ -296,10 +296,9 @@ and heading state config h =
   in
   let f () =
     let heading_or_list =
-      match (config.heading_to_list, config.ignore_heading_list_marker) with
-      | true, false -> [ Indent (state.current_level, 0); raw_text "-" ]
-      | true, true -> [ Indent (state.current_level, 0) ]
-      | false, _ ->
+      match config.heading_to_list with
+      | true -> [ Indent (state.current_level, 0); raw_text "-" ]
+      | false ->
         if unordered || level <= 0 then
           [ Indent (state.current_level, 0); raw_text "-" ]
         else

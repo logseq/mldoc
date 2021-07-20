@@ -17,7 +17,6 @@ end = struct
     ; format = Conf.Markdown
     ; heading_to_list = false
     ; exporting_keep_properties = false
-    ; ignore_heading_list_marker = false
     ; inline_type_with_pos = false
     ; export_md_indent_style = Conf.Dashes
     }

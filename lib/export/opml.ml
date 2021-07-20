@@ -12,19 +12,9 @@ let default_config =
   ; format = Conf.Markdown
   ; heading_to_list = true
   ; exporting_keep_properties = false
-  ; ignore_heading_list_marker = true
   ; inline_type_with_pos = false
-  ; export_md_indent_style = Dashes
+  ; export_md_indent_style = Spaces
   }
-
-let rec block_tree_to_plain_tree (blocks : Tree_type.value) : string Zip.l =
-  let open Zip in
-  match blocks with
-  | Leaf (t, _pos) ->
-    leaf
-      Markdown.(Output.to_string @@ block (default_state ()) default_config t)
-  | Branch [] -> Branch []
-  | Branch l -> branch @@ List.map block_tree_to_plain_tree l
 
 let attr ?(uri = "") local value : Xmlm.attribute = ((uri, local), value)
 
@@ -97,6 +87,14 @@ let output_with_header o { title } tree =
   output o `El_end;
   (* opml *) output o `El_end
 
+let blocks refs tl title output_buf =
+  let open Tree_type in
+  of_blocks tl
+  |> replace_embed_and_refs ~refs
+  |> replace_heading_with_paragraph |> to_value
+  |> Markdown_transformer.String_Tree_Value.of_value ~config:default_config
+  |> output_with_header output_buf { title }
+
 module OPMLExporter = struct
   let name = "opml"
 
@@ -109,9 +107,5 @@ module OPMLExporter = struct
     in
     let title = doc.filename |? (doc.title |? "untitled") in
     let output_buf = Xmlm.make_output ~indent:(Some 2) (`Channel output) in
-    doc.blocks |> Tree_type.of_blocks
-    |> Tree_type.replace_embed_and_refs ~refs
-    |> Tree_type.to_value
-    |> Markdown_transformer.String_Tree_Value.of_value ~config:default_config
-    |> output_with_header output_buf { title }
+    blocks refs doc.blocks title output_buf
 end

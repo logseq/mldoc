@@ -23,16 +23,23 @@
  (modules test_export_markdown)
  (libraries alcotest mldoc))
 
+(executables
+ (names test_export_opml)
+ (modules test_export_opml)
+ (libraries alcotest mldoc))
+
 (rule
  (alias runtest)
  (deps
   (:md test_markdown.exe)
   (:org test_org.exe)
   (:zip test_zip.exe)
-  (:export-md test_export_markdown.exe))
+  (:export-md test_export_markdown.exe)
+  (:export-opml test_export_opml.exe))
  (action
   (progn
    (run %{md})
    (run %{org})
    (run %{zip})
-   (run %{export-md}))))
+   (run %{export-md})
+   (run %{export-opml}))))
