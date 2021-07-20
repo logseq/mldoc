@@ -34,7 +34,6 @@ let generate backend output _opts filename =
       ; format
       ; heading_to_list = true
       ; exporting_keep_properties = true
-      ; ignore_heading_list_marker = false
       ; inline_type_with_pos = false
       ; export_md_indent_style = Dashes
       }

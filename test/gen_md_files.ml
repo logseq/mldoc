@@ -117,7 +117,8 @@ let config : Conf.t =
   ; format = Conf.Markdown
   ; heading_to_list = true
   ; exporting_keep_properties = false
-  ; ignore_heading_list_marker = false
+  ; inline_type_with_pos = false
+  ; export_md_indent_style = Dashes
   }
 
 (* ./gen_md_files.exe <page-num> <dir-num> *)
