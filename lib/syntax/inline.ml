@@ -588,24 +588,27 @@ let link_inline =
         })
     protocol_part before_path_part remaining_part metadata
 
-let quick_link_aux ?(delims = inline_link_delims) _config =
-  let protocol_part = take_while1 is_letter_or_digit <* string "://" in
+let quick_link_aux ?(delims = inline_link_delims) () =
+  let protocol_part_and_slashes =
+    both (take_while1 is_letter_or_digit <* string ":") (optional (string "//"))
+  in
   let link_part =
     take_while1 (fun c -> non_space c && not (List.mem c delims))
   in
   lift3
-    (fun protocol link metadata ->
+    (fun (protocol, slashes) link metadata ->
+      let slashes' = Option.default "" slashes in
       Link
-        { label = [ Plain (protocol ^ "://" ^ link) ]
+        { label = [ Plain (protocol ^ ":" ^ slashes' ^ link) ]
         ; url = Complex { protocol; link }
         ; title = None
-        ; full_text = protocol ^ "://" ^ link ^ metadata
+        ; full_text = protocol ^ ":" ^ slashes' ^ link ^ metadata
         ; metadata
         })
-    protocol_part link_part metadata
+    protocol_part_and_slashes link_part metadata
 
-let quick_link config =
-  between_char '<' '>' (quick_link_aux config ~delims:quicklink_delims)
+let quick_link =
+  between_char '<' '>' (quick_link_aux ~delims:quicklink_delims ())
 
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
@@ -617,7 +620,6 @@ let org_link config =
     string "][" *> return `Other_link <|> return `Page_ref_link
     >>| fun link_type -> (link_type, url_part)
   in
-
   let label_part = take_while (fun c -> c <> ']') <* string "]]" in
   lift3
     (fun (link_type, url_text) label_text metadata ->
@@ -632,8 +634,16 @@ let org_link config =
             Search url
           else
             try
-              Scanf.sscanf url "%[^:]://%[^\n]" (fun protocol link ->
-                  Complex { protocol; link })
+              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                  let link' =
+                    if String.length link < 2 then
+                      link
+                    else if String.sub link 0 2 = "//" then
+                      String.sub link 2 (String.length link - 2)
+                    else
+                      link
+                  in
+                  Complex { protocol; link = link' })
             with _ -> Search url)
       in
       let parser =
@@ -760,8 +770,16 @@ let markdown_link config =
         | `Page_ref_link -> Page_ref (String.sub url 2 (String.length url - 4))
         | `Other_link -> (
           try
-            Scanf.sscanf url "%[^:]://%[^\n]" (fun protocol link ->
-                Complex { protocol; link })
+            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                let link' =
+                  if String.length link < 2 then
+                    link
+                  else if String.sub link 0 2 = "//" then
+                    String.sub link 2 (String.length link - 2)
+                  else
+                    link
+                in
+                Complex { protocol; link = link' })
           with _ ->
             if
               String.length url > 3
@@ -1061,8 +1079,16 @@ let markdown_image config =
           File url
         else
           try
-            Scanf.sscanf url "%[^:]://%[^\n]" (fun protocol link ->
-                Complex { protocol; link })
+            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+                let link' =
+                  if String.length link < 2 then
+                    link
+                  else if String.sub link 0 2 = "//" then
+                    String.sub link 2 (String.length link - 2)
+                  else
+                    link
+                in
+                Complex { protocol; link = link' })
           with _ -> Search url
       in
       let parser =
@@ -1284,7 +1310,7 @@ let inline_choices state config : t_with_pos Angstrom.t =
         inline_footnote_or_reference config
         <|> nested_link config <|> link config <|> timestamp
         <|> statistics_cookie <|> inline_hiccup
-      | '<' -> quick_link config <|> timestamp <|> inline_html <|> email
+      | '<' -> quick_link <|> timestamp <|> inline_html <|> email
       | '{' -> macro config
       | '!' -> markdown_image config
       | '@' -> export_snippet
@@ -1318,7 +1344,9 @@ let inline_choices state config : t_with_pos Angstrom.t =
         nested_link config <|> link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
-      | '<' -> target <|> radio_target <|> timestamp <|> inline_html <|> email
+      | '<' ->
+        quick_link <|> target <|> radio_target <|> timestamp <|> inline_html
+        <|> email
       | '{' -> macro config
       | '!' -> markdown_image config
       | '@' -> export_snippet
