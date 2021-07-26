@@ -51,23 +51,45 @@ let _ =
            print_endline (Printexc.to_string error);
            input
 
-       method exportToHtml input config_json =
+       method exportToHtml input config_json references =
          let str = Js.to_string input in
          let config_json = Js.to_string config_json in
+         let references_json =
+           Js.to_string references |> Yojson.Safe.from_string
+         in
          let buffer = Buffer.create 1024 in
          let config_json = Yojson.Safe.from_string config_json in
-         match Conf.of_yojson config_json with
-         | Ok config ->
+         match
+           (Conf.of_yojson config_json, Reference.of_yojson references_json)
+         with
+         | Ok config, Ok references ->
            let ast = parse config str in
+           let parsed_embed_blocks =
+             List.map
+               (fun (k, (content_include_children, content)) ->
+                 ( k
+                 , ( fst @@ unzip @@ parse config content_include_children
+                   , fst @@ unzip @@ parse config content ) ))
+               references.embed_blocks
+           in
+           let parsed_embed_pages =
+             List.map
+               (fun (k, v) -> (k, fst @@ unzip @@ parse config v))
+               references.embed_pages
+           in
+           let refs : Reference.parsed_t =
+             { parsed_embed_blocks; parsed_embed_pages }
+           in
            let document = Document.from_ast None ast in
            let _ =
              Sys_js.set_channel_flusher stdout (fun s ->
                  Buffer.add_string buffer s)
            in
-           generate "html" config document stdout;
+           generate "html" ~refs config document stdout;
            flush stdout;
            Js_of_ocaml.Js.string (Buffer.contents buffer)
-         | Error error -> Js_of_ocaml.Js.string error
+         | Error error, _ -> Js_of_ocaml.Js.string error
+         | _, Error error -> Js_of_ocaml.Js.string error
 
        method parseAndExportMarkdown input config_json references =
          let str = Js.to_string input in
