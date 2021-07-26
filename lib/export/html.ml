@@ -221,8 +221,7 @@ let construct_numbering config ?(toc = false) level numbering =
   else
     Xml.empty
 
-let heading config
-    { title; tags; marker; level; priority; anchor; numbering; _ } =
+let heading config { title; tags; marker; level; priority; numbering; _ } =
   let numbering = construct_numbering config level numbering in
   let marker =
     match marker with
@@ -255,9 +254,7 @@ let heading config
                [ Xml.block "span" ~attr:[ ("class", tag) ] [ Xml.data tag ] ])
            tags)
   in
-  Xml.block
-    (Printf.sprintf "h%d" level)
-    ~attr:[ ("id", anchor) ]
+  Xml.list
     (numbering :: marker :: priority
      :: map_inline config (Type_op.inline_list_strip_pos title)
     @ [ tags ])
@@ -420,6 +417,38 @@ and block config t =
       ]
   | _ -> Xml.empty
 
+type state = { have_met_branch : bool }
+
+let blocks_aux config v =
+  let open Zip in
+  let rec aux v =
+    match v with
+    | Leaf (b, _) -> [ block config b ]
+    | Branch [] -> []
+    | Branch (Leaf (h, _) :: t) ->
+      let heading = block config h in
+      [ Xml.block "ul"
+          [ Xml.block "li" (List.flatten ([ heading ] :: List.map aux t)) ]
+      ]
+    | Branch l -> List.flatten @@ List.map aux l
+  in
+  let v' = aux v in
+  let rec merge_ul v =
+    match v with
+    | Xml.Block ("ul", _, l1) :: Xml.Block ("ul", _, l2) :: t ->
+      merge_ul (Xml.block "ul" (l1 @ l2) :: t)
+    | Xml.Block (tag, attrs, l) :: t ->
+      Xml.Block (tag, attrs, merge_ul l) :: merge_ul t
+    | h :: t -> h :: merge_ul t
+    | [] -> []
+  in
+  merge_ul v'
+
+let blocks2 config tl refs =
+  let open Tree_type in
+  let v = of_blocks tl |> replace_embed_and_refs ~refs |> to_value in
+  blocks_aux config v
+
 let toc config content =
   let toc_option = get_int_option "toc" in
   let rec go content =
@@ -490,21 +519,16 @@ module HtmlExporter = struct
   let default_filename = change_ext "html"
 
   let export ~refs config doc output =
-    let _ = refs in
+    let refs =
+      Option.default
+        Reference.{ parsed_embed_blocks = []; parsed_embed_pages = [] }
+        refs
+    in
     (* let { filename; blocks; directives; title; author; toc } = doc in *)
     collect_macros doc.directives;
     collect_options doc.directives;
 
-    (* let subtitle = match doc.subtitle with
-     *   | None -> Xml.empty
-     *   | Some s -> Xml.block "span" ~attr:["class", "subtitle"]
-     *                 [(Xml.data s)] in
-     * let title = match doc.title with
-     *   | None -> Xml.empty
-     *   | Some s -> Xml.block "h1" ~attr:["class", "title"]
-     *                 [Xml.data s; Xml.raw "<br />"; subtitle] in *)
-    let doc_blocks = List.map fst doc.blocks in
-    let blocks = blocks config doc_blocks in
+    let blocks = blocks2 config doc.blocks refs in
     let blocks =
       if Conf.(config.toc) then
         toc config doc.toc :: blocks
