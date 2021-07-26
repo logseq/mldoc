@@ -264,8 +264,8 @@ let rec list_item config x =
     match x.content with
     | [] -> [ Xml.empty ]
     | Paragraph i :: rest ->
-      map_inline config (Type_op.inline_list_strip_pos i) @ blocks config rest
-    | _ -> blocks config x.content
+      map_inline config (Type_op.inline_list_strip_pos i) @ blocks' config rest
+    | _ -> blocks' config x.content
   in
   let checked, checked_html =
     match x.checkbox with
@@ -355,7 +355,7 @@ and table config { header; groups; col_groups } =
     "table"
     (col_groups @ (head :: groups))
 
-and blocks config l = List.map (block config) l
+and blocks' config l = List.map (block config) l
 
 and block config t =
   let open List in
@@ -378,11 +378,11 @@ and block config t =
     in
     Xml.block "pre"
       [ Xml.block "code" ~attr [ Xml.data (String.concat "" lines) ] ]
-  | Quote l -> Xml.block "blockquote" (blocks config l)
+  | Quote l -> Xml.block "blockquote" (blocks' config l)
   | Export ("html", _options, content) -> Xml.raw content
   | Raw_Html content -> Xml.raw content
   | Custom (name, _options, result, _content) ->
-    Xml.block "div" ~attr:[ ("class", name) ] (blocks config result)
+    Xml.block "div" ~attr:[ ("class", name) ] (blocks' config result)
   | Latex_Fragment l ->
     Xml.block "p"
       ~attr:[ ("class", "latex-fragment") ]
@@ -417,8 +417,6 @@ and block config t =
       ]
   | _ -> Xml.empty
 
-type state = { have_met_branch : bool }
-
 let blocks_aux config v =
   let open Zip in
   let rec aux v =
@@ -444,7 +442,7 @@ let blocks_aux config v =
   in
   merge_ul v'
 
-let blocks2 config tl refs =
+let blocks config tl refs =
   let open Tree_type in
   let v = of_blocks tl |> replace_embed_and_refs ~refs |> to_value in
   blocks_aux config v
@@ -528,7 +526,7 @@ module HtmlExporter = struct
     collect_macros doc.directives;
     collect_options doc.directives;
 
-    let blocks = blocks2 config doc.blocks refs in
+    let blocks = blocks config doc.blocks refs in
     let blocks =
       if Conf.(config.toc) then
         toc config doc.toc :: blocks
