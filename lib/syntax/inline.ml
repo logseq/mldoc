@@ -194,7 +194,7 @@ let org_plain_delims =
   [ '\\'; '_'; '^'; '['; '*'; '/'; '+'; '^'; '$' ] @ whitespace_chars
 
 let markdown_plain_delims =
-  [ '\\'; '_'; '^'; '['; '*'; '~'; '`'; '$' ] @ whitespace_chars
+  [ '\\'; '_'; '^'; '['; '*'; '~'; '`'; '='; '$' ] @ whitespace_chars
 
 (* replace list with a  *)
 let in_plain_delims config c =
@@ -420,6 +420,7 @@ let markdown_emphasis ?state () =
       fail "markdown_underline_emphasis"
   | '~' -> md_em_parser "~~" `Strike_through
   | '^' -> md_em_parser "^^" `Highlight
+  | '=' -> md_em_parser "==" `Highlight
   | _ -> fail "Inline emphasis"
 
 let org_emphasis ?state () =
@@ -1304,6 +1305,7 @@ let inline_choices state config : t_with_pos Angstrom.t =
         nested_emphasis config
       | '_' -> nested_emphasis ~state config <|> subscript config
       | '^' -> nested_emphasis config <|> superscript config
+      | '=' -> nested_emphasis config
       | '$' -> latex_fragment config
       | '\\' -> latex_fragment config <|> entity
       | '[' ->
