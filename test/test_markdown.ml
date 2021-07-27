@@ -488,6 +488,18 @@ let inline =
               (paragraph
                  [ I.Plain "hello,"; I.Emphasis (`Italic, [ I.Plain "world" ]) ])
           )
+        ; ( "highlight (1)"
+          , `Quick
+          , check_aux "111==text==222"
+              (paragraph
+                 [ I.Plain "111"
+                 ; I.Emphasis (`Highlight, [ I.Plain "text" ])
+                 ; I.Plain "222"
+                 ]) )
+        ; ( "highlight (2)"
+          , `Quick
+          , check_aux "111== text==222"
+              (paragraph [ I.Plain "111== text==222" ]) )
         ] )
   ; ( "tag"
     , testcases
