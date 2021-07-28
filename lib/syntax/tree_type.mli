@@ -33,3 +33,11 @@ val replace_heading_with_paragraph :
 
 (** [flatten t] returns one-level tree *)
 val flatten : Type.t_with_pos_meta t -> Type.t_with_pos_meta t
+
+(** [remove_meta_chars] remove meta-chars.
+    - [[text]] -> text
+    - **text** -> text
+    - __text__ -> text
+    - ... *)
+val remove_meta_chars :
+  Conf.meta_chars list -> Type.t_with_pos_meta t -> Type.t_with_pos_meta t

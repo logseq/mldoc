@@ -489,3 +489,118 @@ let flatten (t : Type.t_with_pos_meta Z.t) =
     | Z.Leaf _ as v -> aux [ v ]
   in
   of_value (Z.Branch value')
+
+let rec nested_link_to_plain ({ children; _ } : Nested_link.t) =
+  String.concat ""
+  @@ List.map
+       (fun child ->
+         match child with
+         | Nested_link.Label s -> s
+         | Nested_link.Nested_link t_with_pos ->
+           nested_link_to_plain (fst t_with_pos))
+       children
+
+let remove_meta_chars_internal remove_emphasis remove_page_ref
+    (inlines : Inline.t list) : Inline.t list =
+  let rec aux inlines =
+    let open Inline in
+    List.fold_right
+      (fun inline r ->
+        match inline with
+        | Emphasis (em, tl) ->
+          if remove_emphasis then
+            aux tl @ r
+          else
+            Emphasis (em, aux tl) :: r
+        | Link { url; label; _ } when remove_page_ref -> (
+          match (url, label) with
+          | Page_ref s, []
+          | Page_ref s, [ Plain "" ] ->
+            Plain s :: r
+          | _ -> inline :: r)
+        | Tag tl -> aux tl @ r
+        | Nested_link nl when remove_page_ref ->
+          Plain (nested_link_to_plain nl) :: r
+        | Subscript tl -> Subscript (aux tl) :: r
+        | Superscript tl -> Superscript (aux tl) :: r
+        | Footnote_Reference { id; name; definition } ->
+          (match definition with
+          | Some tl ->
+            Footnote_Reference { id; name; definition = Some (aux tl) }
+          | None -> inline)
+          :: r
+        | _ -> inline :: r)
+      inlines []
+  in
+  aux inlines |> Inline.concat_plains_without_pos
+
+let rec remove_meta_chars_internal2 remove_emphasis remove_page_ref (t : Type.t)
+    : Type.t =
+  let remove_meta_chars_internal' =
+    remove_meta_chars_internal remove_emphasis remove_page_ref
+  in
+  let list_map_remove_meta_chars_internal2 =
+    List.map (remove_meta_chars_internal2 remove_emphasis remove_page_ref)
+  in
+  match t with
+  | Type.Paragraph tl_with_pos ->
+    let tl = List.map fst tl_with_pos |> remove_meta_chars_internal' in
+    Type.Paragraph (Type_op.inline_list_with_dummy_pos tl)
+  | Type.Heading h ->
+    Type.Heading
+      { h with
+        title =
+          Type_op.inline_list_with_dummy_pos
+          @@ remove_meta_chars_internal' (List.map fst h.title)
+      }
+  | Type.List l ->
+    let rec list_item_f (list_item : Type.list_item) =
+      { list_item with
+        content = list_map_remove_meta_chars_internal2 list_item.content
+      ; items = List.map list_item_f list_item.items
+      ; name =
+          remove_meta_chars_internal' (List.map fst list_item.name)
+          |> Type_op.inline_list_with_dummy_pos
+      }
+    in
+    Type.List (List.map list_item_f l)
+  | Type.Quote tl -> Type.Quote (list_map_remove_meta_chars_internal2 tl)
+  | Type.Footnote_Definition (s, tl_with_pos) ->
+    Type.Footnote_Definition
+      ( s
+      , Type_op.inline_list_with_dummy_pos
+        @@ remove_meta_chars_internal' (List.map fst tl_with_pos) )
+  | Type.Table { header; groups; col_groups } ->
+    let header' =
+      match header with
+      | None -> None
+      | Some h -> Some (List.map remove_meta_chars_internal' h)
+    in
+    let groups' =
+      List.map (List.map (List.map remove_meta_chars_internal')) groups
+    in
+    Type.Table { header = header'; groups = groups'; col_groups }
+  | _ -> t
+
+let remove_meta_chars (meta_chars : Conf.meta_chars list)
+    (t : Type.t_with_pos_meta Z.t) =
+  let remove_emphasis = List.mem Conf.Emphasis meta_chars in
+  let remove_page_ref = List.mem Conf.Page_ref meta_chars in
+  let root = Z.of_l (to_value t) in
+  let rec aux z =
+    if Z.is_end z then
+      z
+    else
+      let z' = Z.next z in
+      match Z.node z' with
+      | Z.Branch _ -> aux z'
+      | Z.Leaf (block, pos) ->
+        Z.replace z'
+          ~item:
+            (Z.leaf
+               ( remove_meta_chars_internal2 remove_emphasis remove_page_ref
+                   block
+               , pos ))
+        |> aux
+  in
+  aux root

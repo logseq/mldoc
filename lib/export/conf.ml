@@ -32,6 +32,11 @@ let indent_style_of_yojson = function
     | _ -> Ok Dashes)
   | _ -> Ok Dashes
 
+type meta_chars =
+  | Page_ref (* [[text]] *)
+  | Emphasis (* **text**, __text__, ... *)
+[@@deriving yojson]
+
 type t =
   { (* html: bool; *)
     (* hiccup: bool; *)
@@ -44,6 +49,7 @@ type t =
         [@default false] (* keep properties when exporting *)
   ; inline_type_with_pos : bool [@default false]
   ; export_md_indent_style : indent_style [@default Dashes]
+  ; export_md_remove_options : meta_chars list [@default []]
   }
 [@@deriving yojson]
 
