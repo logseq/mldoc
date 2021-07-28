@@ -119,6 +119,7 @@ let config : Conf.t =
   ; exporting_keep_properties = false
   ; inline_type_with_pos = false
   ; export_md_indent_style = Dashes
+  ; export_md_remove_options = []
   }
 
 (* ./gen_md_files.exe <page-num> <dir-num> *)

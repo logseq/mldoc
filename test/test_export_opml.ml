@@ -7,6 +7,7 @@ let default_config : Conf.t =
   ; exporting_keep_properties = false
   ; inline_type_with_pos = false
   ; export_md_indent_style = Conf.Dashes
+  ; export_md_remove_options = []
   }
 
 let check_aux ?(config = default_config) source expect =

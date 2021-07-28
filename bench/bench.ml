@@ -22,6 +22,7 @@ let main () =
                ; exporting_keep_properties = false
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
+               ; export_md_remove_options = []
                }
              in
              ignore (parse config doc_org))
@@ -35,6 +36,7 @@ let main () =
                ; exporting_keep_properties = false
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
+               ; export_md_remove_options = []
                }
              in
              ignore (parse config syntax_org))
@@ -48,6 +50,7 @@ let main () =
                ; exporting_keep_properties = false
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
+               ; export_md_remove_options = []
                }
              in
              ignore (parse config syntax_md))
