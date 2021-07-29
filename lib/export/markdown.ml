@@ -527,7 +527,8 @@ let blocks refs config tl =
     | Spaces -> replace_heading_with_paragraph z'
     | NoIndent -> replace_heading_with_paragraph (flatten z')
   in
-  let v = to_value z'' in
+  let z''' = remove_meta_chars config.export_md_remove_options z'' in
+  let v = to_value z''' in
   blocks_aux (default_state ()) config v
 
 let directive kvs =

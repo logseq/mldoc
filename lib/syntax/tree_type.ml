@@ -582,7 +582,7 @@ let rec remove_meta_chars_internal2 remove_emphasis remove_page_ref (t : Type.t)
     Type.Table { header = header'; groups = groups'; col_groups }
   | _ -> t
 
-let remove_meta_chars (meta_chars : Conf.meta_chars list)
+let remove_meta_chars_aux (meta_chars : Conf.meta_chars list)
     (t : Type.t_with_pos_meta Z.t) =
   let remove_emphasis = List.mem Conf.Emphasis meta_chars in
   let remove_page_ref = List.mem Conf.Page_ref meta_chars in
@@ -604,3 +604,10 @@ let remove_meta_chars (meta_chars : Conf.meta_chars list)
         |> aux
   in
   aux root
+
+let remove_meta_chars (meta_chars : Conf.meta_chars list)
+    (t : Type.t_with_pos_meta Z.t) =
+  if List.length meta_chars = 0 then
+    t
+  else
+    remove_meta_chars_aux meta_chars t
