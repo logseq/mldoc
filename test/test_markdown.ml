@@ -396,6 +396,10 @@ let inline =
         ; ( "empty-property"
           , `Quick
           , check_aux ":PROPERTIES:\r\n:END:\r\n" (Property_Drawer []) )
+        ; ( "no drawer in quote"
+          , `Quick
+          , check_aux "> a:: b"
+              (Quote [ paragraph [ I.Plain "a:: b"; I.Break_Line ] ]) )
         ] )
   ; ( "inline-code"
     , testcases

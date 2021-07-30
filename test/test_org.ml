@@ -118,6 +118,10 @@ let block =
               ":PROPERTIES:\n:XXX: 1\n:yyy: 2\n:END:\n#+ZZZ: 3\n#+UUU: 4"
               (Property_Drawer
                  [ ("XXX", "1"); ("yyy", "2"); ("ZZZ", "3"); ("UUU", "4") ]) )
+        ; ( "no drawer in quote"
+          , `Quick
+          , check_aux "#+BEGIN_QUOTE\na:: b\n#+END_QUOTE"
+              (Quote [ paragraph [ I.Plain "a:: b"; I.Break_Line ] ]) )
         ] )
   ]
 
