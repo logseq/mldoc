@@ -5,10 +5,10 @@ let list_content_parsers config =
   let p =
     choice
       [ Table.parse config
-      ; Block.parse config
+      ; Type_parser.Block.parse config
       ; Latex_env.parse config
       ; Hr.parse config
-      ; Block.results
+      ; Type_parser.Block.results
       ; Comment.parse config
       ; Paragraph.parse
       ; Paragraph.sep
@@ -21,14 +21,14 @@ let list_content_parsers config =
 let parsers config =
   [ Directive.parse
   ; Drawer.parse config
-  ; Heading.parse config
+  ; Type_parser.Heading.parse config
   ; Paragraph.sep
   ; Table.parse config
   ; Latex_env.parse config
-  ; Lists.parse config (list_content_parsers config)
-  ; Block.parse config
+  ; Type_parser.Lists.parse config (list_content_parsers config)
+  ; Type_parser.Block.parse config
   ; Hr.parse config
-  ; Block.results
+  ; Type_parser.Block.results
   ; Footnote.parse config
   ; Comment.parse config
   ; Paragraph.parse

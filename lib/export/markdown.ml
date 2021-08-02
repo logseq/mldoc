@@ -420,7 +420,7 @@ and quote state config tl =
           ; Space
           ]
         ; block state config l
-        ; [ newline ]
+        ; [ TwoNewlines ]
         ])
     tl
 

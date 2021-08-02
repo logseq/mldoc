@@ -17,6 +17,21 @@ let check_aux source expect =
   let result = Mldoc.Parser.parse default_config source |> List.hd |> fst in
   fun _ -> check_mldoc_type expect result
 
+let check_mldoc_type2 =
+  Alcotest.check
+    (Alcotest.testable
+       (fun fmt l -> List.map (Type.pp fmt) l |> ignore)
+       (fun a b ->
+         if List.length a <> List.length b then
+           false
+         else
+           List.map2 ( = ) a b |> List.memq false |> not))
+    "check mldoc type"
+
+let check_aux2 source expect =
+  let result = List.map fst (Mldoc.Parser.parse default_config source) in
+  fun _ -> check_mldoc_type2 expect result
+
 let testcases =
   List.map (fun (case, level, f) -> Alcotest.test_case case level f)
 
@@ -686,6 +701,31 @@ let block =
           , `Quick
           , check_aux "a:: 1\n#+b: 2"
               (Type.Property_Drawer [ ("a", "1"); ("b", "2") ]) )
+        ] )
+  ; ( "code block"
+    , testcases
+        [ ( "(1)"
+          , `Quick
+          , check_aux2 "- ```\ncode\n```"
+              [ Type.Heading
+                  { title = []
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Src
+                  { lines = [ "code"; "\n" ]
+                  ; language = None
+                  ; options = None
+                  ; pos_meta = { Pos.start_pos = 6; end_pos = 11 }
+                  }
+              ] )
         ] )
   ]
 

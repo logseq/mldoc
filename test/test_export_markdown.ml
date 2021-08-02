@@ -77,7 +77,7 @@ let export_md =
         ; ( "(2)"
           , `Quick
           , check_aux "- line1\n  line2\n  - > line3\n    > line4"
-              "- line1\n  line2\n\t- > line3\n\t  > line4\n" )
+              "- line1\n  line2\n\t-\n\t  > line3\n\t  line4\n" )
         ; ( "(3)"
           , `Quick
           , check_aux
@@ -89,8 +89,9 @@ let export_md =
               \      [[line6]]"
               "- line1\n\
               \  line2\n\
-               \t- > line3\n\
-               \t  > line4\n\
+               \t-\n\
+               \t  > line3\n\
+               \t  line4\n\n\
                \t\t- line5\n\
                \t\t  [[line6]]" )
         ; ( "(4)"
@@ -110,8 +111,9 @@ let export_md =
                \t```"
               "- line1\n\
               \  line2\n\
-               \t- > line3\n\
-               \t  > line4\n\
+               \t-\n\
+               \t  > line3\n\
+               \t  line4\n\n\
                \t\t- line5\n\
                \t\t  [[line6]]\n\
                \t\t\t-\n\
@@ -125,7 +127,7 @@ let export_md =
               ~config:
                 { default_config with export_md_indent_style = Conf.Spaces }
               "- line1\n  line2\n  - > line3\n    > line4"
-              "line1\nline2\n\t> line3\n\t> line4\n" )
+              "line1\nline2\n\t> line3\n\tline4\n" )
         ; ( "indent style='spaces' (2)"
           , `Quick
           , check_aux
@@ -137,7 +139,7 @@ let export_md =
               \    > line4\n\
               \    - line5\n\
               \      [[line6]]"
-              "line1\nline2\n\t> line3\n\t> line4\n\t\tline5\n\t\t[[line6]]" )
+              "line1\nline2\n\t> line3\n\tline4\n\n\t\tline5\n\t\t[[line6]]" )
         ; ( "indent style='no-indent' (2)"
           , `Quick
           , check_aux
@@ -149,7 +151,7 @@ let export_md =
               \    > line4\n\
               \    - line5\n\
               \      [[line6]]"
-              "line1\nline2\n> line3\n> line4\nline5\n[[line6]]" )
+              "line1\nline2\n> line3\nline4\n\nline5\n[[line6]]" )
         ] )
   ]
 

@@ -219,7 +219,7 @@ let _ =
 
        method anchorLink s =
          let s = Js.to_string s in
-         Js_of_ocaml.Js.string (Heading.anchor_link s)
+         Js_of_ocaml.Js.string (Type_parser.Heading.anchor_link s)
 
        method timestampToString input =
          let str = Js.to_string input in

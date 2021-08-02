@@ -130,7 +130,7 @@ and inline config t =
     else
       let href =
         match url with
-        | Search x -> "#" ^ Heading.anchor_link x
+        | Search x -> "#" ^ Type_parser.Heading.anchor_link x
         | _ -> href
       in
       let label =
