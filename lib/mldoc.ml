@@ -1,7 +1,7 @@
 (** Entry point of the org library *)
 
 module Document = Document
-module Block = Block
+module Block = Type_parser.Block
 module Inline = Inline
 module Exporters = Exporter.Exporters
 module Conf = Conf

@@ -59,12 +59,18 @@ let merge_adjacent_space_newline =
     @@ List.fold_left
          (fun ( result
               , before
+              (* before current is 'xxx<space>' *)
               , before_space_text
+              (* before current is 'xxx<newline*n>' *)
               , before_newline_text
               , start_of_line ) e ->
            match
              (e, before, before_space_text, before_newline_text, start_of_line)
            with
+           | Space, `OneNewline :: _, _, _, _ ->
+             (result, before, false, before_newline_text, start_of_line)
+           | Space, `TwoNewlines :: _, _, _, _ ->
+             (result, before, false, before_newline_text, start_of_line)
            | Space, _, _, Some _, _ ->
              (* 5 *) (result, [], false, before_newline_text, start_of_line)
            | Space, _, true, None, _ ->
@@ -78,10 +84,6 @@ let merge_adjacent_space_newline =
            | Space, `Indent n :: _, false, None, _ ->
              (* 17 *)
              (result, [ `Indent n ], false, None, start_of_line)
-           | Space, `OneNewline :: _, false, None, _ ->
-             (result, [ `OneNewline ], false, None, start_of_line)
-           | Space, `TwoNewlines :: _, false, None, _ ->
-             (result, [ `TwoNewlines ], false, None, start_of_line)
            | Space, [], false, None, _ ->
              (* 12 *)
              (result, [ `Space ], false, None, start_of_line)
