@@ -1063,59 +1063,11 @@ let range =
 
 let timestamp = range <|> general_timestamp
 
-(* TODO: make sure it's a proper image format. *)
 let markdown_image config =
-  let label_part =
-    string "![" *> take_while (fun c -> c <> ']') <* optional (string "](")
-  in
-  lift3
-    (fun label_text url_text metadata ->
-      let url =
-        let url = url_text in
-        if
-          List.exists
-            (ends_with (String.lowercase_ascii url))
-            [ ".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp" ]
-        then
-          File url
-        else
-          try
-            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                let link' =
-                  if String.length link < 2 then
-                    link
-                  else if String.sub link 0 2 = "//" then
-                    String.sub link 2 (String.length link - 2)
-                  else
-                    link
-                in
-                Complex { protocol; link = link' })
-          with _ -> Search url
-      in
-      let parser =
-        many1
-          (choice
-             [ nested_emphasis config
-             ; latex_fragment config
-             ; entity
-             ; code config
-             ; subscript config
-             ; superscript config
-             ; plain config
-             ; whitespaces
-             ])
-      in
-      let label =
-        match parse_string ~consume:All parser label_text with
-        | Ok result -> concat_plains_without_pos result
-        | Error _e -> [ Plain label_text ]
-      in
-      let title = None in
-      let full_text =
-        Printf.sprintf "![%s](%s)%s" label_text url_text metadata
-      in
-      Link { label; url; title; full_text; metadata })
-    label_part link_url_part metadata
+  char '!' *> markdown_link config >>= fun t ->
+  match t with
+  | Link link -> return @@ Link { link with full_text = "!" ^ link.full_text }
+  | _ -> return t
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') in

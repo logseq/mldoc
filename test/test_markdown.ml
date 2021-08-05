@@ -307,6 +307,18 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "image link"
+          , `Quick
+          , check_aux "![lab[el]](url-part)"
+              (paragraph
+                 [ I.Link
+                     { url = I.Search "url-part"
+                     ; label = [ Plain "lab[el]" ]
+                     ; title = None
+                     ; full_text = "![lab[el]](url-part)"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ; ( "inline-macro"
     , testcases
