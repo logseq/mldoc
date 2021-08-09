@@ -222,10 +222,10 @@ let plain ?state config =
   <|> ( ws >>| fun s ->
         set_last_char s;
         Plain s )
-  <|> ( char '\\' *> satisfy non_tab_or_space >>| fun c ->
+  <|> ( char '\\' *> satisfy is_md_escape_char >>| fun c ->
         let s = String.make 1 c in
         set_last_char s;
-        Plain s )
+        Plain ("\\" ^ s) )
   <|> ( any_char >>= fun c ->
         if in_plain_delims config c then (
           let s = String.make 1 c in
@@ -314,8 +314,8 @@ let md_em_parser ?(nested = false) ?(include_md_code = true) pattern typ =
   in
   let non_whitespace_choices =
     choice
-      [ ( take_while1 (fun c ->
-              not @@ List.mem c stop_chars_include_inline_code_delim)
+      [ ( take_while1_include_backslash stop_chars_include_inline_code_delim
+            (fun c -> not @@ List.mem c stop_chars_include_inline_code_delim)
         >>| fun s ->
           set_char_before_pattern (Plain s);
           Plain s )
@@ -325,7 +325,9 @@ let md_em_parser ?(nested = false) ?(include_md_code = true) pattern typ =
           t
         ) else
           fail "continue")
-      ; ( take_while1 (fun c -> not @@ List.mem c stop_chars) >>| fun s ->
+      ; ( take_while1_include_backslash stop_chars (fun c ->
+              not @@ List.mem c stop_chars)
+        >>| fun s ->
           set_char_before_pattern (Plain s);
           Plain s )
       ; ( peek_string (String.length pattern) >>= fun s ->

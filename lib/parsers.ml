@@ -5,6 +5,13 @@ let whitespace_chars = [ ' '; '\t'; '\n'; '\r'; '\012' ]
 
 let space_chars = [ ' '; '\t'; '\026'; '\012' ]
 
+module CharSet = Set.Make (Char)
+
+let md_escape_chars =
+  "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~\\" |> explode |> CharSet.of_list
+
+let is_md_escape_char c = CharSet.mem c md_escape_chars
+
 let is_space c = List.mem c space_chars
 
 let is_tab = function
@@ -306,3 +313,30 @@ let string_contains_balanced_brackets ?(excluded_ending_chars = []) bracket_pair
         ; return [ [] ]
         ])
   >>| (String.concat "" << List.flatten)
+
+let rec remove_backslash (cl : char list) chars_can_escape =
+  match cl with
+  | [] -> []
+  | '\\' :: c :: t when List.mem c chars_can_escape ->
+    c :: remove_backslash t chars_can_escape
+  | c :: t -> c :: remove_backslash t chars_can_escape
+
+let take_while1_include_backslash chars_can_escape f =
+  let last_backslash = ref false in
+  take_while1 (fun c ->
+      if !last_backslash && List.mem c chars_can_escape then (
+        last_backslash := false;
+        true
+      ) else if !last_backslash then (
+        last_backslash := false;
+        f c
+      ) else if c = '\\' then (
+        last_backslash := true;
+        true
+      ) else
+        f c)
+
+(* let take_while1_without_backslash chars_can_escape f =
+ *   take_while1_include_backslash chars_can_escape f >>= fun str ->
+ *   let cl = List.of_seq (String.to_seq str) in
+ *   return (remove_backslash cl chars_can_escape |> List.to_seq |> String.of_seq) *)

@@ -47,7 +47,12 @@ let parsers config =
 
 let parse config input =
   match parse_string ~consume:All (parsers config) input with
-  | Ok result -> Paragraph.concat_paragraph_lines config result
+  | Ok result ->
+    let ast = Paragraph.concat_paragraph_lines config result in
+    if Conf.is_markdown config then
+      List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
+    else
+      ast
   | Error err -> failwith err
 
 let load_file f =
