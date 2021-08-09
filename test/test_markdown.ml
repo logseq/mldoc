@@ -570,6 +570,29 @@ let inline =
                      }
                  ]) )
         ] )
+  ; ( "escape metachars"
+    , testcases
+        [ ( "emphasis"
+          , `Quick
+          , check_aux "*a\\*b*"
+              (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b" ]) ])
+          )
+        ; ( "code"
+          , `Quick
+          , check_aux "`a\\``"
+              (paragraph [ Inline.Code "a\\"; Inline.Plain "`" ]) )
+        ; ( "nested emphasis"
+          , `Quick
+          , check_aux "_a*b\\*_"
+              (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b*" ]) ])
+          )
+          (* TODO fix escaped chars in link *)
+          (* ; ( "link"
+           *   , `Quick
+           *   , check_aux "[[\\]]]"
+           *       (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b*" ]) ])
+           *   ) *)
+        ] )
   ]
 
 let block =
