@@ -93,7 +93,7 @@ let unescaped_md_string s =
     done;
     to_string b'
 
-let map_plain t f =
+let map_escaped_string t f =
   let rec inline_aux (t : Inline.t) =
     match t with
     | Inline.Emphasis (em_type, tl) ->
@@ -102,7 +102,16 @@ let map_plain t f =
     | Inline.Plain s -> Inline.Plain (f s)
     | Inline.Link link ->
       let label = List.map inline_aux link.label in
-      Inline.Link { link with label }
+      let url =
+        match link.url with
+        | Inline.File s -> Inline.File (f s)
+        | Inline.Search s -> Inline.Search (f s)
+        | Inline.Page_ref s -> Inline.Page_ref (f s)
+        | Inline.Complex complex ->
+          Inline.Complex { complex with link = f complex.link }
+        | Inline.Block_ref _ -> link.url
+      in
+      Inline.Link { link with label; url }
     | Inline.Subscript tl -> Inline.Subscript (List.map inline_aux tl)
     | Inline.Superscript tl -> Inline.Superscript (List.map inline_aux tl)
     | Inline.Footnote_Reference fr ->
@@ -148,7 +157,7 @@ let map_plain t f =
     e.g. \* -> *
     see also Parsers.md_escape_chars
     text in code fence should preserve '\' *)
-let md_unescaped t = map_plain t unescaped_md_string
+let md_unescaped t = map_escaped_string t unescaped_md_string
 
 (** TODO *)
 let md_escaped _t = failwith "not impl yet"

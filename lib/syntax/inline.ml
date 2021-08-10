@@ -619,7 +619,8 @@ let quick_link =
 
 let org_link config =
   let link_type_and_url_part =
-    string "[[" *> take_while1 (fun c -> c <> ']') >>= fun url_part ->
+    string "[[" *> take_while1_include_backslash [ ']' ] (fun c -> c <> ']')
+    >>= fun url_part ->
     string "][" *> return `Other_link <|> return `Page_ref_link
     >>| fun link_type -> (link_type, url_part)
   in
@@ -686,7 +687,9 @@ let org_link config =
 
 (* helper for markdown_link and markdown_image *)
 let link_url_part =
-  string_contains_balanced_brackets [ ('(', ')') ] eol_chars >>= fun s ->
+  string_contains_balanced_brackets ~escape_chars:[ '('; ')' ] [ ('(', ')') ]
+    eol_chars
+  >>= fun s ->
   let len = String.length s in
   char ')' *> return s
   <|>
@@ -729,7 +732,7 @@ let markdown_link config =
   let label_part_delims = [ '`'; '['; ']' ] in
   let label_part_choices =
     choice
-      [ ( take_while1 (fun c ->
+      [ ( take_while1_include_backslash [ ']' ] (fun c ->
               non_eol c && (not @@ List.mem c label_part_delims))
         >>| fun s -> Plain s )
       ; ( peek_char >>= fun c ->
