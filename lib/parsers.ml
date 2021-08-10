@@ -231,10 +231,25 @@ let one_of cl = satisfy (fun c -> List.mem c cl)
 
 let not_one_of cl = satisfy (fun c -> not (List.mem c cl))
 
+let take_while1_include_backslash chars_can_escape f =
+  let last_backslash = ref false in
+  take_while1 (fun c ->
+      if !last_backslash && List.mem c chars_can_escape then (
+        last_backslash := false;
+        true
+      ) else if !last_backslash then (
+        last_backslash := false;
+        f c
+      ) else if c = '\\' then (
+        last_backslash := true;
+        true
+      ) else
+        f c)
+
 let page_ref, page_ref_ignore_bracket =
   (* allow single char ']' in pagename but "]]" *)
   let page_name_part =
-    take_while1 (fun c -> non_eol c && c <> ']')
+    take_while1_include_backslash [ ']' ] (fun c -> non_eol c && c <> ']')
     <|> ( available >>= fun len ->
           if len < 2 then
             fail "page_name_part"
@@ -273,13 +288,13 @@ let block_ref, block_ref_ignore_bracket =
 
 let any_char_string = String.make 1 <$> any_char
 
-let string_contains_balanced_brackets ?(excluded_ending_chars = []) bracket_pair
-    other_delims =
+let string_contains_balanced_brackets ?(escape_chars = [])
+    ?(excluded_ending_chars = []) bracket_pair other_delims =
   let left, right = unzip bracket_pair in
   fix (fun (m : string list list t) ->
       choice
         [ (fun s l -> [ List.cons s (List.flatten l) ])
-          <$> take_while1 (fun c ->
+          <$> take_while1_include_backslash escape_chars (fun c ->
                   (not @@ List.mem c other_delims)
                   && (not @@ List.mem c excluded_ending_chars)
                   && (not (List.mem c left))
@@ -313,30 +328,3 @@ let string_contains_balanced_brackets ?(excluded_ending_chars = []) bracket_pair
         ; return [ [] ]
         ])
   >>| (String.concat "" << List.flatten)
-
-let rec remove_backslash (cl : char list) chars_can_escape =
-  match cl with
-  | [] -> []
-  | '\\' :: c :: t when List.mem c chars_can_escape ->
-    c :: remove_backslash t chars_can_escape
-  | c :: t -> c :: remove_backslash t chars_can_escape
-
-let take_while1_include_backslash chars_can_escape f =
-  let last_backslash = ref false in
-  take_while1 (fun c ->
-      if !last_backslash && List.mem c chars_can_escape then (
-        last_backslash := false;
-        true
-      ) else if !last_backslash then (
-        last_backslash := false;
-        f c
-      ) else if c = '\\' then (
-        last_backslash := true;
-        true
-      ) else
-        f c)
-
-(* let take_while1_without_backslash chars_can_escape f =
- *   take_while1_include_backslash chars_can_escape f >>= fun str ->
- *   let cl = List.of_seq (String.to_seq str) in
- *   return (remove_backslash cl chars_can_escape |> List.to_seq |> String.of_seq) *)

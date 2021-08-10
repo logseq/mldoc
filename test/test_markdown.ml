@@ -586,12 +586,42 @@ let inline =
           , check_aux "_a*b\\*_"
               (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b*" ]) ])
           )
-          (* TODO fix escaped chars in link *)
-          (* ; ( "link"
-           *   , `Quick
-           *   , check_aux "[[\\]]]"
-           *       (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b*" ]) ])
-           *   ) *)
+        ; ( "link (1)"
+          , `Quick
+          , check_aux "[[\\]]]"
+              (paragraph
+                 [ Inline.Link
+                     { url = Inline.Page_ref "]"
+                     ; label = [ Inline.Plain "" ]
+                     ; full_text = "[[\\]]]"
+                     ; metadata = ""
+                     ; title = None
+                     }
+                 ]) )
+        ; ( "link (2)"
+          , `Quick
+          , check_aux "[label\\](x)](xxx)"
+              (paragraph
+                 [ Inline.Link
+                     { url = Inline.Search "xxx"
+                     ; label = [ Inline.Plain "label](x)" ]
+                     ; full_text = "[label\\](x)](xxx)"
+                     ; metadata = ""
+                     ; title = None
+                     }
+                 ]) )
+        ; ( "link (3)"
+          , `Quick
+          , check_aux "[label](ur\\)l)"
+              (paragraph
+                 [ Inline.Link
+                     { url = Inline.Search "ur)l"
+                     ; label = [ Inline.Plain "label" ]
+                     ; full_text = "[label](ur\\)l)"
+                     ; metadata = ""
+                     ; title = None
+                     }
+                 ]) )
         ] )
   ]
 
