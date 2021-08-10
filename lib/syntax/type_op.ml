@@ -54,19 +54,20 @@ let rec type_move_forawrd t forward_pos =
 let unescaped_md_string s =
   let open Bytes in
   let b = of_string s in
-  let n =
-    if length b = 0 then
-      ref 0
-    else
-      ref 1
-  in
-  for i = 0 to length b - 2 do
+  let n = ref 0 in
+  let i = ref 0 in
+  let lenb = length b in
+  while !i < lenb do
     n :=
       !n
       +
-      match get b i with
-      | '\\' when Parsers.is_md_escape_char (get b (i + 1)) -> 0
-      | _ -> 1
+      match get b !i with
+      | '\\' when !i + 1 < lenb && Parsers.is_md_escape_char (get b (!i + 1)) ->
+        i := !i + 2;
+        1
+      | _ ->
+        incr i;
+        1
   done;
   if !n = length b then
     s

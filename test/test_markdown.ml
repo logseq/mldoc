@@ -600,11 +600,16 @@ let inline =
         ] )
   ; ( "escape metachars"
     , testcases
-        [ ( "emphasis"
+        [ ( "emphasis(1)"
           , `Quick
           , check_aux "*a\\*b*"
               (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b" ]) ])
           )
+        ; ( "emphasis(2)"
+          , `Quick
+          , check_aux "*a\\\\\\*b*"
+              (paragraph
+                 [ Inline.Emphasis (`Italic, [ Inline.Plain "a\\*b" ]) ]) )
         ; ( "code"
           , `Quick
           , check_aux "`a\\``"
