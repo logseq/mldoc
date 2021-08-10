@@ -212,7 +212,8 @@ let inline =
                            { protocol = "http"; link = "foobar/path?query=123" }
                      ; label = [ Plain "label here" ]
                      ; title = None
-                     ; full_text = "[[http://foobar/path?query=123]]"
+                     ; full_text =
+                         "[[http://foobar/path?query=123][label here]]"
                      ; metadata = ""
                      }
                  ]) )

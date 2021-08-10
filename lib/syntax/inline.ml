@@ -666,7 +666,19 @@ let org_link config =
         | Error _e -> [ Plain label_text ]
       in
       let title = None in
-      let full_text = Printf.sprintf "[[%s]]%s" url_text metadata in
+      let full_text =
+        if link_type = `Page_ref_link then
+          Printf.sprintf "[[%s]]%s" url_text metadata
+        else
+          let label_s =
+            Option.map_default
+              (function
+                | Plain s -> s
+                | _ -> "")
+              "" (List.nth_opt label 0)
+          in
+          Printf.sprintf "[[%s][%s]]%s" url_text label_s metadata
+      in
       Link { label; url; title; full_text; metadata })
     link_type_and_url_part label_part metadata
 
