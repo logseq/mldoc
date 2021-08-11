@@ -15,6 +15,7 @@ let default_config =
   ; inline_type_with_pos = false
   ; export_md_indent_style = Spaces
   ; export_md_remove_options = []
+  ; hiccup_in_block = true
   }
 
 let attr ?(uri = "") local value : Xmlm.attribute = ((uri, local), value)

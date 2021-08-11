@@ -20,6 +20,7 @@ end = struct
     ; inline_type_with_pos = false
     ; export_md_indent_style = Conf.Dashes
     ; export_md_remove_options = []
+    ; hiccup_in_block = true
     }
 
   let rec of_value v ~config =

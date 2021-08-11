@@ -120,6 +120,7 @@ let config : Conf.t =
   ; inline_type_with_pos = false
   ; export_md_indent_style = Dashes
   ; export_md_remove_options = []
+  ; hiccup_in_block = true
   }
 
 (* ./gen_md_files.exe <page-num> <dir-num> *)

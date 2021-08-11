@@ -23,6 +23,7 @@ let main () =
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
                ; export_md_remove_options = []
+               ; hiccup_in_block = true
                }
              in
              ignore (parse config doc_org))
@@ -37,6 +38,7 @@ let main () =
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
                ; export_md_remove_options = []
+               ; hiccup_in_block = true
                }
              in
              ignore (parse config syntax_org))
@@ -51,6 +53,7 @@ let main () =
                ; inline_type_with_pos = false
                ; export_md_indent_style = Dashes
                ; export_md_remove_options = []
+               ; hiccup_in_block = true
                }
              in
              ignore (parse config syntax_md))

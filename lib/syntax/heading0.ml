@@ -9,8 +9,6 @@ module MakeHeading (Lists : sig
     Conf.t -> (Type.t * Pos.pos_meta) list Angstrom.t -> Type.t Angstrom.t
 end) (Block : sig
   val parse : Conf.t -> Type.t Angstrom.t
-
-  val results : Type.t Angstrom.t
 end) =
 struct
   (* TODO: Markdown alternate syntax,
@@ -83,29 +81,12 @@ struct
   let tags = char ':' *> seperated_tags <* char ':'
 
   let title_aux_p config =
+    let config = { config with Conf.hiccup_in_block = false } in
     Angstrom.unsafe_lookahead
       (choice
-         [ Drawer.parse config
-         ; Paragraph.sep
-         ; Table.parse config
+         [ Table.parse config
          ; Latex_env.parse config
-         ; Lists.parse config
-             (choice
-                [ Table.parse config
-                ; Block.parse config
-                ; Latex_env.parse config
-                ; Hr.parse config
-                ; Block.results
-                ; Comment.parse config
-                ; Paragraph.parse
-                ; Paragraph.sep
-                ]
-             |> Helper.with_pos_meta |> many1)
          ; Block.parse config
-         ; Hr.parse config
-         ; Block.results
-         ; Footnote.parse config
-         ; Comment.parse config
          ; Paragraph.parse
          ])
 
