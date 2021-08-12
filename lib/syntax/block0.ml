@@ -223,7 +223,8 @@ struct
             fenced_code_block
           | '$' -> displayed_math
           | '<' -> Raw_html.parse >>| fun s -> Raw_Html s
-          | '[' -> if config.hiccup_in_block then
+          | '[' ->
+            if config.hiccup_in_block then
               Hiccup.parse >>| fun s -> Hiccup s
             else
               fail "block"
