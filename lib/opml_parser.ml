@@ -87,7 +87,13 @@ let tree_to_string_tree_type tree =
 let string_tree_type_to_value = Markdown_transformer.String_Tree_Value.to_value
 
 let parse opml_string =
-  let input = make_input (`String (0, opml_string)) in
+  let input =
+    make_input
+      (`String (0, opml_string))
+      ~entity:(function
+        | "nbsp" -> Some " "
+        | _ -> None)
+  in
   let headers = parse_header input in
   let blocks =
     body_to_tree input |> tree_to_string_tree_type

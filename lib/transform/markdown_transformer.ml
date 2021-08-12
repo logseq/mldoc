@@ -83,7 +83,14 @@ end = struct
           | _ -> head
         in
         let head_content =
-          String.sub h (2 + pos.start_pos) (pos.end_pos - 2 - pos.start_pos)
+          let len = pos.end_pos - 2 - pos.start_pos in
+          let len =
+            if len > 0 then
+              len
+            else
+              0
+          in
+          String.sub h (2 + pos.start_pos) len
         in
         let head_ast' = (head', head_content) in
         let body_ast' =
