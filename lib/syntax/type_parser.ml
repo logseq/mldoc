@@ -11,7 +11,7 @@ and Heading : sig
 
   val anchor_link : string -> string
 end =
-  Heading0.MakeHeading (Lists) (Block)
+  Heading0.MakeHeading (Block)
 
 and Block : sig
   val parse : Conf.t -> Type.t Angstrom.t

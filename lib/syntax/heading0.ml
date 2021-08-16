@@ -4,10 +4,7 @@ open Prelude
 open Type
 open Conf
 
-module MakeHeading (Lists : sig
-  val parse :
-    Conf.t -> (Type.t * Pos.pos_meta) list Angstrom.t -> Type.t Angstrom.t
-end) (Block : sig
+module MakeHeading (Block : sig
   val parse : Conf.t -> Type.t Angstrom.t
 end) =
 struct

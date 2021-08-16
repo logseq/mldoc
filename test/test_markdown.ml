@@ -301,7 +301,7 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
-        ; ( "url and title"
+        ; ( "url and title (1)"
           , `Quick
           , check_aux "[a](bbb[[ccc \"dd\"]] \"e f\")"
               (paragraph
@@ -310,6 +310,18 @@ let inline =
                      ; label = [ Plain "a" ]
                      ; title = Some "e f"
                      ; full_text = "[a](bbb[[ccc \"dd\"]] \"e f\")"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "url and title (2)"
+          , `Quick
+          , check_aux "[a](<bbb> \"cc\")"
+              (paragraph
+                 [ I.Link
+                     { url = I.Search "bbb"
+                     ; label = [ Plain "a" ]
+                     ; title = Some "cc"
+                     ; full_text = "[a](<bbb> \"cc\")"
                      ; metadata = ""
                      }
                  ]) )
@@ -346,6 +358,18 @@ let inline =
                      ; label = [ Plain "lab[el]" ]
                      ; title = None
                      ; full_text = "![lab[el]](url-part)"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "link url contains spaces"
+          , `Quick
+          , check_aux "[label](<u r l>)"
+              (paragraph
+                 [ I.Link
+                     { url = I.Search "u r l"
+                     ; label = [ Plain "label" ]
+                     ; title = None
+                     ; full_text = "[label](<u r l>)"
                      ; metadata = ""
                      }
                  ]) )
