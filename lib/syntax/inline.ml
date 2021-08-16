@@ -698,34 +698,54 @@ let link_url_part =
   else
     fail "link_url_part"
 
-(* return ((type, url), title) *)
+(* return ((type, url), title option) *)
 let link_url_part_inner =
   let url_part =
     both (return `Block_ref_link) block_ref
     <|> both
-          (return `Other_link)
+          (return `Other_link1)
+          (char '<'
+           *> take_while1_include_backslash [ '<'; '>' ] (fun c ->
+                  not (List.mem c [ '<'; '>' ]))
+          <* char '>')
+    <|> both
+          (return `Other_link2)
           (take_while1 (fun c -> non_space_eol c && c <> '['))
     <|> both (return `Page_ref_link) page_ref
     <|> ( peek_char >>= fun c ->
           match c with
           | None -> fail "url1"
           | Some ' ' -> fail "url2"
-          | Some _ -> both (return `Other_link) any_char_string )
+          | Some _ -> both (return `Other_link2) any_char_string )
   in
   both
     ( fix (fun m ->
           List.cons <$> url_part <*> m <|> (List.cons <$> url_part <*> return []))
-    >>| fun l ->
+    >>= fun l ->
       if List.length l = 1 then
-        List.hd l
+        let tp = fst (List.hd l) in
+        let value = snd (List.hd l) in
+        if tp = `Other_link2 || tp = `Other_link1 then
+          return (`Other_link, value)
+        else
+          return (tp, value)
+      else if List.exists (fun tp -> tp = `Other_link1) (List.map fst l) then
+        fail "link_url_part_inner1"
       else
-        (`Other_link, String.concat "" (List.map snd l)) )
-    (take_while (fun _ -> true))
+        return (`Other_link, String.concat "" (List.map snd l)) )
+    (spaces
+    *> (char '"'
+        *> (take_while1_include_backslash [ '"' ] (fun c -> c <> '"')
+           >>| Option.some)
+       <* char '"'
+       <|> any_char *> fail "link_url_part_inner2"
+       <|> end_of_input *> return None))
 
 (* link *)
 (* 1. [label](url)
    2. [label](url "title"), for example:
-      My favorite search engine is [Duck Duck Go](https://duckduckgo.com "The best search engine for privacy").
+      My favorite search engine is [Duck Duck Go](https://duckduckgo.com "The best search engine for privacy"
+   3. [label](<url contains spaces>)).
 *)
 (* TODO: URI encode *)
 let markdown_link config =
@@ -776,10 +796,9 @@ let markdown_link config =
           Angstrom.parse_string ~consume:All link_url_part_inner url_text
         with
         | Ok ((link_type, url), title) -> (link_type, url, title)
-        | Error _ -> (`Other_link, url_text, "")
+        | Error _ -> (`Other_link, url_text, None)
       in
       let url = String.trim url in
-      let title = String.trim title in
       let lowercased_url = String.lowercase_ascii url in
       let url =
         match link_type with
@@ -807,6 +826,7 @@ let markdown_link config =
               File url
             else
               Search url)
+        | _ -> failwith "unreachable"
       in
       let parser =
         many1
@@ -831,12 +851,6 @@ let markdown_link config =
             | s -> [ s ])
           label_t
         |> List.concat |> concat_plains_without_pos
-      in
-      let title =
-        if String.equal title "" || String.equal title "\"\"" then
-          None
-        else
-          Some (String.sub title 1 (String.length title - 2))
       in
       let full_text =
         Printf.sprintf "[%s](%s)%s" label_text url_text metadata
