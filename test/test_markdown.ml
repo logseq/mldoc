@@ -203,6 +203,19 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "normal (2)"
+          , `Quick
+          , check_aux "[not label][label](url)"
+              (paragraph
+                 [ I.Plain "[not label]"
+                 ; I.Link
+                     { url = I.Search "url"
+                     ; label = [ Plain "label" ]
+                     ; title = None
+                     ; full_text = "[label](url)"
+                     ; metadata = ""
+                     }
+                 ]) )
         ; ( "also support org-link syntax"
           , `Quick
           , check_aux "[[http://foobar/path?query=123][label here]]"
