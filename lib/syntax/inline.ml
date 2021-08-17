@@ -732,24 +732,21 @@ let markdown_link config =
   let label_part_delims = [ '`'; '['; ']' ] in
   let label_part_choices =
     choice
-      [ ( take_while1_include_backslash [ ']' ] (fun c ->
+      [ ( take_while1_include_backslash [ '['; ']' ] (fun c ->
               non_eol c && (not @@ List.mem c label_part_delims))
         >>| fun s -> Plain s )
       ; ( peek_char >>= fun c ->
           match c with
           | None -> fail "finish"
           | Some '`' -> md_code <|> (any_char_string >>| fun s -> Plain s)
-          | Some '[' -> page_ref <|> any_char_string >>| fun s -> Plain s
-          | Some ']' ->
-            available >>= fun len ->
-            if len < 2 then
-              fail "label_part_choices"
-            else
-              peek_string 2 >>= fun s ->
-              if s = "](" then
-                fail "finish"
-              else
-                any_char_string >>| fun s -> Plain s
+          | Some '\\' ->
+            any_char *> any_char_string >>| fun c -> Plain ("\\" ^ c)
+          | Some '[' ->
+            page_ref
+            <|> string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
+                  [ ('[', ']') ] []
+            >>| fun s -> Plain s
+          | Some ']' -> fail "not link"
           | Some c when is_eol c -> fail "finish"
           | Some _ -> any_char_string >>| fun s -> Plain s )
       ]
