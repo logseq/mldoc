@@ -465,3 +465,12 @@ let butlast_rev l =
   | [] -> (None, [])
   | [ h ] -> (Some h, [])
   | h :: t -> (Some h, t)
+
+let remove_last_newlines lines =
+  match last_opt lines with
+  | None -> lines
+  | Some line ->
+    if (line = "\n") then
+      drop_last 1 lines
+    else
+      lines

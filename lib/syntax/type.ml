@@ -86,7 +86,7 @@ and t =
   *)
   | Displayed_Math of string
   (* FIXME:  *)
-  | Drawer of string * (string * string) list  (** A drawer *)
+  | Drawer of string * string list  (** A drawer *)
   | Property_Drawer of (string * string) list  (** A property drawer *)
   | Footnote_Definition of string * Inline.t_with_pos list
       (** The definition of a footnote : name and contents *)

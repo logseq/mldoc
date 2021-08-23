@@ -25,7 +25,7 @@ let property =
   let property_key =
     optional spaces
     *> between_char ':' ':'
-         (take_while1 (fun c -> c <> ':' && c <> ' ' && non_eol c))
+      (take_while1 (fun c -> c <> ':' && c <> ' ' && non_eol c))
     >>= fun s ->
     if String.lowercase_ascii s = "end" then
       fail "property key"
@@ -39,23 +39,20 @@ let property =
 
 let drawer_properties = many property
 
-(* TODO: support other drawers than properties *)
+let drawer_name = spaces
+                  *> between_char ':' ':'
+                    (take_while1 (fun c -> c <> ':' && c <> ' ' && non_eol c))
+                  <* eol
+
 let parse1 config =
   let is_markdown = Conf.is_markdown config in
-  let drawer_name =
-    spaces
-    *> between_char ':' ':'
-         (take_while1 (fun c -> c <> ':' && c <> ' ' && non_eol c))
-    <* eol
-  in
   (* anything but a headline and another drawer *)
   let p =
+    let name = spaces *> (string_ci ":PROPERTIES:") <* eol in
     lift2
-      (fun name properties ->
-        match String.lowercase_ascii name with
-        | "properties" -> Property_Drawer properties
-        | _ -> Drawer (name, properties))
-      drawer_name drawer_properties
+      (fun _name properties ->
+         Property_Drawer properties)
+      name drawer_properties
   in
   let p' = p <* spaces <* string_ci end_mark <* optional eol in
   if is_markdown then
@@ -75,15 +72,33 @@ let parse2 =
   in
   between_eols p
 
+let drawer_content =
+  between_lines ~trim:false
+    (fun line ->
+       String.equal (String.lowercase_ascii (String.trim line)) ":end:")
+    "drawer_content"
+
+let drawer_parse =
+  let p =
+    lift2
+      (fun name content ->
+         let name = String.lowercase_ascii name in
+         let content = remove_last_newlines content in
+         Drawer (name, content))
+      drawer_name drawer_content
+  in p <* optional eol
+
 (* combine
    :PROPERTIES: :END: properties and #+NAME: VALUE properties *)
 let parse config =
-  many1 (parse1 config <|> parse2) >>= fun properties ->
-  return
-  @@ Property_Drawer
-       (List.fold_left
-          (fun r e ->
-            match e with
-            | Property_Drawer kvs -> List.append r kvs
-            | _ -> failwith "unreachable")
-          [] properties)
+  (many1 (parse1 config <|> parse2) >>= fun properties ->
+   return
+   @@ Property_Drawer
+     (List.fold_left
+        (fun r e ->
+           match e with
+           | Property_Drawer kvs -> List.append r kvs
+           | _ -> failwith "unreachable")
+        [] properties))
+  <|>
+  drawer_parse
