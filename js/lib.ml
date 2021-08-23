@@ -90,7 +90,6 @@ let mldoc_object = (object%js
         Sys_js.set_channel_flusher stdout (fun s ->
             Buffer.add_string buffer s)
       in
-      let _ = print_endline to_format in
       generate to_format ~refs config document stdout;
       flush stdout;
       Js_of_ocaml.Js.string (Buffer.contents buffer)
