@@ -24,6 +24,9 @@ let map_raw_text = List.map raw_text
 
 let flatten_map f l = List.flatten (List.map f l)
 
+let export_properties_and_not_empty config kvs =
+  config.exporting_keep_properties && List.length(kvs) > 1
+
 type refs = Reference.parsed_t
 
 type state =
@@ -251,9 +254,14 @@ and block state config t =
       latex_env state config name options content
     | Displayed_Math s ->
       [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
-    | Drawer (name, kvs) -> drawer state config name kvs
+    | Drawer (name, kvs) ->
+      if export_properties_and_not_empty config kvs then
+        drawer state config name kvs
+      else
+        (* hide Property_Drawers *)
+        []
     | Property_Drawer kvs ->
-      if config.exporting_keep_properties then
+      if export_properties_and_not_empty config kvs then
         drawer state config "PROPERTIES" kvs
       else
         (* hide Property_Drawers *)
@@ -317,7 +325,7 @@ and heading state config h =
   in
   let heading = f () in
   let properties =
-    if config.exporting_keep_properties then
+    if export_properties_and_not_empty config meta.properties then
       drawer state config "PROPERTIES" meta.properties
     else
       (* hide Property_Drawers *)

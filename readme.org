@@ -21,10 +21,10 @@
       npm install -g mldoc
 
       # convert org mode file to html
-      mldoc makehtml -i ./test.org -o ./test.html
+      mldoc convert -i ./test.org -o ./test.html
 
       # convert markdown mode file to html
-      mldoc makehtml -i ./test.markdown -o ./test.html
+      mldoc convert -i ./test.markdown -o ./test.html
     #+END_SRC
 
 *** For OCaml users
