@@ -1,6 +1,6 @@
 {
     "name": "mldoc",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "Another Emacs Org-mode parser.",
     "main": "index.js",
     "scripts": {
