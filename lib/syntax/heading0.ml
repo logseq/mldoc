@@ -150,7 +150,7 @@ struct
                         drop_last 1 title
                       else
                         drop_last 1 title
-                        @ Type_op.inline_list_with_dummy_pos
+                        @ Type_op.inline_list_with_none_pos
                             [ Inline.Plain prefix ]
                     in
                     (title, remove is_blank tags)
