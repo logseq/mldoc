@@ -470,7 +470,7 @@ let remove_last_newlines lines =
   match last_opt lines with
   | None -> lines
   | Some line ->
-    if (line = "\n") then
+    if line = "\n" then
       drop_last 1 lines
     else
       lines

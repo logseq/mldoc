@@ -25,7 +25,7 @@ let map_raw_text = List.map raw_text
 let flatten_map f l = List.flatten (List.map f l)
 
 let export_properties_and_not_empty config kvs =
-  config.exporting_keep_properties && List.length(kvs) > 1
+  config.exporting_keep_properties && List.length kvs > 1
 
 type refs = Reference.parsed_t
 
@@ -59,16 +59,16 @@ let raw_text_indent state config s =
       let ls =
         lines s
         |> flatten_map (fun l ->
-            [ indent_with_2_spacemore state.current_level config
-            ; raw_text (l ^ "\n")
-            ])
+               [ indent_with_2_spacemore state.current_level config
+               ; raw_text (l ^ "\n")
+               ])
       in
       let ls_rev = List.rev ls in
       List.rev
         (match ls_rev with
-         | RawText s :: tl ->
-           newline :: raw_text (String.sub s 0 (String.length s - 1)) :: tl
-         | _ -> ls_rev)
+        | RawText s :: tl ->
+          newline :: raw_text (String.sub s 0 (String.length s - 1)) :: tl
+        | _ -> ls_rev)
     else
       [ raw_text s ]
   in
@@ -82,53 +82,53 @@ let rec inline state config (t : Inline.t) : t list =
     indent_with_2_spacemore state.current_level config
     ::
     (match t with
-     | Emphasis em -> emphasis state config em
-     | Break_Line ->
-       state.last_newline <- true;
-       [ raw_text "\n" ]
-     | Hard_Break_Line ->
-       state.last_newline <- true;
-       [ raw_text "  \n" ]
-     | Verbatim s -> [ raw_text s ]
-     | Code s -> map_raw_text [ "`"; s; "`" ] (* it's inline code *)
-     | Tag s -> map_raw_text [ "#"; Inline.hash_tag_value_string (Tag s) ]
-     | Spaces s ->
-       if state.last_newline then
-         []
-       else
-         map_raw_text [ s ]
-     | Plain s ->
-       if state.last_newline then (
-         state.last_newline <- false;
-         map_raw_text [ String.ltrim s ]
-       ) else
-         map_raw_text [ s ]
-     | Link l -> inline_link l
-     | Nested_link l -> inline_nested_link l
-     | Target s -> map_raw_text [ "<<"; s; ">>" ]
-     | Subscript tl -> inline_subscript state config tl
-     | Superscript tl -> inline_superscript state config tl
-     | Footnote_Reference fr -> footnote_reference fr
-     | Cookie c -> cookie c
-     | Latex_Fragment lf -> latex_fragment lf
-     | Macro m -> macro m
-     | Entity e -> entity e
-     | Timestamp t -> timestamp t
-     | Radio_Target s ->
-       map_raw_text [ "<<<"; s; ">>>" ] (* FIXME: not parsed in md parser? *)
-     | Export_Snippet (name, content) ->
-       [ raw_text "@@"
-       ; raw_text name
-       ; raw_text ":"
-       ; Space
-       ; raw_text content
-       ; raw_text "@@"
-       ]
-     | Inline_Source_Block { language; options; code } ->
-       map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
-     | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
-     | Inline_Hiccup s -> map_raw_text [ s ]
-     | Inline_Html s -> map_raw_text [ s ])
+    | Emphasis em -> emphasis state config em
+    | Break_Line ->
+      state.last_newline <- true;
+      [ raw_text "\n" ]
+    | Hard_Break_Line ->
+      state.last_newline <- true;
+      [ raw_text "  \n" ]
+    | Verbatim s -> [ raw_text s ]
+    | Code s -> map_raw_text [ "`"; s; "`" ] (* it's inline code *)
+    | Tag s -> map_raw_text [ "#"; Inline.hash_tag_value_string (Tag s) ]
+    | Spaces s ->
+      if state.last_newline then
+        []
+      else
+        map_raw_text [ s ]
+    | Plain s ->
+      if state.last_newline then (
+        state.last_newline <- false;
+        map_raw_text [ String.ltrim s ]
+      ) else
+        map_raw_text [ s ]
+    | Link l -> inline_link l
+    | Nested_link l -> inline_nested_link l
+    | Target s -> map_raw_text [ "<<"; s; ">>" ]
+    | Subscript tl -> inline_subscript state config tl
+    | Superscript tl -> inline_superscript state config tl
+    | Footnote_Reference fr -> footnote_reference fr
+    | Cookie c -> cookie c
+    | Latex_Fragment lf -> latex_fragment lf
+    | Macro m -> macro m
+    | Entity e -> entity e
+    | Timestamp t -> timestamp t
+    | Radio_Target s ->
+      map_raw_text [ "<<<"; s; ">>>" ] (* FIXME: not parsed in md parser? *)
+    | Export_Snippet (name, content) ->
+      [ raw_text "@@"
+      ; raw_text name
+      ; raw_text ":"
+      ; Space
+      ; raw_text content
+      ; raw_text "@@"
+      ]
+    | Inline_Source_Block { language; options; code } ->
+      map_raw_text [ "src_"; language; "["; options; "]{"; code; "}" ]
+    | Email e -> map_raw_text [ "<"; Email_address.to_string e; ">" ]
+    | Inline_Hiccup s -> map_raw_text [ s ]
+    | Inline_Html s -> map_raw_text [ s ])
   in
   let _ =
     match t with
@@ -159,22 +159,22 @@ and emphasis state config (typ, tl) =
   | `Bold ->
     wrap_with tl
       (if outside_em_symbol = Some '*' then
-         "__"
-       else
-         "**")
+        "__"
+      else
+        "**")
   | `Strike_through -> wrap_with tl "~~"
   | `Highlight -> wrap_with tl "^^"
   | `Italic ->
     wrap_with tl
       (if outside_em_symbol = Some '*' then
-         "_"
-       else
-         "*")
+        "_"
+      else
+        "*")
   | `Underline ->
     List.flatten
     @@ List.map
-      (fun e -> Space :: inline { state with outside_em_symbol } config e)
-      tl
+         (fun e -> Space :: inline { state with outside_em_symbol } config e)
+         tl
 
 and inline_link { full_text; _ } = [ raw_text full_text ]
 
@@ -254,8 +254,7 @@ and block state config t =
       latex_env state config name options content
     | Displayed_Math s ->
       [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
-    | Drawer (name, lines) ->
-      drawer state config name lines
+    | Drawer (name, lines) -> drawer state config name lines
     | Property_Drawer kvs ->
       if export_properties_and_not_empty config kvs then
         property_drawer state config "PROPERTIES" kvs
@@ -313,9 +312,9 @@ and heading state config h =
     @ flatten_map (fun e -> Space :: inline state config e) (List.map fst title)
     @ [ Space
       ; (if List.length tags > 0 then
-           raw_text @@ ":" ^ String.concat ":" tags ^ ":"
-         else
-           raw_text "")
+          raw_text @@ ":" ^ String.concat ":" tags ^ ":"
+        else
+          raw_text "")
       ; newline
       ]
   in
@@ -331,73 +330,73 @@ and heading state config h =
 
 and list state config l =
   (fun l ->
-     if List.length l > 0 then
-       l @ [ TwoNewlines ]
-     else
-       l)
+    if List.length l > 0 then
+      l @ [ TwoNewlines ]
+    else
+      l)
   @@ List.flatten
   @@ List.map
-    (fun { content; items; number; name; checkbox; _ } ->
-       let state' = { state with current_level = state.current_level + 1 } in
-       let name' =
-         flatten_map (inline state config)
-           (Type_op.inline_list_strip_pos name)
-       in
-       let content' = flatten_map (block state' config) content in
-       (* Definition Lists content if name isn't empty  *)
-       let content'' =
-         if name' <> [] then
-           List.flatten
-           @@ List.map
-             (fun l ->
-                List.flatten
-                  [ [ raw_text ": " ]; block state' config l; [ newline ] ])
-             content
-         else
-           content'
-       in
-       let name'' =
-         if List.length name' > 0 then
-           name' @ [ newline ]
-         else
-           []
-       and number' =
-         match number with
-         | Some n -> raw_text @@ string_of_int n ^ ". "
-         | None when List.length name = 0 -> raw_text "* "
-         | None -> raw_text ""
-       and checkbox' =
-         match checkbox with
-         | Some true -> raw_text "[X]"
-         | Some false -> raw_text "[ ]"
-         | None -> raw_text ""
-       and indent' =
-         if state'.current_level > 0 then
-           raw_text @@ String.make state'.current_level '\t'
-         else
-           raw_text ""
-       and items' = list state' config items in
-       List.flatten
-         [ [ indent' ]
-         ; [ number' ]
-         ; [ checkbox' ]
-         ; [ Space ]
-         ; name''
-         ; content''
-         ; [ newline ]
-         ; items'
-         ; [ newline ]
-         ])
-    l
+       (fun { content; items; number; name; checkbox; _ } ->
+         let state' = { state with current_level = state.current_level + 1 } in
+         let name' =
+           flatten_map (inline state config)
+             (Type_op.inline_list_strip_pos name)
+         in
+         let content' = flatten_map (block state' config) content in
+         (* Definition Lists content if name isn't empty  *)
+         let content'' =
+           if name' <> [] then
+             List.flatten
+             @@ List.map
+                  (fun l ->
+                    List.flatten
+                      [ [ raw_text ": " ]; block state' config l; [ newline ] ])
+                  content
+           else
+             content'
+         in
+         let name'' =
+           if List.length name' > 0 then
+             name' @ [ newline ]
+           else
+             []
+         and number' =
+           match number with
+           | Some n -> raw_text @@ string_of_int n ^ ". "
+           | None when List.length name = 0 -> raw_text "* "
+           | None -> raw_text ""
+         and checkbox' =
+           match checkbox with
+           | Some true -> raw_text "[X]"
+           | Some false -> raw_text "[ ]"
+           | None -> raw_text ""
+         and indent' =
+           if state'.current_level > 0 then
+             raw_text @@ String.make state'.current_level '\t'
+           else
+             raw_text ""
+         and items' = list state' config items in
+         List.flatten
+           [ [ indent' ]
+           ; [ number' ]
+           ; [ checkbox' ]
+           ; [ Space ]
+           ; name''
+           ; content''
+           ; [ newline ]
+           ; items'
+           ; [ newline ]
+           ])
+       l
 
 and example state config sl =
   flatten_map
     (fun l ->
-       [ indent_with_2_spacemore state.current_level config
-       ; RawText "    "
-       ; RawText l
-       ; newline
-       ])
+      [ indent_with_2_spacemore state.current_level config
+      ; RawText "    "
+      ; RawText l
+      ; newline
+      ])
     sl
 
 and src state config { lines; language; _ } =
@@ -418,14 +417,14 @@ and src state config { lines; language; _ } =
 and quote state config tl =
   flatten_map
     (fun l ->
-       List.flatten
-         [ [ indent_with_2_spacemore state.current_level config
-           ; raw_text ">"
-           ; Space
-           ]
-         ; block state config l
-         ; [ TwoNewlines ]
-         ])
+      List.flatten
+        [ [ indent_with_2_spacemore state.current_level config
+          ; raw_text ">"
+          ; Space
+          ]
+        ; block state config l
+        ; [ TwoNewlines ]
+        ])
     tl
 
 and latex_env state config name options content =
@@ -458,8 +457,8 @@ and property_drawer state config name kvs =
       [ [ raw_text @@ ":" ^ name ^ ":"; newline ]
       ; flatten_map
           (fun (k, v) ->
-             (raw_text_indent state config @@ ":" ^ k ^ ":")
-             @ [ Space; raw_text v; newline ])
+            (raw_text_indent state config @@ ":" ^ k ^ ":")
+            @ [ Space; raw_text v; newline ])
           kvs
       ; [ raw_text ":END:"; newline ]
       ]
@@ -483,8 +482,8 @@ and table state config { header; groups; _ } =
         [ [ indent_with_2_spacemore state.current_level config ]
         ; flatten_map
             (fun col ->
-               Space :: raw_text "|" :: Space
-               :: flatten_map (inline state config) col)
+              Space :: raw_text "|" :: Space
+              :: flatten_map (inline state config) col)
             header
         ; [ Space; raw_text "|" ]
         ]
@@ -495,9 +494,9 @@ and table state config { header; groups; _ } =
              List.flatten
                [ flatten_map
                    (fun col ->
-                      indent_with_2_spacemore state.current_level config
-                      :: Space :: raw_text "|" :: Space
-                      :: flatten_map (inline state config) col)
+                     indent_with_2_spacemore state.current_level config
+                     :: Space :: raw_text "|" :: Space
+                     :: flatten_map (inline state config) col)
                    row
                ; [ Space; raw_text "|"; newline ]
                ]))
@@ -549,15 +548,15 @@ let directive kvs =
     let sep_line = [ newline; raw_text "---"; newline ] in
     sep_line
     @ flatten_map
-      (fun (name, value) ->
-         [ newline
-         ; raw_text name
-         ; raw_text ":"
-         ; Space
-         ; raw_text value
-         ; newline
-         ])
-      kvs
+        (fun (name, value) ->
+          [ newline
+          ; raw_text name
+          ; raw_text ":"
+          ; Space
+          ; raw_text value
+          ; newline
+          ])
+        kvs
     @ sep_line
 
 module String_Tree_Value = struct
