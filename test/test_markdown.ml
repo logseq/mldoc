@@ -422,6 +422,15 @@ let inline =
                      ; arguments = [ "[[A,B]]"; "((C,D))"; "E" ]
                      }
                  ]) )
+        ; ( "args(2)"
+          , `Quick
+          , check_aux "{{macroname [[A,B]], ((C,D)), E, \"F,G\"}}"
+              (paragraph
+                 [ I.Macro
+                     { I.Macro.name = "macroname"
+                     ; arguments = [ "[[A,B]]"; "((C,D))"; "E"; "\"F,G\"" ]
+                     }
+                 ]) )
         ] )
   ; ( "drawer"
     , testcases

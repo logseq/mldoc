@@ -939,11 +939,12 @@ let macro_name = take_while1 (fun c -> c <> '}' && c <> '(' && c <> ' ')
 let macro_arg config =
   Nested_link.parse config
   >>| (fun l -> l.content)
-  <|> string "[[" *> take_while1 (fun c -> c <> ']')
-  <* string "]]"
-  >>| (fun s -> "[[" ^ s ^ "]]")
+  <|> page_ref
   <|> ( string "((" *> take_while1 (fun c -> c <> ')') <* string "))"
       >>| fun s -> "((" ^ s ^ "))" )
+  <|> ( char '"' *> take_while1_include_backslash [ '"' ] (fun c -> c <> '"')
+      <* char '"'
+      >>| fun s -> "\"" ^ s ^ "\"" )
   <|> take_while1 (fun c -> not @@ List.mem c [ ',' ])
 
 let macro_args config =
