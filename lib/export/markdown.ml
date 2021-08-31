@@ -444,7 +444,7 @@ and drawer state config name lines =
   List.flatten
     [ [ raw_text @@ ":" ^ name ^ ":"; newline ]
     ; flatten_map (raw_text_indent state config) lines
-    ; [ raw_text ":END:"; newline ]
+    ; [ newline; raw_text ":END:"; newline ]
     ]
 
 and property_drawer state config name kvs =
