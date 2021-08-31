@@ -624,7 +624,30 @@ let org_link config =
     string "][" *> return `Other_link <|> return `Page_ref_link
     >>| fun link_type -> (link_type, url_part)
   in
-  let label_part = take_while (fun c -> c <> ']') <* string "]]" in
+  let label_part_choices =
+    choice
+      [ take_while1_include_backslash [ '['; ']' ] (fun c ->
+            non_eol c && (not @@ List.mem c [ '['; ']' ]))
+      ; ( peek_char >>= fun c ->
+          match c with
+          | None -> fail "not link"
+          | Some '[' ->
+            string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
+              [ ('[', ']') ] []
+          | Some ']' ->
+            peek_string 2 >>= fun s ->
+            if s = "]]" then
+              fail "finish"
+            else
+              any_char_string
+          | Some _ -> any_char_string )
+      ]
+  in
+  let label_part =
+    fix (fun m -> List.cons <$> label_part_choices <*> m <|> return [])
+    <* string "]]" >>| String.concat ""
+  in
+  (* let label_part = take_while (fun c -> c <> ']') <* string "]]" in *)
   lift3
     (fun (link_type, url_text) label_text metadata ->
       let url =
@@ -1324,7 +1347,7 @@ let inline_choices state config : t_with_pos Angstrom.t =
         >>| (fun _ -> Hard_Break_Line)
         <|> latex_fragment config <|> entity
       | '[' ->
-        nested_link config <|> link config <|> timestamp
+        link config <|> nested_link config <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
       | '<' ->

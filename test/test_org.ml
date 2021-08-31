@@ -78,6 +78,35 @@ let inline =
                  ; I.Emphasis (`Underline, [ I.Plain "world" ])
                  ]) )
         ] )
+  ; ( "inline-link"
+    , testcases
+        [ ( "normal"
+          , `Quick
+          , check_aux "[[http://example.com][[example] website]]"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "example.com" }
+                     ; label = [ I.Plain "[example] website" ]
+                     ; title = None
+                     ; full_text = "[[http://example.com][[example] website]]"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "normal (2)"
+          , `Quick
+          , check_aux "[[http://example.com][[[example]] website]]"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "example.com" }
+                     ; label = [ I.Plain "[[example]] website" ]
+                     ; title = None
+                     ; full_text = "[[http://example.com][[[example]] website]]"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ] )
   ]
 
 let block =
