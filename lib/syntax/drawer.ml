@@ -62,7 +62,7 @@ let parse1 config =
 
 (* #+NAME: VALUE like orgmode property *)
 let name =
-  between_string "#+" ":" (take_while1 (fun c -> c <> ':' && non_eol c))
+  between_string "#+" ":" (take_while1 (fun c -> c <> ':' && non_space_eol c))
 
 let parse2 =
   let p =

@@ -153,6 +153,30 @@ let block =
           , check_aux "#+BEGIN_QUOTE\na:: b\n#+END_QUOTE"
               (Quote [ paragraph [ I.Plain "a:: b"; I.Break_Line ] ]) )
         ] )
+  ; ( "src"
+    , testcases
+        [ ( "src with header arguments"
+          , `Quick
+          , check_aux
+              "#+BEGIN_SRC haskell :results silent :exports code :var n=0\n\
+              \  fac 0 = 1\n\
+              \  fac n = n * fac (n-1)\n\
+               #+END_SRC"
+              (Type.Src
+                 { lines = [ "fac 0 = 1"; "\n"; "fac n = n * fac (n-1)"; "\n" ]
+                 ; language = Some "haskell"
+                 ; options =
+                     Some
+                       [ ":results"
+                       ; "silent"
+                       ; ":exports"
+                       ; "code"
+                       ; ":var"
+                       ; "n=0"
+                       ]
+                 ; pos_meta = { start_pos = 59; end_pos = 95 }
+                 }) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ block; inline ]
