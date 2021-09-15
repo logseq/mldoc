@@ -119,26 +119,29 @@ and inline config t =
   | Latex_Fragment (Displayed s) -> [ Xml.data ("\\[" ^ s ^ "\\]") ]
   | Latex_Fragment (Inline s) -> [ Xml.data ("\\(" ^ s ^ "\\)") ]
   | Target s -> [ Xml.block "a" ~attr:[ ("id", s) ] [ Xml.data s ] ]
-  | Link { url; label; _ } ->
-    let href = Inline.string_of_url url in
-    (* If it is an image *)
-    if
-      List.exists (ends_with href)
-        [ ".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp" ]
-    then
-      handle_image_link url href label
-    else
-      let href =
-        match url with
-        | Search x -> "#" ^ Type_parser.Heading.anchor_link x
-        | _ -> href
-      in
-      let label =
-        match url with
-        | Search s -> [ Xml.data s ]
-        | _ -> map_inline config label
-      in
-      [ Xml.block "a" ~attr:[ ("href", href) ] label ]
+  | Link { url; label; _ } -> (
+    match url with
+    | Page_ref s -> [ Xml.data s ]
+    | _ ->
+      let href = Inline.string_of_url url in
+      (* If it is an image *)
+      if
+        List.exists (ends_with href)
+          [ ".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp" ]
+      then
+        handle_image_link url href label
+      else
+        let href =
+          match url with
+          | Search x -> "#" ^ Type_parser.Heading.anchor_link x
+          | _ -> href
+        in
+        let label =
+          match url with
+          | Search s -> [ Xml.data s ]
+          | _ -> map_inline config label
+        in
+        [ Xml.block "a" ~attr:[ ("href", href) ] label ])
   | Verbatim s
   | Code s ->
     [ Xml.block "code" [ Xml.data s ] ]
