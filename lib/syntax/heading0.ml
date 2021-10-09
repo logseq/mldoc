@@ -81,9 +81,11 @@ struct
     let config = { config with Conf.hiccup_in_block = false } in
     Angstrom.unsafe_lookahead
       (choice
-         [ Table.parse config
+         [ Drawer.parse config
+         ; Table.parse config
          ; Latex_env.parse config
          ; Block.parse config
+         ; Footnote.parse config
          ; Paragraph.parse
          ])
 
