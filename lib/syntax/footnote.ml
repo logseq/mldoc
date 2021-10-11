@@ -69,4 +69,4 @@ let definition_parse config =
       Footnote_Definition (name, definition))
     name_part footnote_definition
 
-let parse config = definition_parse config <* optional eols
+let parse config = optional ws *> definition_parse config <* optional eols
