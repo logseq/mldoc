@@ -41,6 +41,7 @@ let footnote_definition =
   let non_eol = function
     | '\r'
     | '\n'
+    | '-'
     | '*'
     | '#'
     | '[' ->
