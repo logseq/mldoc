@@ -576,42 +576,40 @@ let link_inline =
     <$> choice [ char '/'; char '?'; char '#' ]
     <*> string_contains_balanced_brackets
           ~excluded_ending_chars:[ ','; ';'; '.'; '!'; '?' ]
-          [ ('(', ')'); ('[', ']') ]
-          (('{' :: space_chars) @ eol_chars)
+          [ ('(', ')'); ('[', ']') ] (space_chars @ eol_chars)
     <|> return ""
   in
-  lift4
-    (fun protocol before_path remain metadata ->
+  lift3
+    (fun protocol before_path remain ->
       Link
         { label = [ Plain (protocol ^ "://" ^ before_path ^ remain) ]
         ; url = Complex { protocol; link = before_path ^ remain }
         ; title = None
-        ; full_text = protocol ^ "://" ^ before_path ^ remain ^ metadata
-        ; metadata
+        ; full_text = protocol ^ "://" ^ before_path ^ remain
+        ; metadata = ""
         })
-    protocol_part before_path_part remaining_part metadata
+    protocol_part before_path_part remaining_part
 
-let quick_link_aux ?(delims = inline_link_delims) () =
+let quick_link_aux =
   let protocol_part_and_slashes =
     both (take_while1 is_letter_or_digit <* string ":") (optional (string "//"))
   in
   let link_part =
-    take_while1 (fun c -> non_space c && not (List.mem c delims))
+    take_while1 (fun c -> non_space c && not (List.mem c quicklink_delims))
   in
-  lift3
-    (fun (protocol, slashes) link metadata ->
+  lift2
+    (fun (protocol, slashes) link ->
       let slashes' = Option.default "" slashes in
       Link
         { label = [ Plain (protocol ^ ":" ^ slashes' ^ link) ]
         ; url = Complex { protocol; link }
         ; title = None
-        ; full_text = protocol ^ ":" ^ slashes' ^ link ^ metadata
-        ; metadata
+        ; full_text = protocol ^ ":" ^ slashes' ^ link
+        ; metadata = ""
         })
-    protocol_part_and_slashes link_part metadata
+    protocol_part_and_slashes link_part
 
-let quick_link =
-  between_char '<' '>' (quick_link_aux ~delims:quicklink_delims ())
+let quick_link = between_char '<' '>' quick_link_aux
 
 (* 1. [[url][label]] *)
 (* 2. [[search]] *)
