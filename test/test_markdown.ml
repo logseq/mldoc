@@ -186,6 +186,19 @@ let inline =
                      }
                  ; I.Plain "(s)t/foobar"
                  ]) )
+        ; ( "include brackets (5)"
+          , `Quick
+          , check_aux "http://test/foo{bar}"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "test/foo{bar}" }
+                     ; label = [ Plain "http://test/foo{bar}" ]
+                     ; title = None
+                     ; full_text = "http://test/foo{bar}"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ; ( "link"
     , testcases
