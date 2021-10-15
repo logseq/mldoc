@@ -362,6 +362,30 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "page ref has []"
+          , `Quick
+          , check_aux "[[a[b]c]]"
+              (paragraph
+                 [ I.Link
+                     { url = I.Page_ref "a[b]c"
+                     ; label = [ Plain "" ]
+                     ; title = None
+                     ; full_text = "[[a[b]c]]"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "page ref has [] (2)"
+          , `Quick
+          , check_aux "[[a [b] c]]"
+              (paragraph
+                 [ I.Link
+                     { url = I.Page_ref "a [b] c"
+                     ; label = [ Plain "" ]
+                     ; title = None
+                     ; full_text = "[[a [b] c]]"
+                     ; metadata = ""
+                     }
+                 ]) )
         ; ( "image link"
           , `Quick
           , check_aux "![lab[el]](url-part)"
