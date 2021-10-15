@@ -619,7 +619,7 @@ let org_link config =
   let link_type_and_url_part =
     string "[[" *> take_while1_include_backslash [ ']' ] (fun c -> c <> ']')
     >>= fun url_part ->
-    string "][" *> return `Other_link <|> return `Page_ref_link
+    string "][" *> return `Other_link <|> string "]]" *> return `Page_ref_link
     >>| fun link_type -> (link_type, url_part)
   in
   let label_part_choices =
