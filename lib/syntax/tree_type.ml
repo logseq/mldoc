@@ -171,7 +171,7 @@ let macro_embed macro_argument (refs : Reference.parsed_t) =
       try String.(trim @@ sub arg 2 (length arg - 4)) with _ -> ""
     in
     if starts_with arg "[[" then
-      let pagename = value in
+      let pagename = String.lowercase_ascii value in
       match List.assoc_opt pagename refs.parsed_embed_pages with
       | Some tl ->
         let t = of_blocks_without_pos tl |> to_value in
