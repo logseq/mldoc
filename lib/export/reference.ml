@@ -1,7 +1,8 @@
 type t =
   { (* (block-uuid, (content-include-children, content)) list *)
     embed_blocks : (string * (string * string)) list
-  ; (* (page-name, content) list *)
+  ; (* (page-name, content) list
+       all page-names is lowercase *)
     embed_pages : (string * string) list
   }
 [@@deriving yojson]
@@ -9,7 +10,8 @@ type t =
 type parsed_t =
   { (** (block-uuid, (content-include-children, content)) list *)
     parsed_embed_blocks : (string * (Type.t list * Type.t list)) list
-  ; (** (page-name, content) list *)
+  ; (** (page-name, content) list
+        all page-names is lowercase *)
     parsed_embed_pages : (string * Type.t list) list
   }
 
