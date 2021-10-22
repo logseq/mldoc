@@ -177,6 +177,49 @@ let block =
                  ; pos_meta = { start_pos = 59; end_pos = 95 }
                  }) )
         ] )
+  ; ( "Headline with tags"
+    , testcases
+        [ ( "(1)"
+          , `Quick
+          , check_aux "* aaa     :bb:cc:"
+              (Type.Heading
+                 { title = [ (I.Plain "aaa ", None) ]
+                 ; tags = [ "bb"; "cc" ]
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = "aaa"
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = None
+                 }) )
+        ; ( "(2)"
+          , `Quick
+          , check_aux "* aaa [[link][label]]     :bb:cc:"
+              (Type.Heading
+                 { title =
+                     [ (I.Plain "aaa ", None)
+                     ; ( I.Link
+                           { I.url = I.Search "link"
+                           ; label = [ I.Plain "label" ]
+                           ; title = None
+                           ; full_text = "[[link][label]]"
+                           ; metadata = ""
+                           }
+                       , None )
+                     ]
+                 ; tags = [ "bb"; "cc" ]
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = "aaa_label"
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = None
+                 }) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ block; inline ]

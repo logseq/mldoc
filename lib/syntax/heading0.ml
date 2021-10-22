@@ -155,7 +155,23 @@ struct
                         @ Type_op.inline_list_with_none_pos
                             [ Inline.Plain prefix ]
                     in
-                    (title, remove is_blank tags)
+                    let open Option in
+                    let last_plain =
+                      List.nth_opt title (List.length title - 1)
+                      >>| fun (inline_t, pos) ->
+                      ( (match inline_t with
+                        | Inline.Plain s -> Inline.Plain (String.rtrim s ^ " ")
+                        | _ -> inline_t)
+                      , pos )
+                    in
+                    let title' =
+                      if Option.is_some last_plain then
+                        let _, butlast_title = butlast title in
+                        List.append butlast_title [ Option.get last_plain ]
+                      else
+                        title
+                    in
+                    (title', remove is_blank tags)
                   | _ -> (title, [])
                 else
                   (title, [])
