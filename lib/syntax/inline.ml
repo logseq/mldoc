@@ -611,16 +611,11 @@ let quick_link_aux =
 
 let quick_link = between_char '<' '>' quick_link_aux
 
-(* 1. [[url][label]] *)
-(* 2. [[search]] *)
-(* 3. [[ecosystem [[great]] [[Questions]]]] *)
-
-let org_link config =
-  let link_type_and_url_part =
+(* [[url][label]] *)
+let org_link_1 config =
+  let url_part =
     string "[[" *> take_while1_include_backslash [ ']' ] (fun c -> c <> ']')
-    >>= fun url_part ->
-    string "][" *> return `Other_link <|> string "]]" *> return `Page_ref_link
-    >>| fun link_type -> (link_type, url_part)
+    >>= fun url_part -> string "][" *> return url_part
   in
   let label_part_choices =
     choice
@@ -647,29 +642,25 @@ let org_link config =
   in
   (* let label_part = take_while (fun c -> c <> ']') <* string "]]" in *)
   lift3
-    (fun (link_type, url_text) label_text metadata ->
+    (fun url_text label_text metadata ->
       let url =
-        match link_type with
-        | `Page_ref_link -> Page_ref url_text
-        | `Other_link -> (
-          let url = url_text in
-          if String.length url > 5 && String.sub url 0 5 = "file:" then
-            File url
-          else if label_text = "" then
-            Search url
-          else
-            try
-              Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
-                  let link' =
-                    if String.length link < 2 then
-                      link
-                    else if String.sub link 0 2 = "//" then
-                      String.sub link 2 (String.length link - 2)
-                    else
-                      link
-                  in
-                  Complex { protocol; link = link' })
-            with _ -> Search url)
+        if String.length url_text > 5 && String.sub url_text 0 5 = "file:" then
+          File url_text
+        else if label_text = "" then
+          Search url_text
+        else
+          try
+            Scanf.sscanf url_text "%[^:]:%[^\n]" (fun protocol link ->
+                let link' =
+                  if String.length link < 2 then
+                    link
+                  else if String.sub link 0 2 = "//" then
+                    String.sub link 2 (String.length link - 2)
+                  else
+                    link
+                in
+                Complex { protocol; link = link' })
+          with _ -> Search url_text
       in
       let parser =
         many1
@@ -691,20 +682,49 @@ let org_link config =
       in
       let title = None in
       let full_text =
-        if link_type = `Page_ref_link then
-          Printf.sprintf "[[%s]]%s" url_text metadata
-        else
-          let label_s =
-            Option.map_default
-              (function
-                | Plain s -> s
-                | _ -> "")
-              "" (List.nth_opt label 0)
-          in
-          Printf.sprintf "[[%s][%s]]%s" url_text label_s metadata
+        let label_s =
+          Option.map_default
+            (function
+              | Plain s -> s
+              | _ -> "")
+            "" (List.nth_opt label 0)
+        in
+        Printf.sprintf "[[%s][%s]]%s" url_text label_s metadata
       in
       Link { label; url; title; full_text; metadata })
-    link_type_and_url_part label_part metadata
+    url_part label_part metadata
+
+(* [[link]]
+   same syntax as page-reference,
+   but need to distinguish types based on link-content *)
+let org_link_2 =
+  page_ref_ignore_bracket >>| fun s ->
+  let url =
+    if String.length s > 5 && String.sub s 0 5 = "file:" then
+      File s
+    else
+      try
+        Scanf.sscanf s "%[^:]:%[^\n]" (fun protocol link ->
+            let link' =
+              if String.length link < 2 then
+                link
+              else if String.sub link 0 2 = "//" then
+                String.sub link 2 (String.length link - 2)
+              else
+                link
+            in
+            Complex { protocol; link = link' })
+      with _ -> Page_ref s
+  in
+  let full_text = Printf.sprintf "[[%s]]" s in
+  let label =
+    match url with
+    | Page_ref _ -> [ Plain "" ]
+    | _ -> [ Plain s ]
+  in
+  Link { label; url; title = None; full_text; metadata = "" }
+
+let org_link config = org_link_1 config <|> org_link_2
 
 (* helper for markdown_link and markdown_image *)
 let link_url_part =
@@ -898,6 +918,11 @@ let link config =
 
 let nested_link config = Nested_link.parse config >>| fun s -> Nested_link s
 
+let nested_link_or_link config =
+  match config.format with
+  | Conf.Org -> org_link_1 config <|> nested_link config <|> org_link_2
+  | Conf.Markdown -> nested_link config <|> markdown_link_or_page_ref config
+
 let nested_emphasis ?state config =
   let rec aux_nested_emphasis = function
     | Plain s -> Plain s
@@ -909,8 +934,9 @@ let nested_emphasis ?state config =
              [ emphasis config
              ; subscript config
              ; superscript config
-             ; link config
-             ; nested_link config
+             ; nested_link_or_link config
+               (* ; link config
+                * ; nested_link config *)
              ; plain config
              ])
       in
@@ -1158,9 +1184,9 @@ let incr_id id =
 
 let footnote_inline_definition config ?(break = false) definition =
   let choices =
-    [ markdown_image config
-    ; nested_link config
-    ; link config
+    [ markdown_image config (* ; nested_link config
+                             * ; link config *)
+    ; nested_link_or_link config
     ; email
     ; link_inline
     ; radio_target
@@ -1257,7 +1283,8 @@ let hash_tag config =
   let hashtag_name_part =
     take_while1 (fun c -> non_space_eol c && c <> '[')
     >>| (fun s -> Plain s)
-    <|> nested_link config <|> link config
+    (* <|> nested_link config <|> link config *)
+    <|> nested_link_or_link config
     <|> (any_char_string >>| fun s -> Plain s)
   in
   char '#' *> pos >>= fun pos' ->
@@ -1312,7 +1339,8 @@ let inline_choices state config : t_with_pos Angstrom.t =
       | '\\' -> latex_fragment config <|> entity
       | '[' ->
         inline_footnote_or_reference config
-        <|> nested_link config <|> link config <|> timestamp
+        <|> nested_link_or_link config
+        (* <|> nested_link config <|> link config *) <|> timestamp
         <|> statistics_cookie <|> inline_hiccup
       | '<' -> quick_link <|> timestamp <|> inline_html <|> email
       | '{' -> macro config
@@ -1345,7 +1373,8 @@ let inline_choices state config : t_with_pos Angstrom.t =
         >>| (fun _ -> Hard_Break_Line)
         <|> latex_fragment config <|> entity
       | '[' ->
-        link config <|> nested_link config <|> timestamp
+        nested_link_or_link config (* nested_link config <|> link config *)
+        <|> timestamp
         <|> inline_footnote_or_reference config
         <|> statistics_cookie <|> inline_hiccup
       | '<' ->
