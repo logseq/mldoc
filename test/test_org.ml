@@ -106,6 +106,31 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "normal (3)"
+          , `Quick
+          , check_aux "[[http://example.com]]"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "example.com" }
+                     ; label = [ I.Plain "http://example.com" ]
+                     ; title = None
+                     ; full_text = "[[http://example.com]]"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "normal (4)"
+          , `Quick
+          , check_aux "[[example]]"
+              (paragraph
+                 [ I.Link
+                     { url = I.Page_ref "example"
+                     ; label = [ I.Plain "" ]
+                     ; title = None
+                     ; full_text = "[[example]]"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ]
 
