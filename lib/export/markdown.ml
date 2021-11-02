@@ -234,7 +234,7 @@ and block state config t =
     match t with
     | Paragraph l ->
       flatten_map
-        (fun e -> Space :: inline state config e)
+        (fun e -> inline state config e)
         (Type_op.inline_list_strip_pos l)
       @ [ newline ]
     | Paragraph_line l -> raw_text_indent state config l @ [ newline ]
@@ -309,7 +309,7 @@ and heading state config h =
     in
     heading_or_list
     @ [ Space; raw_text marker; Space; raw_text priority; Space ]
-    @ flatten_map (fun e -> Space :: inline state config e) (List.map fst title)
+    @ flatten_map (fun e -> inline state config e) (List.map fst title)
     @ [ Space
       ; (if List.length tags > 0 then
           raw_text @@ ":" ^ String.concat ":" tags ^ ":"
@@ -570,18 +570,22 @@ module String_Tree_Value = struct
     | Zip.Branch l -> Zip.branch @@ List.map (of_value ~config) l
 end
 
+let doc_to_string ~refs config doc =
+  let refs =
+    Option.default
+      Reference.{ parsed_embed_blocks = []; parsed_embed_pages = [] }
+      refs
+  in
+  let directives = directive doc.directives in
+  let blocks = blocks refs config doc.blocks in
+  (to_string (List.append directives blocks))
+
 module MarkdownExporter = struct
   let name = "markdown"
 
   let default_filename = change_ext "md"
 
   let export ~refs config doc output =
-    let refs =
-      Option.default
-        Reference.{ parsed_embed_blocks = []; parsed_embed_pages = [] }
-        refs
-    in
-    let directives = directive doc.directives in
-    let blocks = blocks refs config doc.blocks in
-    output_string output (to_string (List.append directives blocks))
+    let content = doc_to_string ~refs config doc in
+    output_string output content
 end
