@@ -286,10 +286,10 @@ and heading_merely_have_embed { title; marker; priority; _ } =
   | _ -> None
 
 and heading state config h =
-  let { title; tags; marker; priority; meta; unordered; level; _ } = h in
+  let { title; tags; marker; priority; meta; unordered; level; size; _ } = h in
   let priority =
     match priority with
-    | Some c -> "[#" ^ String.make 1 c ^ "]"
+    | Some c -> Util.priority_to_string c
     | None -> ""
   in
   let marker =
@@ -307,7 +307,15 @@ and heading state config h =
         else
           [ raw_text @@ String.make level '#' ]
     in
-    heading_or_list
+    let title_size =
+      if unordered || level <= 0 then
+        Option.map_default
+          (fun size -> [ Space; raw_text (String.make size '#') ])
+          [] size
+      else
+        []
+    in
+    heading_or_list @ title_size
     @ [ Space; raw_text marker; Space; raw_text priority; Space ]
     @ flatten_map (fun e -> inline state config e) (List.map fst title)
     @ [ Space
@@ -578,7 +586,7 @@ let doc_to_string ~refs config doc =
   in
   let directives = directive doc.directives in
   let blocks = blocks refs config doc.blocks in
-  (to_string (List.append directives blocks))
+  to_string (List.append directives blocks)
 
 module MarkdownExporter = struct
   let name = "markdown"

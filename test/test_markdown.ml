@@ -23,10 +23,10 @@ let check_mldoc_type2 =
     (Alcotest.testable
        (fun fmt l -> List.map (Type.pp fmt) l |> ignore)
        (fun a b ->
-          if List.length a <> List.length b then
-            false
-          else
-            List.map2 ( = ) a b |> List.memq false |> not))
+         if List.length a <> List.length b then
+           false
+         else
+           List.map2 ( = ) a b |> List.memq false |> not))
     "check mldoc type"
 
 let check_aux2 source expect =
@@ -884,28 +884,4 @@ let block =
         ] )
   ]
 
-let check_export_aux from expect =
-  let refs = Some(Reference.{ parsed_embed_blocks = []; parsed_embed_pages = [] }) in
-  let doc_to_string d = Markdown.doc_to_string ~refs default_config d in
-  let ast = Mldoc.Parser.parse default_config from in
-  let doc = Document.from_ast None ast in
-  let exported = doc_to_string doc in
-  fun _ ->
-    Alcotest.check Alcotest.string "check exported string" expect exported
-
-let export =
-  [ ( "export"
-    , testcases
-        [ ( "normal"
-          , `Quick
-          , check_export_aux "- `key`: content **bold**test" "- `key`: content **bold**test")
-        ; ( "normal"
-          , `Quick
-          , check_export_aux "## heading" "## heading")
-        ; ( "normal"
-          , `Quick
-          , check_export_aux "- **bold** *italic*\ntest" "- **bold** *italic*\n  test")
-        ] ) ]
-
-
-let () = Alcotest.run "mldoc" @@ List.concat [ inline; block; export ]
+let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]
