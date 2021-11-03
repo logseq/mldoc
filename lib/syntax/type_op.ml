@@ -19,6 +19,8 @@ let inline_list_strip_pos (l : ('a * pos_meta option) list) : 'a list =
 let inline_with_pos i start_pos end_pos =
   (i, Some ({ start_pos; end_pos } : Pos.pos_meta))
 
+let inline_with_dummy_pos i = (i, Some Pos.dummy_pos)
+
 let inline_move_forward (i, pos) ~forward_pos =
   ( i
   , match pos with

@@ -44,6 +44,28 @@ let testcase_list =
               \    </outline>\n\
               \  </body>\n\
                </opml>" )
+        ; ( "normal (1)"
+          , `Quick
+          , check_aux
+              "- ## line1\n\
+              \  - ## TODO line2\n\
+              \    line3\n\
+              \    - ##  LATER [#A] line4"
+              "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
+               <opml version=\"2.0\">\n\
+              \  <head>\n\
+              \    <title>\n\
+              \      title\n\
+              \    </title>\n\
+              \  </head>\n\
+              \  <body>\n\
+              \    <outline text=\"## line1\">\n\
+              \      <outline text=\"## TODO line2\" _note=\"    line3&#10;\">\n\
+              \        <outline text=\"## LATER [#A] line4\"/>\n\
+              \      </outline>\n\
+              \    </outline>\n\
+              \  </body>\n\
+               </opml>" )
         ] )
   ]
 

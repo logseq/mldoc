@@ -122,6 +122,15 @@ let export_md =
                \t\t\t  dwdw\n\
                \t\t\t  jdiejdie\n\
                \t\t\t  ```" )
+        ; ( "(5)"
+          , `Quick
+          , check_aux "- `key`: content **bold**test"
+              "- `key`: content **bold**test" )
+        ; ("(6)", `Quick, check_aux "## heading" "## heading")
+        ; ( "(7)"
+          , `Quick
+          , check_aux "- **bold** *italic*\ntest" "- **bold** *italic*\n  test"
+          )
         ; ( "indent style='spaces' (1)"
           , `Quick
           , check_aux
@@ -153,6 +162,10 @@ let export_md =
               \    - line5\n\
               \      [[line6]]"
               "line1\nline2\n> line3\nline4\n\nline5\n[[line6]]" )
+        ; ( "heading size"
+          , `Quick
+          , check_aux "- # line1\n  - ##  TODO line2\n  - line3"
+              "- # line1\n\t- ## TODO line2\n\t- line3" )
         ] )
   ]
 

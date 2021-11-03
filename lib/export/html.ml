@@ -224,7 +224,17 @@ let construct_numbering config ?(toc = false) level numbering =
   else
     Xml.empty
 
-let heading config { title; tags; marker; level; priority; numbering; _ } =
+let size_to_hN size =
+  let size' =
+    if size > 6 || size < 1 then
+      6
+    else
+      size
+  in
+  "h" ^ string_of_int size'
+
+let heading config { title; tags; marker; level; priority; numbering; size; _ }
+    =
   let numbering = construct_numbering config level numbering in
   let marker =
     match marker with
@@ -242,7 +252,7 @@ let heading config { title; tags; marker; level; priority; numbering; _ } =
     | Some v ->
       Xml.block "span"
         ~attr:[ ("class", "priority"); ("style", "margin-right:6px") ]
-        [ Xml.data ("[#" ^ String.make 1 v ^ "]") ]
+        [ Xml.data (Util.priority_to_string v) ]
     | None -> Xml.empty
   in
   let tags =
@@ -257,10 +267,16 @@ let heading config { title; tags; marker; level; priority; numbering; _ } =
                [ Xml.block "span" ~attr:[ ("class", tag) ] [ Xml.data tag ] ])
            tags)
   in
-  Xml.list
-    (numbering :: marker :: priority
-     :: map_inline config (Type_op.inline_list_strip_pos title)
-    @ [ tags ])
+
+  let r =
+    Xml.list
+      (numbering :: marker :: priority
+       :: map_inline config (Type_op.inline_list_strip_pos title)
+      @ [ tags ])
+  in
+  match size with
+  | Some s -> Xml.block (size_to_hN s) [ r ]
+  | None -> r
 
 let rec list_item config x =
   let content =

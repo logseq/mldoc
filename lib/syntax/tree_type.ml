@@ -468,8 +468,33 @@ let replace_heading_with_paragraph (t : Type.t_with_pos_meta Z.t) =
       let z' = Z.next z in
       match Z.node z' with
       | Z.Leaf (Type.Heading h, _pos) ->
-        aux
-        @@ Z.replace z' ~item:(Z.Leaf (Type.Paragraph h.title, Pos.dummy_pos))
+        let paragraph =
+          let r = h.title in
+          let r =
+            Option.map_default
+              (fun priority ->
+                Type_op.inline_with_dummy_pos
+                  (Inline.Plain (Util.priority_to_string priority ^ " "))
+                :: r)
+              r h.priority
+          in
+          let r =
+            Option.map_default
+              (fun marker ->
+                Type_op.inline_with_dummy_pos (Inline.Plain (marker ^ " ")) :: r)
+              r h.marker
+          in
+          let r =
+            Option.map_default
+              (fun size ->
+                Type_op.inline_with_dummy_pos
+                  (Inline.Plain (String.make size '#' ^ " "))
+                :: r)
+              r h.size
+          in
+          Type.Paragraph r
+        in
+        aux @@ Z.replace z' ~item:(Z.Leaf (paragraph, Pos.dummy_pos))
       | _ -> aux z'
   in
   aux root
