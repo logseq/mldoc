@@ -182,19 +182,22 @@ and inline config t =
         ]
     ]
   | Macro { name; arguments } -> (
-    try
-      let value = List.assoc name !macros in
-      let buff = Buffer.create (String.length value) in
-      Buffer.add_substitute buff
-        (fun v -> try List.nth arguments (int_of_string v - 1) with _ -> v)
-        value;
-      let content = Buffer.contents buff in
-      match
-        Angstrom.parse_string ~consume:All (Inline.parse config) content
-      with
-      | Ok inlines -> map_inline config (List.map fst inlines)
-      | Error _e -> [ Xml.empty ]
-    with Not_found -> [ Xml.empty ])
+    if name = "cloze" then
+      [ Xml.Data (String.concat "," arguments) ]
+    else
+      try
+        let value = List.assoc name !macros in
+        let buff = Buffer.create (String.length value) in
+        Buffer.add_substitute buff
+          (fun v -> try List.nth arguments (int_of_string v - 1) with _ -> v)
+          value;
+        let content = Buffer.contents buff in
+        match
+          Angstrom.parse_string ~consume:All (Inline.parse config) content
+        with
+        | Ok inlines -> map_inline config (List.map fst inlines)
+        | Error _e -> [ Xml.empty ]
+      with Not_found -> [ Xml.empty ])
   | _ -> [ Xml.empty ]
 
 let get_int_option name =

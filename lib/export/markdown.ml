@@ -206,12 +206,16 @@ and latex_fragment = function
   | Displayed s -> [ Space; raw_text "$$"; raw_text s; raw_text "$$"; Space ]
 
 and macro m =
-  map_raw_text
-  @@
-  if List.length m.arguments > 0 then
-    [ "{{"; m.name; "("; String.concat "," m.arguments; ")}}" ]
+  (* replace cloze macro with its content *)
+  if m.name = "cloze" then
+    [ raw_text (String.concat "," m.arguments) ]
   else
-    [ "{{"; m.name; "}}" ]
+    map_raw_text
+    @@
+    if List.length m.arguments > 0 then
+      [ "{{"; m.name; "("; String.concat "," m.arguments; ")}}" ]
+    else
+      [ "{{"; m.name; "}}" ]
 
 and entity { unicode; _ } = [ raw_text unicode ]
 
