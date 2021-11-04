@@ -166,6 +166,13 @@ let export_md =
           , `Quick
           , check_aux "- # line1\n  - ##  TODO line2\n  - line3"
               "- # line1\n\t- ## TODO line2\n\t- line3" )
+        ; ( "replace cloze with its content (1)"
+          , `Quick
+          , check_aux "- {{cloze content1,content2}}" "- content1,content2" )
+        ; ( "replace cloze with its content (2)"
+          , `Quick
+          , check_aux "- {{cloze (content1,content2)}}" "- (content1,content2)"
+          )
         ] )
   ]
 
