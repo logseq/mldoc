@@ -650,7 +650,7 @@ let org_link_1 config =
           Search url_text
         else
           try
-            Scanf.sscanf url_text "%[^:]:%[^\n]" (fun protocol link ->
+            Scanf.sscanf url_text "%[^:]://%[^\n]" (fun protocol link ->
                 let link' =
                   if String.length link < 2 then
                     link
@@ -704,7 +704,7 @@ let org_link_2 =
       File s
     else
       try
-        Scanf.sscanf s "%[^:]:%[^\n]" (fun protocol link ->
+        Scanf.sscanf s "%[^:]://%[^\n]" (fun protocol link ->
             let link' =
               if String.length link < 2 then
                 link
@@ -845,7 +845,7 @@ let markdown_link config =
         | `Page_ref_link -> Page_ref (String.sub url 2 (String.length url - 4))
         | `Other_link -> (
           try
-            Scanf.sscanf url "%[^:]:%[^\n]" (fun protocol link ->
+            Scanf.sscanf url "%[^:]://%[^\n]" (fun protocol link ->
                 let link' =
                   if String.length link < 2 then
                     link
