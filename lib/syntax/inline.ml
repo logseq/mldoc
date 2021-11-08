@@ -650,7 +650,7 @@ let org_link_1 config =
           Search url_text
         else
           try
-            Scanf.sscanf url_text "%[^:]://%[^\n]" (fun protocol link ->
+            Scanf.sscanf url_text "%[^:]:%[^\n]" (fun protocol link ->
                 let link' =
                   if String.length link < 2 then
                     link
@@ -705,15 +705,7 @@ let org_link_2 =
     else
       try
         Scanf.sscanf s "%[^:]://%[^\n]" (fun protocol link ->
-            let link' =
-              if String.length link < 2 then
-                link
-              else if String.sub link 0 2 = "//" then
-                String.sub link 2 (String.length link - 2)
-              else
-                link
-            in
-            Complex { protocol; link = link' })
+            Complex { protocol; link })
       with _ -> Page_ref s
   in
   let full_text = Printf.sprintf "[[%s]]" s in
@@ -897,8 +889,8 @@ let markdown_link config =
     label_part link_url_part metadata
 
 let markdown_link_or_page_ref config =
-  org_link config
-  <|> ( page_ref >>| fun s ->
+  page_ref
+  >>| (fun s ->
         let inner_s = String.sub s 2 (String.length s - 4) in
         Link
           { url = Page_ref inner_s
@@ -906,7 +898,7 @@ let markdown_link_or_page_ref config =
           ; title = None
           ; full_text = s
           ; metadata = ""
-          } )
+          })
   <|> markdown_link config
 
 let link config =

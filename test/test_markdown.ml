@@ -229,18 +229,27 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
-        ; ( "also support org-link syntax"
+        ; ( "normal (3)"
           , `Quick
-          , check_aux "[[http://foobar/path?query=123][label here]]"
+          , check_aux "[[page:name]]"
               (paragraph
                  [ I.Link
-                     { url =
-                         I.Complex
-                           { protocol = "http"; link = "foobar/path?query=123" }
-                     ; label = [ Plain "label here" ]
+                     { url = I.Page_ref "page:name"
+                     ; label = [ Plain "" ]
                      ; title = None
-                     ; full_text =
-                         "[[http://foobar/path?query=123][label here]]"
+                     ; full_text = "[[page:name]]"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "normal (4)"
+          , `Quick
+          , check_aux "[[page://name]]"
+              (paragraph
+                 [ I.Link
+                     { url = I.Page_ref "page://name"
+                     ; label = [ Plain "" ]
+                     ; title = None
+                     ; full_text = "[[page://name]]"
                      ; metadata = ""
                      }
                  ]) )
