@@ -131,6 +131,30 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "normal (5)"
+          , `Quick
+          , check_aux "[[exam:ple]]"
+              (paragraph
+                 [ I.Link
+                     { url = I.Page_ref "exam:ple"
+                     ; label = [ I.Plain "" ]
+                     ; title = None
+                     ; full_text = "[[exam:ple]]"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "normal (6)"
+          , `Quick
+          , check_aux "[[exam:ple][label]]"
+              (paragraph
+                 [ I.Link
+                     { url = I.Complex { protocol = "exam"; link = "ple" }
+                     ; label = [ I.Plain "label" ]
+                     ; title = None
+                     ; full_text = "[[exam:ple][label]]"
+                     ; metadata = ""
+                     }
+                 ]) )
         ] )
   ]
 
