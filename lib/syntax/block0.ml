@@ -25,7 +25,10 @@ struct
 
   let verbatim = lines_starts_with (char ':') <?> "verbatim"
 
-  let md_blockquote = lines_starts_with (char '>') <?> "markdown blockquote"
+  let md_blockquote =
+    (char '>') *> spaces *>
+    (lines_while ((optional (char '>')) *> spaces *> line))
+    <?> "markdown blockquote"
 
   let displayed_math =
     string "$$" *> end_string "$$" (fun s -> Displayed_Math s)
