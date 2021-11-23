@@ -26,8 +26,13 @@ struct
   let verbatim = lines_starts_with (char ':') <?> "verbatim"
 
   let md_blockquote =
-    (char '>') *> spaces *>
-    (lines_while ((optional (char '>')) *> spaces *> line))
+    (char '>') *>
+    (lines_while ((spaces *> (optional (char '>')) *> spaces *> line)
+                  >>= (fun line ->
+                      if not (starts_with line "- " || starts_with line "# ") then
+                        return line
+                      else
+                        fail "new block")))
     <?> "markdown blockquote"
 
   let displayed_math =
