@@ -34,6 +34,7 @@ and url =
   | Complex of complex
   | Page_ref of string
   | Block_ref of string
+  | Embed_data of string
 [@@deriving yojson]
 
 and complex =
@@ -731,6 +732,43 @@ let link_url_part =
   else
     fail "link_url_part"
 
+let label_part_delims = [ '`'; '['; ']' ]
+
+let label_part_choices =
+  choice
+    [ ( take_while1_include_backslash [ '['; ']' ] (fun c ->
+            non_eol c && (not @@ List.mem c label_part_delims))
+      >>| fun s -> Plain s )
+    ; ( peek_char >>= fun c ->
+        match c with
+        | None -> fail "finish"
+        | Some '`' -> md_code <|> (any_char_string >>| fun s -> Plain s)
+        | Some '\\' -> any_char *> any_char_string >>| fun c -> Plain ("\\" ^ c)
+        | Some '[' ->
+          page_ref
+          <|> string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
+                [ ('[', ']') ] []
+          >>| fun s -> Plain s
+        | Some ']' -> fail "not link"
+        | Some c when is_eol c -> fail "finish"
+        | Some _ -> any_char_string >>| fun s -> Plain s )
+    ]
+
+let label_part =
+  string "[]("
+  >>| (fun _ -> ([ Plain "" ], ""))
+  <|> ( between_string "[" "]("
+      @@ fix (fun m -> List.cons <$> label_part_choices <*> m <|> return [])
+      >>| fun l ->
+        ( concat_plains_without_pos l
+        , List.map
+            (function
+              | Plain s -> s
+              | Code s -> "`" ^ s ^ "`"
+              | _ -> "")
+            l
+          |> String.concat "" ) )
+
 (* return ((type, url), title option) *)
 let link_url_part_inner =
   let url_part =
@@ -782,43 +820,6 @@ let link_url_part_inner =
 *)
 (* TODO: URI encode *)
 let markdown_link config =
-  let label_part_delims = [ '`'; '['; ']' ] in
-  let label_part_choices =
-    choice
-      [ ( take_while1_include_backslash [ '['; ']' ] (fun c ->
-              non_eol c && (not @@ List.mem c label_part_delims))
-        >>| fun s -> Plain s )
-      ; ( peek_char >>= fun c ->
-          match c with
-          | None -> fail "finish"
-          | Some '`' -> md_code <|> (any_char_string >>| fun s -> Plain s)
-          | Some '\\' ->
-            any_char *> any_char_string >>| fun c -> Plain ("\\" ^ c)
-          | Some '[' ->
-            page_ref
-            <|> string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
-                  [ ('[', ']') ] []
-            >>| fun s -> Plain s
-          | Some ']' -> fail "not link"
-          | Some c when is_eol c -> fail "finish"
-          | Some _ -> any_char_string >>| fun s -> Plain s )
-      ]
-  in
-  let label_part =
-    string "[]("
-    >>| (fun _ -> ([ Plain "" ], ""))
-    <|> ( between_string "[" "]("
-        @@ fix (fun m -> List.cons <$> label_part_choices <*> m <|> return [])
-        >>| fun l ->
-          ( concat_plains_without_pos l
-          , List.map
-              (function
-                | Plain s -> s
-                | Code s -> "`" ^ s ^ "`"
-                | _ -> "")
-              l
-            |> String.concat "" ) )
-  in
   lift3
     (fun (label_t, label_text) url_text metadata ->
       let link_type, url, title =
@@ -1131,11 +1132,29 @@ let range =
 
 let timestamp = range <|> general_timestamp
 
+let markdown_embed_image =
+  char '!'
+  *> lift3
+       (fun (label, label_s) data metadata ->
+         Link
+           { url = Embed_data data
+           ; label
+           ; title = None
+           ; full_text = Printf.sprintf "![%s](%s)%s" label_s data metadata
+           ; metadata
+           })
+       label_part
+       ( string "data:" >>= fun s ->
+         take_while1 (fun c -> c <> ')') <* char ')' >>| fun s2 -> s ^ s2 )
+       metadata
+
 let markdown_image config =
-  char '!' *> markdown_link config >>= fun t ->
-  match t with
-  | Link link -> return @@ Link { link with full_text = "!" ^ link.full_text }
-  | _ -> return t
+  markdown_embed_image
+  <|> ( char '!' *> markdown_link config >>= fun t ->
+        match t with
+        | Link link ->
+          return @@ Link { link with full_text = "!" ^ link.full_text }
+        | _ -> return t )
 
 let export_snippet =
   let name = take_while1 (fun c -> non_space_eol c && c <> ':') in
@@ -1401,11 +1420,16 @@ let parse config =
   >>| (fun l -> concat_plains l)
   <?> "inline"
 
+let is_embed_data = function
+  | Embed_data _ -> true
+  | _ -> false
+
 let string_of_url = function
   | File s
   | Search s
   | Page_ref s
-  | Block_ref s ->
+  | Block_ref s
+  | Embed_data s ->
     s
   | Complex { link; protocol = "file" } -> link
   | Complex { link; protocol } -> protocol ^ ":" ^ link

@@ -32,6 +32,8 @@ let list_element = function
 
 let handle_image_link url href label =
   match url with
+  | Embed_data s ->
+    [ Xml.block "img" ~attr:[ ("src", s); ("title", Inline.asciis label) ] [] ]
   | Complex { protocol; link } ->
     (* slight hack here to handle math2png annotations *)
     let opts, href =
@@ -126,8 +128,9 @@ and inline config t =
       let href = Inline.string_of_url url in
       (* If it is an image *)
       if
-        List.exists (ends_with href)
-          [ ".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp" ]
+        Inline.is_embed_data url
+        || List.exists (ends_with href)
+             [ ".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp" ]
       then
         handle_image_link url href label
       else

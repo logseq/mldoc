@@ -113,6 +113,7 @@ let map_escaped_string t f =
         | Inline.Complex complex ->
           Inline.Complex { complex with link = f complex.link }
         | Inline.Block_ref _ -> link.url
+        | Inline.Embed_data _ -> link.url
       in
       Inline.Link { link with label; url }
     | Inline.Subscript tl -> Inline.Subscript (List.map inline_aux tl)
