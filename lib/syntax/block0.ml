@@ -29,7 +29,7 @@ struct
     char '>'
     *> lines_while
          ( spaces *> optional (char '>') *> spaces *> line >>= fun line ->
-           if not (starts_with line "- " || starts_with line "# " || line = "-" || line = "#") then
+           if not (starts_with line "- " || starts_with line "# " || starts_with line "id:: " || line = "-" || line = "#") then
              return line
            else
              fail "new block" )
