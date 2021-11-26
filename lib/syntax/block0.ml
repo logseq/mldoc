@@ -59,19 +59,6 @@ struct
     in
     let p' = with_pos_meta p in
     p' >>| fun (lines, { start_pos; end_pos }) ->
-    (* clear indents *)
-    let lines =
-      if lines = [] then
-        []
-      else
-        let indent = get_indent (List.hd lines) in
-        if indent = 0 then
-          lines
-        else
-          List.map
-            (fun line -> safe_sub line indent (String.length line - indent))
-            lines
-    in
     let pos_meta = { start_pos; end_pos = end_pos - 3 } in
     Src { language; options = None; lines; pos_meta }
 
@@ -157,6 +144,7 @@ struct
                 else
                   List.map
                     (fun line ->
+                       (* FIXME: only remove blanks *)
                       safe_sub line indent (String.length line - indent))
                     lines
             in
