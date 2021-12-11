@@ -82,6 +82,7 @@ struct
     Angstrom.unsafe_lookahead
       (choice
          [ Drawer.parse config
+         ; Hr.parse config
          ; Table.parse config
          ; Latex_env.parse config
          ; Block.parse config
