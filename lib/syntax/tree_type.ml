@@ -389,21 +389,39 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
       z
     else
       let z' = Z.next z in
-      match Z.node z' with
-      | Z.Branch _ -> aux z'
-      | Z.Leaf (block, _pos) -> (
-        match block with
-        | Type.Heading h -> (
-          match heading_merely_have_embed h with
-          | Some embed -> (
-            match macro_embed embed.arguments refs with
-            | Some l ->
-              let z'' = replace_only_embed z' l in
-              aux z''
-            | None -> aux z')
-          | None ->
-            let ({ title; _ } : Type.heading) = h in
-            extract_macro_or_block_ref (Type_op.inline_list_strip_pos title)
+      if List.length @@ Z.path z' > 100 then
+        (* ignore when too deep *)
+        aux z'
+      else
+        match Z.node z' with
+        | Z.Branch _ -> aux z'
+        | Z.Leaf (block, _pos) -> (
+          match block with
+          | Type.Heading h -> (
+            match heading_merely_have_embed h with
+            | Some embed -> (
+              match macro_embed embed.arguments refs with
+              | Some l ->
+                let z'' = replace_only_embed z' l in
+                aux z''
+              | None -> aux z')
+            | None ->
+              let ({ title; _ } : Type.heading) = h in
+              extract_macro_or_block_ref (Type_op.inline_list_strip_pos title)
+              >>= (fun macro_or_block_ref ->
+                    match macro_or_block_ref with
+                    | `Macro macro ->
+                      macro_embed macro.arguments refs >>= fun expanded_macro ->
+                      return @@ replace_macro z' expanded_macro macro
+                    | `Block_ref block_ref ->
+                      block_refs_embed block_ref refs >>= fun expanded_macro ->
+                      return
+                      @@ replace_block_ref z'
+                           (Type_op.remove_properties expanded_macro)
+                           block_ref)
+              |> default z' |> aux)
+          | Type.Paragraph il ->
+            extract_macro_or_block_ref (Type_op.inline_list_strip_pos il)
             >>= (fun macro_or_block_ref ->
                   match macro_or_block_ref with
                   | `Macro macro ->
@@ -415,47 +433,33 @@ let rec replace_embed_and_refs (t : Type.t_with_pos_meta Z.t) ~refs =
                     @@ replace_block_ref z'
                          (Type_op.remove_properties expanded_macro)
                          block_ref)
-            |> default z' |> aux)
-        | Type.Paragraph il ->
-          extract_macro_or_block_ref (Type_op.inline_list_strip_pos il)
-          >>= (fun macro_or_block_ref ->
-                match macro_or_block_ref with
-                | `Macro macro ->
-                  macro_embed macro.arguments refs >>= fun expanded_macro ->
-                  return @@ replace_macro z' expanded_macro macro
-                | `Block_ref block_ref ->
-                  block_refs_embed block_ref refs >>= fun expanded_macro ->
-                  return
-                  @@ replace_block_ref z'
-                       (Type_op.remove_properties expanded_macro)
-                       block_ref)
-          |> default z' |> aux
-        | Type.Quote tl ->
-          let t = of_blocks_without_pos tl in
-          let t' = replace_embed_and_refs t ~refs in
-          let tl' = to_blocks_without_pos t' in
-          Z.replace z' ~item:(Z.Leaf (Type.Quote tl', Pos.dummy_pos)) |> aux
-        | Type.List items ->
-          let rec list_aux items =
-            List.map
-              (fun (item : Type.list_item) ->
-                let nested_items_t = list_aux item.items in
-                let content =
-                  replace_embed_and_refs
-                    (of_blocks_without_pos item.content)
-                    ~refs
-                  |> to_blocks_without_pos
-                in
-                { item with content; items = nested_items_t })
-              items
-          in
-          Z.replace z'
-            ~item:(Z.Leaf (Type.List (list_aux items), Pos.dummy_pos))
-          |> aux
-        | Type.Footnote_Definition _
-        | Type.Table _ ->
-          aux z' (* TODO: replace macro|ref in table & footnote_definition *)
-        | _ -> aux z')
+            |> default z' |> aux
+          | Type.Quote tl ->
+            let t = of_blocks_without_pos tl in
+            let t' = replace_embed_and_refs t ~refs in
+            let tl' = to_blocks_without_pos t' in
+            Z.replace z' ~item:(Z.Leaf (Type.Quote tl', Pos.dummy_pos)) |> aux
+          | Type.List items ->
+            let rec list_aux items =
+              List.map
+                (fun (item : Type.list_item) ->
+                  let nested_items_t = list_aux item.items in
+                  let content =
+                    replace_embed_and_refs
+                      (of_blocks_without_pos item.content)
+                      ~refs
+                    |> to_blocks_without_pos
+                  in
+                  { item with content; items = nested_items_t })
+                items
+            in
+            Z.replace z'
+              ~item:(Z.Leaf (Type.List (list_aux items), Pos.dummy_pos))
+            |> aux
+          | Type.Footnote_Definition _
+          | Type.Table _ ->
+            aux z' (* TODO: replace macro|ref in table & footnote_definition *)
+          | _ -> aux z')
   in
   aux root
 
