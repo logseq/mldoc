@@ -134,7 +134,7 @@ let page_ref_p () =
     |> List.map (fun s -> String.sub s 2 (String.length s - 4)) )
 
 let reference_p =
-  let link_delimters = [ '['; '(' ] in
+  let link_delimters = [ '['; '('; '#' ] in
   let fallback =
     Angstrom.take 1 >>= fun _ ->
     skip_while (fun c -> not @@ List.mem c link_delimters) >>| fun _ -> None
@@ -146,13 +146,22 @@ let reference_p =
     block_ref_ignore_bracket >>| (fun s -> Some (Block_ref s)) <|> fallback
   | Some '[' ->
     page_ref_p () >>| (fun (_, l) -> Some (Page_refs l)) <|> fallback
+  | Some '#' ->
+    Angstrom.take 1
+    >>= (fun _ ->
+          Hash_tag.hashtag_name >>| fun s ->
+          print_string s;
+          match parse_string ~consume:All (page_ref_p ()) ("[[" ^ s ^ "]]") with
+          | Ok (_, l) -> Some (Page_refs l)
+          | Error _ -> failwith "unreachable: reference_p")
+    <|> fallback
   | Some _ -> fallback
 
 let extract_refs content =
   print_string content;
   match parse_string ~consume:All (many reference_p) content with
   | Ok refs -> List.filter_map identity refs
-  | Error e -> failwith "unreachable: extract_refs"
+  | Error _ -> failwith "unreachable: extract_refs"
 
 let md_outline_parser config =
   choice

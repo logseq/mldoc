@@ -13,7 +13,7 @@ let default_config : Conf.t =
 
 let refs : Reference.parsed_t =
   { parsed_embed_blocks =
-      [ ( "ref1"
+      [ ( "f7a6accb-38e7-4f72-a792-827da9c5f3c0"
         , ( [ Type.Heading
                 { Type.title =
                     Type_op.inline_list_with_none_pos
@@ -67,7 +67,8 @@ let export_md =
     , testcases
         [ ( "merge paragraph"
           , `Quick
-          , check_aux "- text1 ((ref1)) text2" "- text1 ref1-text text2" )
+          , check_aux "- text1 ((f7a6accb-38e7-4f72-a792-827da9c5f3c0)) text2"
+              "- text1 ref1-text text2" )
         ] )
   ; ( "export md"
     , testcases
@@ -119,8 +120,8 @@ let export_md =
                \t\t  [[line6]]\n\
                \t\t\t-\n\
                \t\t\t  ```\n\
-               \t\t\t  dwdw\n\
-               \t\t\t  jdiejdie\n\
+               \t\t\t  \t  dwdw\n\
+               \t\t\t  \t  jdiejdie\n\
                \t\t\t  ```" )
         ; ( "(5)"
           , `Quick
