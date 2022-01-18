@@ -17,10 +17,8 @@ let inline_choices config : Inline.t_with_pos Angstrom.t =
     | 'd' ->
       Inline.timestamp
     | _ ->
-      take_till1 (fun c ->
-          c = '#' || c = '[' || c = '('
-        )
-      >>= fun _ -> return (Inline.Plain "")
+      take_till1 (fun c -> c = '#' || c = '[' || c = '(') >>= fun _ ->
+      return (Inline.Plain "")
   in
   (fun t -> (t, None)) <$> p
 
