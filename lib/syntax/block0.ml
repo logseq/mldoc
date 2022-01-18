@@ -29,7 +29,11 @@ struct
     char '>'
     *> lines_while
          ( spaces *> optional (char '>') *> spaces *> line >>= fun line ->
-           if not (starts_with line "- " || starts_with line "# " || starts_with line "id:: " || line = "-" || line = "#") then
+           if
+             not
+               (starts_with line "- " || starts_with line "# "
+              || starts_with line "id:: " || line = "-" || line = "#")
+           then
              return line
            else
              fail "new block" )
@@ -144,7 +148,7 @@ struct
                 else
                   List.map
                     (fun line ->
-                       (* FIXME: only remove blanks *)
+                      (* FIXME: only remove blanks *)
                       safe_sub line indent (String.length line - indent))
                     lines
             in

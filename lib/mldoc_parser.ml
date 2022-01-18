@@ -55,7 +55,12 @@ let build_parsers parsers config =
 
 let parse config input =
   let outline_only = Conf.(config.parse_outline_only) in
-  let parsers = if outline_only then outline_parsers else parsers in
+  let parsers =
+    if outline_only then
+      outline_parsers
+    else
+      parsers
+  in
   let parsers = build_parsers parsers config in
   match parse_string ~consume:All parsers input with
   | Ok result ->
