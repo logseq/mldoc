@@ -80,6 +80,7 @@ function run () {
   output_content = MO.export(to_format,
                              content,
                              JSON.stringify({"toc": true,
+                                             "parse_outline_only": false,
                                              "heading_number": true,
                                              "keep_line_break": false,
                                              "format": format,

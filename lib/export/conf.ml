@@ -41,6 +41,7 @@ type t =
   { (* html: bool; *)
     (* hiccup: bool; *)
     toc : bool
+  ; parse_outline_only: bool
   ; heading_number : bool
   ; keep_line_break : bool (* FIXME: is this option deprecated? *)
   ; format : format

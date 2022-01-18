@@ -7,6 +7,7 @@ let empty_references = Reference.empty_parsed_t
 
 let default_config =
   { toc = true
+  ; parse_outline_only = false
   ; heading_number = true
   ; keep_line_break = false
   ; format = Conf.Markdown

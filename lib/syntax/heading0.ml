@@ -132,7 +132,8 @@ struct
             match pos_and_title with
             | None -> []
             | Some (_pos, title) -> (
-              match parse_string ~consume:All (Inline.parse config) title with
+              let inline_parse = if config.parse_outline_only then Outline_inline.parse else Inline.parse in
+              match parse_string ~consume:All (inline_parse config) title with
               | Ok title -> title
               | Error _e -> [])
           in

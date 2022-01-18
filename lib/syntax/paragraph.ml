@@ -3,6 +3,7 @@ open Angstrom
 open Parsers
 open Type
 open Pos
+open Conf
 
 (* inline and footnotes *)
 
@@ -21,7 +22,8 @@ let parse_lines config lines pos1 pos2 =
   let lines = List.rev lines in
   let content = String.concat "" lines in
   let paragraph =
-    match parse_string ~consume:All (Inline.parse config) content with
+    let inline_parse = if config.parse_outline_only then Outline_inline.parse else Inline.parse in
+    match parse_string ~consume:All (inline_parse config) content with
     | Ok result -> Paragraph result
     | Error _ ->
       Paragraph (Type_op.inline_list_with_none_pos [ Inline.Plain content ])
