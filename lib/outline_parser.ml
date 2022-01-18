@@ -2,6 +2,11 @@ open Angstrom
 open Parsers
 open Prelude
 
+type reference =
+  | Block_ref of string
+  | Page_refs of string list
+[@@deriving yojson]
+
 type heading =
   { level : int
   ; marker : string option
@@ -13,7 +18,9 @@ type heading =
 
 type t =
   | Heading of heading
-  | Content of string
+  | Properties of (string * string) list
+  | Content_raw of string (* internal use *)
+  | Content of (string * reference list)
 [@@deriving yojson]
 
 type t_list = t list [@@deriving yojson]
@@ -29,7 +36,7 @@ let content_followed_by_heading_postions _config =
 
 let content_followed_by_heading config =
   content_followed_by_heading_postions config >>= fun (start, end_) ->
-  Angstrom.take (end_ - start) >>| fun s -> Content s
+  Angstrom.take (end_ - start) >>| fun s -> Content_raw s
 
 let heading config =
   let h =
@@ -42,22 +49,39 @@ let heading config =
   in
   choice [ h <* ws; h <* (end_of_line <|> end_of_input) ]
 
+let properties config = Drawer.parse_to_kvs config >>| fun kvs -> Properties kvs
+
+let heading_and_properties config =
+  (fun h c p ->
+    match (c, p) with
+    | None, None -> [ h ]
+    | None, Some p -> [ h; p ]
+    | Some c, None -> [ h; c ]
+    | Some c, Some p -> [ h; c; p ])
+  <$> heading config
+  <*> optional (content_followed_by_heading config)
+  <*> optional (take_while1 is_eol *> properties config)
+
 let merge_consecutive_content tl =
   let r, last =
     List.fold_left
       (fun (r, last_content) e ->
         match (last_content, e) with
-        | None, Content s -> (r, Some [ s ])
-        | Some ss, Content s -> (r, Some (s :: ss))
-        | None, Heading _ -> (e :: r, None)
-        | Some ss, Heading _ ->
-          (e :: Content (String.concat "" (List.rev ss)) :: r, None))
+        | None, Content_raw s -> (r, Some [ s ])
+        | Some ss, Content_raw s -> (r, Some (s :: ss))
+        | None, Heading _
+        | None, Properties _ ->
+          (e :: r, None)
+        | Some ss, Heading _
+        | Some ss, Properties _ ->
+          (e :: Content_raw (String.concat "" (List.rev ss)) :: r, None)
+        | _, Content _ -> failwith "unreachable: merge_consecutive_content")
       ([], None) tl
   in
   let r =
     match last with
     | None -> r
-    | Some ss -> Content (String.concat "" (List.rev ss)) :: r
+    | Some ss -> Content_raw (String.concat "" (List.rev ss)) :: r
   in
   List.rev r
 
@@ -69,11 +93,6 @@ let merge_consecutive_content tl =
       - key:: value (md)
       - org-mode property syntax
 *)
-
-type reference =
-  | Block_ref of string
-  | Page_refs of string list
-[@@deriving yojson]
 
 type property_value =
   | S of string
@@ -114,17 +133,37 @@ let page_ref_p () =
   , Stack.to_seq state |> List.of_seq
     |> List.map (fun s -> String.sub s 2 (String.length s - 4)) )
 
-let property_and_link _config =
+let reference_p =
+  let link_delimters = [ '['; '(' ] in
+  let fallback =
+    Angstrom.take 1 >>= fun _ ->
+    skip_while (fun c -> not @@ List.mem c link_delimters) >>| fun _ -> None
+  in
   peek_char >>= fun c ->
   match c with
   | None -> fail "meta_and_links_parser"
-  | Some '(' -> block_ref_ignore_bracket >>| fun s -> Block_ref s
-  | Some '[' -> page_ref_p () >>| fun (_, l) -> Page_refs l
-  | Some _ -> failwith "xxx"
+  | Some '(' ->
+    block_ref_ignore_bracket >>| (fun s -> Some (Block_ref s)) <|> fallback
+  | Some '[' ->
+    page_ref_p () >>| (fun (_, l) -> Some (Page_refs l)) <|> fallback
+  | Some _ -> fallback
+
+let extract_refs content =
+  print_string content;
+  match parse_string ~consume:All (many reference_p) content with
+  | Ok refs -> List.filter_map identity refs
+  | Error e -> failwith "unreachable: extract_refs"
 
 let md_outline_parser config =
-  choice [ heading config; content_followed_by_heading config ]
-  |> many >>| merge_consecutive_content
+  choice
+    [ heading_and_properties config
+    ; (content_followed_by_heading config >>| fun s -> [ s ])
+    ]
+  |> many >>| List.flatten >>| merge_consecutive_content
+  >>| List.map (fun c ->
+          match c with
+          | Content_raw s -> Content (s, extract_refs s)
+          | _ -> c)
 
 let org_outline_parser _config = failwith ""
 

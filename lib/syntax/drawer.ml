@@ -89,6 +89,15 @@ let drawer_parse =
   in
   p <* optional eol
 
+let parse_to_kvs config : (string * string) list Angstrom.t =
+  many1 (parse1 config <|> parse2) >>| fun properties ->
+  List.fold_left
+    (fun r e ->
+      match e with
+      | Property_Drawer kvs -> List.append r kvs
+      | _ -> failwith "unreachable")
+    [] properties
+
 (* combine
    :PROPERTIES: :END: properties and #+NAME: VALUE properties *)
 let parse config =
