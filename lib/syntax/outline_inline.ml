@@ -2,7 +2,7 @@ open! Prelude
 open Angstrom
 open Parsers
 
-let empty_plain = fun _ -> return (Inline.Plain "")
+let empty_plain _ = return (Inline.Plain "")
 
 let inline_choices config : Inline.t_with_pos Angstrom.t =
   let p =
@@ -18,12 +18,13 @@ let inline_choices config : Inline.t_with_pos Angstrom.t =
     | 'c'
     | 'd' ->
       Inline.timestamp
-    | ' ' | '\t' | '\n' | '\r' | '\012' -> any_char >>= empty_plain
-    | _ ->
-      take_till1 (fun c ->
-          c = '#' || c = '[' || c = '('
-        )
-      >>= empty_plain
+    | ' '
+    | '\t'
+    | '\n'
+    | '\r'
+    | '\012' ->
+      any_char >>= empty_plain
+    | _ -> take_till1 (fun c -> c = '#' || c = '[' || c = '(') >>= empty_plain
   in
   (fun t -> (t, None)) <$> p
 
