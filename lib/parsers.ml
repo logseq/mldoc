@@ -246,10 +246,11 @@ let take_while1_include_backslash chars_can_escape f =
       ) else
         f c)
 
-let page_ref, page_ref_ignore_bracket =
+let page_name =
   (* allow single char ']' in pagename but "]]" *)
   let page_name_part =
-    take_while1_include_backslash [ ']' ] (fun c -> non_eol c && c <> ']')
+    take_while1_include_backslash [ '['; ']' ] (fun c ->
+        non_eol c && c <> ']' && c <> '[')
     <|> ( available >>= fun len ->
           if len < 2 then
             fail "page_name_part"
@@ -259,32 +260,28 @@ let page_ref, page_ref_ignore_bracket =
               fail "page_name_part2"
             else if s = "]]" then
               fail "page_name_part3"
+            else if s = "[[" then
+              fail "page_name_part4"
             else
               return s >>= fun _ -> any_char >>| String.make 1 )
   in
-  let page_name =
-    fix (fun m -> List.cons <$> page_name_part <*> m <|> return [])
-    >>| String.concat ""
-    >>= fun s ->
-    if String.length s = 0 then
-      fail "page_name"
-    else
-      return s
-  in
+  fix (fun m -> List.cons <$> page_name_part <*> m <|> return [])
+  >>| String.concat ""
+  >>= fun s ->
+  if String.length s = 0 then
+    fail "page_name"
+  else
+    return s
+
+let page_ref, page_ref_ignore_bracket =
   let p = list [ string "[["; page_name; string "]]" ] in
   (p >>| String.concat "", p >>| fun l -> List.nth l 1)
 
-let block_ref, block_ref_ignore_bracket =
-  let p =
-    list
-      [ string "(("
-      ; take_while1 (function
-          | ')' -> false
-          | _ -> true)
-      ; string "))"
-      ]
-  in
-  (p >>| String.concat "", p >>| fun l -> List.nth l 1)
+let block_ref_ignore_bracket = string "((" *> Angstrom.take 36 <* string "))"
+
+let block_ref =
+  let p = list [ string "(("; Angstrom.take 36; string "))" ] in
+  p >>| String.concat ""
 
 let any_char_string = String.make 1 <$> any_char
 

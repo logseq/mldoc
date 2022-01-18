@@ -55,6 +55,13 @@ let parse config input =
       ast
   | Error err -> failwith err
 
+let parse_outline config input =
+  match
+    parse_string ~consume:All (Outline_parser.outline_parser config) input
+  with
+  | Ok result -> result
+  | Error err -> failwith err
+
 let load_file f =
   let ic = open_in f in
   let n = in_channel_length ic in

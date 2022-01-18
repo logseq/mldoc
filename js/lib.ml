@@ -15,6 +15,16 @@ let generate backend ?refs config doc output =
 
 let mldoc_object =
   object%js
+    method parseOutline input config_json =
+      let config_json = Js.to_string config_json in
+      let config_json = Yojson.Safe.from_string config_json in
+      let input = Js.to_string input in
+      match Conf.of_yojson config_json with
+      | Ok config ->
+        parse_outline config input |> Outline_parser.t_list_to_yojson
+        |> Yojson.Safe.to_string |> Js.string
+      | Error e -> Js.string ("Config error: " ^ e)
+
     method parseJson input config_json =
       let config_json = Js.to_string config_json in
       let config_json = Yojson.Safe.from_string config_json in
