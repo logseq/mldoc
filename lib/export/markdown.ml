@@ -25,7 +25,7 @@ let map_raw_text = List.map raw_text
 let flatten_map f l = List.flatten (List.map f l)
 
 let export_properties_and_not_empty config kvs =
-  config.exporting_keep_properties && List.length kvs > 1
+  config.exporting_keep_properties && List.length kvs > 0
 
 type refs = Reference.parsed_t
 
