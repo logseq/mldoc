@@ -25,7 +25,7 @@ let inline_choices config : Inline.t_with_pos Angstrom.t =
     | '\r'
     | '\012' ->
       any_char >>= empty_plain
-    | _ -> take_till1 (fun c -> c = '#' || c = '[' || c = '(') >>= empty_plain
+    | _ -> take_till1 (fun c -> c = '#' || c = '[' || c = '(' || c = '`') >>= empty_plain
   in
   (fun t -> (t, None)) <$> p
 
