@@ -16,8 +16,8 @@ let inline_choices config : Inline.t_with_pos Angstrom.t =
     | 'D'
     | 's'
     | 'c'
-    | 'd' ->
-      Inline.timestamp
+    | 'd' -> Inline.timestamp
+    | '`' -> Inline.code config <|> (any_char >>= empty_plain)
     | ' '
     | '\t'
     | '\n'
