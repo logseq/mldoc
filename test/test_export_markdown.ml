@@ -111,7 +111,18 @@ let export_md =
                \t  dwdw\n\
                \t  jdiejdie\n\
                \t```"
-              "- line1\n  line2\n\t-\n\t  > line3\n\t  line4\n\n\t\t- line5\n\t\t  [[line6]]\n\t\t\t-\n\t\t\t  ```\n\t\t\t  \t  dwdw\n\t\t\t  \t  jdiejdie\n\t\t\t  ```")
+              "- line1\n\
+              \  line2\n\
+               \t-\n\
+               \t  > line3\n\
+               \t  line4\n\n\
+               \t\t- line5\n\
+               \t\t  [[line6]]\n\
+               \t\t\t-\n\
+               \t\t\t  ```\n\
+               \t\t\t  \t  dwdw\n\
+               \t\t\t  \t  jdiejdie\n\
+               \t\t\t  ```" )
         ; ( "(5)"
           , `Quick
           , check_aux "- `key`: content **bold**test"
