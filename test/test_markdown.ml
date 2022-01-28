@@ -696,13 +696,22 @@ let inline =
         [ ( "emphasis(1)"
           , `Quick
           , check_aux "*a\\*b*"
-              (paragraph [ Inline.Emphasis (`Italic, [ I.Plain "a"; I.Escaped "*"; I.Plain "b" ]) ])
-          )
+              (paragraph
+                 [ Inline.Emphasis
+                     (`Italic, [ I.Plain "a"; I.Escaped "*"; I.Plain "b" ])
+                 ]) )
         ; ( "emphasis(2)"
           , `Quick
           , check_aux "*a\\\\\\*b*"
               (paragraph
-                 [ Inline.Emphasis (`Italic, [ I.Plain "a"; I.Escaped "\\"; I.Escaped "*"; I.Plain "b" ]) ]) )
+                 [ Inline.Emphasis
+                     ( `Italic
+                     , [ I.Plain "a"
+                       ; I.Escaped "\\"
+                       ; I.Escaped "*"
+                       ; I.Plain "b"
+                       ] )
+                 ]) )
         ; ( "code"
           , `Quick
           , check_aux "`a\\``"
@@ -710,8 +719,10 @@ let inline =
         ; ( "nested emphasis"
           , `Quick
           , check_aux "_a*b\\*_"
-              (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b"; I.Escaped "*" ]) ])
-          )
+              (paragraph
+                 [ Inline.Emphasis
+                     (`Italic, [ Inline.Plain "a*b"; I.Escaped "*" ])
+                 ]) )
         ; ( "link (1)"
           , `Quick
           , check_aux "[[\\]]]"

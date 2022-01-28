@@ -173,18 +173,14 @@ let export_md =
           , `Quick
           , check_aux "- {{cloze (content1,content2)}}" "- (content1,content2)"
           )
+        ; ("escaped", `Quick, check_aux "- a\\`b" "- a\\`b")
         ; ( "escaped"
           , `Quick
-          , check_aux "- a\\`b" "- a\\`b"
-          )
+          , check_aux "- a\\^b \\*non-italic*" "- a\\^b \\*non-italic*" )
         ; ( "escaped"
           , `Quick
-          , check_aux "- a\\^b \\*non-italic*" "- a\\^b \\*non-italic*"
-          )
-        ; ( "escaped"
-          , `Quick
-          , check_aux "- example postgres cmd: \\dt" "- example postgres cmd: \\dt"
-          )
+          , check_aux "- example postgres cmd: \\dt"
+              "- example postgres cmd: \\dt" )
         ] )
   ]
 

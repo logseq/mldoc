@@ -47,8 +47,7 @@ let parsers config =
 
 let parse config input =
   match parse_string ~consume:All (parsers config) input with
-  | Ok result ->
-    Paragraph.concat_paragraph_lines config result
+  | Ok result -> Paragraph.concat_paragraph_lines config result
   | Error err -> failwith err
 
 let load_file f =

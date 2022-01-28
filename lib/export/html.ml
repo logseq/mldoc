@@ -101,8 +101,7 @@ and inline config t =
   | Plain s
   | Spaces s ->
     [ Xml.data s ]
-  | Escaped s ->
-    [ Xml.data ("\\" ^ s) ]
+  | Escaped s -> [ Xml.data ("\\" ^ s) ]
   | Superscript l -> [ Xml.block "sup" (map_inline config l) ]
   | Subscript l -> [ Xml.block "sub" (map_inline config l) ]
   | Emphasis (kind, data) ->

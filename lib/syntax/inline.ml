@@ -210,7 +210,8 @@ let in_plain_delims config c =
 let whitespaces = ws >>| fun spaces -> Plain spaces
 
 let md_escaped_char set_last_char =
-  char '\\' >>= fun _ -> satisfy is_md_escape_char >>| fun c ->
+  char '\\' >>= fun _ ->
+  satisfy is_md_escape_char >>| fun c ->
   let s = String.make 1 c in
   set_last_char s;
   Escaped s
