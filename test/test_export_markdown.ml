@@ -119,8 +119,8 @@ let export_md =
                \t\t  [[line6]]\n\
                \t\t\t-\n\
                \t\t\t  ```\n\
-               \t\t\t  dwdw\n\
-               \t\t\t  jdiejdie\n\
+               \t\t\t  \t  dwdw\n\
+               \t\t\t  \t  jdiejdie\n\
                \t\t\t  ```" )
         ; ( "(5)"
           , `Quick
@@ -173,6 +173,14 @@ let export_md =
           , `Quick
           , check_aux "- {{cloze (content1,content2)}}" "- (content1,content2)"
           )
+        ; ("escaped", `Quick, check_aux "- a\\`b" "- a\\`b")
+        ; ( "escaped"
+          , `Quick
+          , check_aux "- a\\^b \\*non-italic*" "- a\\^b \\*non-italic*" )
+        ; ( "escaped"
+          , `Quick
+          , check_aux "- example postgres cmd: \\dt"
+              "- example postgres cmd: \\dt" )
         ] )
   ]
 

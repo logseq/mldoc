@@ -103,6 +103,12 @@ let rec inline state config (t : Inline.t) : t list =
         map_raw_text [ String.ltrim s ]
       ) else
         map_raw_text [ s ]
+    | Escaped s ->
+      if state.last_newline then (
+        state.last_newline <- false;
+        map_raw_text [ "\\"; s ]
+      ) else
+        map_raw_text [ "\\"; s ]
     | Link l -> inline_link l
     | Nested_link l -> inline_nested_link l
     | Target s -> map_raw_text [ "<<"; s; ">>" ]

@@ -121,6 +121,7 @@ and t =
   | Email of Email_address.t
   | Inline_Hiccup of string
   | Inline_Html of string
+  | Escaped of string
 [@@deriving yojson]
 
 and t_with_pos = t * pos_meta option
@@ -208,6 +209,13 @@ let in_plain_delims config c =
 
 let whitespaces = ws >>| fun spaces -> Plain spaces
 
+let md_escaped_char set_last_char =
+  char '\\' >>= fun _ ->
+  satisfy is_md_escape_char >>| fun c ->
+  let s = String.make 1 c in
+  set_last_char s;
+  Escaped s
+
 let plain ?state config =
   let set_last_char s =
     Option.(
@@ -223,10 +231,7 @@ let plain ?state config =
   <|> ( ws >>| fun s ->
         set_last_char s;
         Plain s )
-  <|> ( char '\\' *> satisfy is_md_escape_char >>| fun c ->
-        let s = String.make 1 c in
-        set_last_char s;
-        Plain ("\\" ^ s) )
+  <|> md_escaped_char set_last_char
   <|> ( any_char >>= fun c ->
         if in_plain_delims config c then (
           let s = String.make 1 c in
@@ -487,7 +492,7 @@ let entity =
   try
     let entity = Entity.find s in
     Entity entity
-  with Not_found -> Plain s
+  with Not_found -> Plain ("\\" ^ s)
 
 (* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
@@ -919,6 +924,7 @@ let nested_link_or_link config =
 let nested_emphasis ?state config =
   let rec aux_nested_emphasis = function
     | Plain s -> Plain s
+    | Escaped s -> Escaped s
     | Emphasis (`Italic, [ Emphasis (`Bold, _) ]) as e -> e
     | Emphasis (typ, l) ->
       let parser =
