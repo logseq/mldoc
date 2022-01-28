@@ -40,7 +40,8 @@ let outline_parsers config =
   ; Type_parser.Heading.parse config
   ; Drawer.parse config
   ; Directive.parse
-  ; Paragraph.parse]
+  ; Paragraph.parse
+  ]
 
 let md_front_matter_parse parse =
   Markdown_front_matter.parse >>= fun fm_result ->
@@ -59,8 +60,10 @@ let parse config input =
   match parse_string ~consume:All parsers input with
   | Ok result ->
     let ast = Paragraph.concat_paragraph_lines config result in
-    let ast = if outline_only then
-        Prelude.remove (fun (t, _) ->
+    let ast =
+      if outline_only then
+        Prelude.remove
+          (fun (t, _) ->
             match t with
             | Type.Results
             | Type.Example _
@@ -70,10 +73,13 @@ let parse config input =
             | Type.Displayed_Math _
             | Type.Horizontal_Rule
             | Type.Raw_Html _
-            | Type.Hiccup _
-              -> true
-            | _ -> false) ast
-      else ast in
+            | Type.Hiccup _ ->
+              true
+            | _ -> false)
+          ast
+      else
+        ast
+    in
     if Conf.is_markdown config then
       List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
     else

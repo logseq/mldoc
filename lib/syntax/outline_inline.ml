@@ -9,14 +9,13 @@ let skip_char = any_char >>= empty_plain
 
 let in_plain_delims config c =
   match config.format with
-  | Markdown ->
-    c = '[' || c = '`' || is_whitespace c
-  | Org ->
-    c = '[' || c = '=' || c = '~' || is_whitespace c
+  | Markdown -> c = '[' || c = '`' || is_whitespace c
+  | Org -> c = '[' || c = '=' || c = '~' || is_whitespace c
 
 let skip_plain config = take_till (in_plain_delims config) >>= empty_plain
 
 let inline_code config = Inline.code config >>= empty_plain
+
 let inline_choices config : Inline.t_with_pos Angstrom.t =
   let skip_plain = any_char *> skip_plain config in
   let p =
@@ -29,17 +28,23 @@ let inline_choices config : Inline.t_with_pos Angstrom.t =
     | 'D'
     | 's'
     | 'c'
-    | 'd' -> Inline.timestamp
-    | c ->
-      if is_whitespace c then skip_char
+    | 'd' ->
+      Inline.timestamp
+    | c -> (
+      if is_whitespace c then
+        skip_char
       else
         match config.format with
         | Markdown ->
-          if c = '`' then inline_code config
-          else fail "inline choice"
+          if c = '`' then
+            inline_code config
+          else
+            fail "inline choice"
         | Org ->
-          if c = '=' || c = '~' then inline_code config
-          else fail "inline choice"
+          if c = '=' || c = '~' then
+            inline_code config
+          else
+            fail "inline choice")
   in
   let p' = p <|> skip_plain <|> skip_char in
   (fun t -> (t, None)) <$> p'
@@ -47,6 +52,6 @@ let inline_choices config : Inline.t_with_pos Angstrom.t =
 let parse config =
   many1 (inline_choices config)
   >>| (fun l ->
-      let l = remove (fun (t, _) -> t = (Inline.Plain "")) l in
-      Inline.concat_plains l)
-      <?> "inline"
+        let l = remove (fun (t, _) -> t = Inline.Plain "") l in
+        Inline.concat_plains l)
+  <?> "inline"
