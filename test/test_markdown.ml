@@ -696,13 +696,13 @@ let inline =
         [ ( "emphasis(1)"
           , `Quick
           , check_aux "*a\\*b*"
-              (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b" ]) ])
+              (paragraph [ Inline.Emphasis (`Italic, [ I.Plain "a"; I.Escaped "*"; I.Plain "b" ]) ])
           )
         ; ( "emphasis(2)"
           , `Quick
           , check_aux "*a\\\\\\*b*"
               (paragraph
-                 [ Inline.Emphasis (`Italic, [ Inline.Plain "a\\*b" ]) ]) )
+                 [ Inline.Emphasis (`Italic, [ I.Plain "a"; I.Escaped "\\"; I.Escaped "*"; I.Plain "b" ]) ]) )
         ; ( "code"
           , `Quick
           , check_aux "`a\\``"
@@ -710,14 +710,14 @@ let inline =
         ; ( "nested emphasis"
           , `Quick
           , check_aux "_a*b\\*_"
-              (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b*" ]) ])
+              (paragraph [ Inline.Emphasis (`Italic, [ Inline.Plain "a*b"; I.Escaped "*" ]) ])
           )
         ; ( "link (1)"
           , `Quick
           , check_aux "[[\\]]]"
               (paragraph
                  [ Inline.Link
-                     { url = Inline.Page_ref "]"
+                     { url = Inline.Page_ref "\\]"
                      ; label = [ Inline.Plain "" ]
                      ; full_text = "[[\\]]]"
                      ; metadata = ""
@@ -730,7 +730,7 @@ let inline =
               (paragraph
                  [ Inline.Link
                      { url = Inline.Search "xxx"
-                     ; label = [ Inline.Plain "label](x)" ]
+                     ; label = [ Inline.Plain "label\\](x)" ]
                      ; full_text = "[label\\](x)](xxx)"
                      ; metadata = ""
                      ; title = None
@@ -741,7 +741,7 @@ let inline =
           , check_aux "[label](ur\\)l)"
               (paragraph
                  [ Inline.Link
-                     { url = Inline.Search "ur)l"
+                     { url = Inline.Search "ur\\)l"
                      ; label = [ Inline.Plain "label" ]
                      ; full_text = "[label](ur\\)l)"
                      ; metadata = ""
