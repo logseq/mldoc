@@ -3,6 +3,9 @@ open Prelude
 
 let whitespace_chars = [ ' '; '\t'; '\n'; '\r'; '\012' ]
 
+let is_whitespace c =
+  c = ' ' || c = '\t' || c = '\n' || c = '\r' || c = '\012'
+
 let space_chars = [ ' '; '\t'; '\026'; '\012' ]
 
 module CharSet = Set.Make (Char)
