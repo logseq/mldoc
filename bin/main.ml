@@ -29,6 +29,7 @@ let generate backend output _opts filename =
   | lines ->
     let config =
       { toc = true
+      ; parse_outline_only = true
       ; heading_number = true
       ; keep_line_break = false
       ; format

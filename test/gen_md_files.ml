@@ -112,6 +112,7 @@ let document_g pagename pagenames =
 
 let config : Conf.t =
   { toc = true
+  ; parse_outline_only = false
   ; heading_number = true
   ; keep_line_break = false
   ; format = Conf.Markdown

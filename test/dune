@@ -4,6 +4,11 @@
  (libraries alcotest mldoc))
 
 (executables
+ (names test_outline_markdown)
+ (modules test_outline_markdown)
+ (libraries alcotest mldoc))
+
+(executables
  (names test_org)
  (modules test_org)
  (libraries alcotest mldoc))
@@ -32,6 +37,7 @@
  (alias runtest)
  (deps
   (:md test_markdown.exe)
+  (:md-outline test_outline_markdown.exe)
   (:org test_org.exe)
   (:zip test_zip.exe)
   (:export-md test_export_markdown.exe)
@@ -39,6 +45,7 @@
  (action
   (progn
    (run %{md})
+   (run %{md-outline})
    (run %{org})
    (run %{zip})
    (run %{export-md})

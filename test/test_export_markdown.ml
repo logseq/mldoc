@@ -1,5 +1,6 @@
 let default_config : Conf.t =
   { toc = true
+  ; parse_outline_only = false
   ; heading_number = true
   ; keep_line_break = false
   ; format = Conf.Markdown
@@ -119,8 +120,8 @@ let export_md =
                \t\t  [[line6]]\n\
                \t\t\t-\n\
                \t\t\t  ```\n\
-               \t\t\t  dwdw\n\
-               \t\t\t  jdiejdie\n\
+               \t\t\t  \t  dwdw\n\
+               \t\t\t  \t  jdiejdie\n\
                \t\t\t  ```" )
         ; ( "(5)"
           , `Quick

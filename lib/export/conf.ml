@@ -40,11 +40,12 @@ type meta_chars =
 type t =
   { (* html: bool; *)
     (* hiccup: bool; *)
-    toc : bool
-  ; heading_number : bool
+    toc : bool [@default false]
+  ; parse_outline_only : bool [@default false]
+  ; heading_number : bool [@default false]
   ; keep_line_break : bool (* FIXME: is this option deprecated? *)
   ; format : format
-  ; heading_to_list : bool (* export heading as list *)
+  ; heading_to_list : bool [@default false] (* export heading as list *)
   ; exporting_keep_properties : bool
         [@default false] (* keep properties when exporting *)
   ; inline_type_with_pos : bool [@default false]
