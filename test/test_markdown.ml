@@ -775,6 +775,29 @@ let block =
                      ; I.Break_Line
                      ]
                  ]) )
+        ; ( "multi lines (2)"
+          , `Quick
+          , check_aux ">foo\nbar"
+              (Quote
+                 [ paragraph
+                     [ I.Plain "foo"
+                     ; I.Break_Line
+                     ; I.Plain "bar"
+                     ; I.Break_Line
+                     ]
+                 ]) )
+        ; ( "multi lines (3)"
+          , `Quick
+          , check_aux ">foo\n>\n>bar"
+              (Quote
+                 [ paragraph
+                     [ I.Plain "foo"
+                     ; I.Break_Line
+                     ; I.Break_Line
+                     ; I.Plain "bar"
+                     ; I.Break_Line
+                     ]
+                 ]) )
         ] )
   ; ( "latex_env"
     , testcases

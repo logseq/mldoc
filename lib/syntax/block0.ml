@@ -28,15 +28,16 @@ struct
   let md_blockquote =
     char '>'
     *> lines_while
-         ( spaces *> optional (char '>') *> spaces *> line >>= fun line ->
-           if
-             not
-               (starts_with line "- " || starts_with line "# "
-              || starts_with line "id:: " || line = "-" || line = "#")
-           then
-             return line
-           else
-             fail "new block" )
+         (spaces *> char '>' *> spaces *> eol *> return ""
+         <|> ( spaces *> optional (char '>') *> spaces *> line >>= fun line ->
+               if
+                 not
+                   (starts_with line "- " || starts_with line "# "
+                  || starts_with line "id:: " || line = "-" || line = "#")
+               then
+                 return line
+               else
+                 fail "new block" ))
     <?> "markdown blockquote"
 
   let displayed_math =
