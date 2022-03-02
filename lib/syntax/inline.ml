@@ -546,7 +546,7 @@ let latex_fragment _config =
       take_while (fun x -> x <> '$' && x <> '\r' && x <> '\n') <* char '$'
       >>= fun s ->
       match last_char s with
-      | Some ' ' -> fail "inline math shouldn't end with a space"
+      | Some ' ' | Some '(' | Some '[' | Some '{' -> fail "inline math shouldn't end with a space, (, [, {"
       | _ -> return @@ Latex_Fragment (Inline (String.make 1 c ^ s)))
   | '\\' -> (
     any_char >>= function
