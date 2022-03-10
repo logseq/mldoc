@@ -518,7 +518,7 @@ let inline =
                         Timestamp.
                           { date = { year = 2004; month = 12; day = 25 }
                           ; wday = "Sat"
-                          ; time = Some { hour = 10; min = 0 }
+                          ; time = Some { hour = 10; min = 0; second = 0 }
                           ; repetition = None
                           ; active = true
                           })
@@ -574,7 +574,7 @@ let inline =
                         Timestamp.
                           { date = { year = 2004; month = 12; day = 25 }
                           ; wday = "Sat"
-                          ; time = Some { hour = 10; min = 0 }
+                          ; time = Some { hour = 10; min = 0; second = 0 }
                           ; repetition = None
                           ; active = true
                           })
