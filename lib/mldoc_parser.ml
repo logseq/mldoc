@@ -25,11 +25,11 @@ let parsers config =
   ; Type_parser.Heading.parse config
   ; Table.parse config
   ; Latex_env.parse config
-  ; Type_parser.Lists.parse config (list_content_parsers config)
   ; Type_parser.Block.parse config
+  ; Footnote.parse config
+  ; Type_parser.Lists.parse config (list_content_parsers config)
   ; Hr.parse config
   ; Type_parser.Block.results
-  ; Footnote.parse config
   ; Comment.parse config
   ; Paragraph.parse
   ]
