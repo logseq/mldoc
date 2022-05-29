@@ -241,7 +241,7 @@ and block state config t =
         (fun e -> inline state config e)
         (Type_op.inline_list_strip_pos l)
       @ [ newline ]
-    | Paragraph_line l -> raw_text_indent state config l @ [ newline ]
+    | Paragraph_line l -> raw_text_indent state config l @ [RawText "  "; newline ]
     | Paragraph_Sep n -> [ raw_text @@ String.make n '\n' ]
     | Heading h -> heading state config h
     | List l -> list state config l
@@ -282,7 +282,7 @@ and block state config t =
     | Hiccup s -> [ raw_text s; Space ]
   in
   state.last_newline <- true;
-  content @ [ newline ]
+  content
 
 and heading_merely_have_embed { title; marker; priority; _ } =
   match (title, marker, priority) with
