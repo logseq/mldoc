@@ -330,6 +330,7 @@ and heading state config h =
            raw_text @@ ":" ^ String.concat ":" tags ^ ":"
          else
            raw_text "")
+      ; raw_text "  "
       ; newline
       ]
   in
@@ -341,69 +342,68 @@ and heading state config h =
       (* hide Property_Drawers *)
       []
   in
-  heading @ properties @ [raw_text "  "]
+  List.append heading properties
 
 and list state config l =
-  ((fun l ->
-      if List.length l > 0 then
-        l @ [ TwoNewlines ]
-      else
-        l)
-   @@ List.flatten
-   @@ List.map
-     (fun { content; items; number; name; checkbox; _ } ->
-        let state' = { state with current_level = state.current_level + 1 } in
-        let name' =
-          flatten_map (inline state config false)
-            (Type_op.inline_list_strip_pos name)
-        in
-        let content' = flatten_map (block state' config) content in
-        (* Definition Lists content if name isn't empty  *)
-        let content'' =
-          if name' <> [] then
-            List.flatten
-            @@ List.map
-              (fun l ->
-                 List.flatten
-                   [ [ raw_text ": " ]; block state' config l; [ newline ] ])
-              content
-          else
-            content'
-        in
-        let name'' =
-          if List.length name' > 0 then
-            name' @ [ newline ]
-          else
-            []
-        and number' =
-          match number with
-          | Some n -> raw_text @@ string_of_int n ^ ". "
-          | None when List.length name = 0 -> raw_text "* "
-          | None -> raw_text ""
-        and checkbox' =
-          match checkbox with
-          | Some true -> raw_text "[X]"
-          | Some false -> raw_text "[ ]"
-          | None -> raw_text ""
-        and indent' =
-          if state'.current_level > 0 then
-            raw_text @@ String.make state'.current_level '\t'
-          else
-            raw_text ""
-        and items' = list state' config items in
-        List.flatten
-          [ [ indent' ]
-          ; [ number' ]
-          ; [ checkbox' ]
-          ; [ Space ]
-          ; name''
-          ; content''
-          ; [ newline ]
-          ; items'
-          ; [ newline ]
-          ])
-     l
-  ) @ [raw_text "  "]
+  (fun l ->
+     if List.length l > 0 then
+       l @ [ TwoNewlines ]
+     else
+       l)
+  @@ List.flatten
+  @@ List.map
+    (fun { content; items; number; name; checkbox; _ } ->
+       let state' = { state with current_level = state.current_level + 1 } in
+       let name' =
+         flatten_map (inline state config false)
+           (Type_op.inline_list_strip_pos name)
+       in
+       let content' = flatten_map (block state' config) content in
+       (* Definition Lists content if name isn't empty  *)
+       let content'' =
+         if name' <> [] then
+           List.flatten
+           @@ List.map
+             (fun l ->
+                List.flatten
+                  [ [ raw_text ": " ]; block state' config l; [ newline ] ])
+             content
+         else
+           content'
+       in
+       let name'' =
+         if List.length name' > 0 then
+           name' @ [ newline ]
+         else
+           []
+       and number' =
+         match number with
+         | Some n -> raw_text @@ string_of_int n ^ ". "
+         | None when List.length name = 0 -> raw_text "* "
+         | None -> raw_text ""
+       and checkbox' =
+         match checkbox with
+         | Some true -> raw_text "[X]"
+         | Some false -> raw_text "[ ]"
+         | None -> raw_text ""
+       and indent' =
+         if state'.current_level > 0 then
+           raw_text @@ String.make state'.current_level '\t'
+         else
+           raw_text ""
+       and items' = list state' config items in
+       List.flatten
+         [ [ indent' ]
+         ; [ number' ]
+         ; [ checkbox' ]
+         ; [ Space ]
+         ; name''
+         ; content''
+         ; [ newline ]
+         ; items'
+         ; [ newline ]
+         ])
+    l
 
 and example state config sl =
   flatten_map
