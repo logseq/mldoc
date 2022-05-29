@@ -282,7 +282,7 @@ and block state config t =
     | Hiccup s -> [ raw_text s; Space ]
   in
   state.last_newline <- true;
-  content
+  content @ [ newline ]
 
 and heading_merely_have_embed { title; marker; priority; _ } =
   match (title, marker, priority) with
