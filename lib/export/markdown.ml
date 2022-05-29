@@ -77,7 +77,7 @@ let raw_text_indent state config s =
   else
     indent_with_2_spacemore state.current_level config :: indent state config s
 
-let rec inline state config (t : Inline.t) : t list =
+let rec inline state config is_paragraph (t : Inline.t) : t list =
   let content =
     indent_with_2_spacemore state.current_level config
     ::
@@ -85,7 +85,10 @@ let rec inline state config (t : Inline.t) : t list =
     | Emphasis em -> emphasis state config em
     | Break_Line ->
       state.last_newline <- true;
-      [ raw_text "\n" ]
+      if is_paragraph then
+        [ raw_text "  \n" ]
+      else
+        [ raw_text "\n" ]
     | Hard_Break_Line ->
       state.last_newline <- true;
       [ raw_text "  \n" ]
@@ -151,7 +154,7 @@ and emphasis state config (typ, tl) =
     List.flatten
       [ [ raw_text s ]
       ; List.flatten
-        @@ List.map (inline { state with outside_em_symbol } config) tl
+        @@ List.map (inline { state with outside_em_symbol } config false) tl
       ; [ raw_text s ]
       ]
   in
@@ -173,7 +176,7 @@ and emphasis state config (typ, tl) =
   | `Underline ->
     List.flatten
     @@ List.map
-         (fun e -> Space :: inline { state with outside_em_symbol } config e)
+      (fun e -> Space :: inline { state with outside_em_symbol } config false e)
          tl
 
 and inline_link { full_text; _ } = [ raw_text full_text ]
@@ -183,14 +186,14 @@ and inline_nested_link { content; _ } = [ raw_text content ]
 and inline_subscript state config tl =
   List.flatten
     [ [ raw_text "_{" ]
-    ; flatten_map (fun e -> Space :: inline state config e) tl
+    ; flatten_map (fun e -> Space :: inline state config false e) tl
     ; [ raw_text "}" ]
     ]
 
 and inline_superscript state config tl =
   List.flatten
     [ [ raw_text "^{" ]
-    ; flatten_map (fun e -> Space :: inline state config e) tl
+    ; flatten_map (fun e -> Space :: inline state config false e) tl
     ; [ raw_text "}" ]
     ]
 
@@ -238,10 +241,10 @@ and block state config t =
     match t with
     | Paragraph l ->
       flatten_map
-        (fun e -> inline state config e)
+        (fun e -> inline state config true e)
         (Type_op.inline_list_strip_pos l)
       @ [ newline ]
-    | Paragraph_line l -> raw_text_indent state config l @ [RawText "  "; newline ]
+    | Paragraph_line l -> raw_text_indent state config l @ [newline ]
     | Paragraph_Sep n -> [ raw_text @@ String.make n '\n' ]
     | Heading h -> heading state config h
     | List l -> list state config l
@@ -321,7 +324,7 @@ and heading state config h =
     in
     heading_or_list @ title_size
     @ [ Space; raw_text marker; Space; raw_text priority; Space ]
-    @ flatten_map (fun e -> inline state config e) (List.map fst title)
+    @ flatten_map (fun e -> inline state config false e) (List.map fst title)
     @ [ Space
       ; (if List.length tags > 0 then
           raw_text @@ ":" ^ String.concat ":" tags ^ ":"
@@ -351,7 +354,7 @@ and list state config l =
        (fun { content; items; number; name; checkbox; _ } ->
          let state' = { state with current_level = state.current_level + 1 } in
          let name' =
-           flatten_map (inline state config)
+           flatten_map (inline state config false)
              (Type_op.inline_list_strip_pos name)
          in
          let content' = flatten_map (block state' config) content in
@@ -477,7 +480,7 @@ and property_drawer state config name kvs =
 
 and footnote_definition state config name content =
   let content' =
-    flatten_map (inline state config) (Type_op.inline_list_strip_pos content)
+    flatten_map (inline state config false) (Type_op.inline_list_strip_pos content)
   in
   List.flatten
     [ [ raw_text @@ "[^" ^ name ^ "]"; Space ]; content'; [ newline ] ]
@@ -495,7 +498,7 @@ and table state config { header; groups; _ } =
         ; flatten_map
             (fun col ->
               Space :: raw_text "|" :: Space
-              :: flatten_map (inline state config) col)
+              :: flatten_map (inline state config false) col)
             header
         ; [ Space; raw_text "|" ]
         ]
@@ -508,7 +511,7 @@ and table state config { header; groups; _ } =
                    (fun col ->
                      indent_with_2_spacemore state.current_level config
                      :: Space :: raw_text "|" :: Space
-                     :: flatten_map (inline state config) col)
+                     :: flatten_map (inline state config false) col)
                    row
                ; [ Space; raw_text "|"; newline ]
                ]))
