@@ -341,7 +341,7 @@ and heading state config h =
       (* hide Property_Drawers *)
       []
   in
-  List.append heading properties
+  heading @ properties @ [raw_text "  "]
 
 and list state config l =
   (fun l ->
