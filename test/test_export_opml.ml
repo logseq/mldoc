@@ -39,7 +39,7 @@ let testcase_list =
               \  </head>\n\
               \  <body>\n\
               \    <outline text=\"line1\">\n\
-              \      <outline text=\"line2\" _note=\"    line3&#10;\">\n\
+              \      <outline text=\"line2\" _note=\"    line3  &#10;\">\n\
               \        <outline text=\"line4\"/>\n\
               \      </outline>\n\
               \    </outline>\n\
@@ -61,7 +61,7 @@ let testcase_list =
               \  </head>\n\
               \  <body>\n\
               \    <outline text=\"## line1\">\n\
-              \      <outline text=\"## TODO line2\" _note=\"    line3&#10;\">\n\
+              \      <outline text=\"## TODO line2\" _note=\"    line3  &#10;\">\n\
               \        <outline text=\"## LATER [#A] line4\"/>\n\
               \      </outline>\n\
               \    </outline>\n\

@@ -68,18 +68,19 @@ let export_md =
     , testcases
         [ ( "merge paragraph"
           , `Quick
-          , check_aux "- text1 ((ref1)) text2" "- text1 ref1-text text2" )
+            (* append 2 spaces at end to add <br /> break tag when rendering*)
+          , check_aux "- text1 ((ref1)) text2" "- text1 ref1-text text2  " )
         ] )
   ; ( "export md"
     , testcases
         [ ( "(1)"
           , `Quick
           , check_aux "- line1\n  line2\n  - line3\n  line4"
-              "- line1\n  line2\n\t- line3\n\t  line4" )
+              "- line1  \n  line2  \n\t- line3  \n\t  line4" )
         ; ( "(2)"
           , `Quick
           , check_aux "- line1\n  line2\n  - > line3\n    > line4"
-              "- line1\n  line2\n\t-\n\t  > line3\n\t  line4\n" )
+              "- line1  \n  line2  \n\t-  \n\t  > line3  \n\t  line4  \n" )
         ; ( "(3)"
           , `Quick
           , check_aux
@@ -89,12 +90,12 @@ let export_md =
               \    > line4\n\
               \    - line5\n\
               \      [[line6]]"
-              "- line1\n\
-              \  line2\n\
-               \t-\n\
-               \t  > line3\n\
-               \t  line4\n\n\
-               \t\t- line5\n\
+              "- line1  \n\
+              \  line2  \n\
+               \t-  \n\
+               \t  > line3  \n\
+               \t  line4  \n\n\
+               \t\t- line5  \n\
                \t\t  [[line6]]" )
         ; ( "(4)"
           , `Quick
@@ -111,14 +112,14 @@ let export_md =
                \t  dwdw\n\
                \t  jdiejdie\n\
                \t```"
-              "- line1\n\
-              \  line2\n\
-               \t-\n\
-               \t  > line3\n\
-               \t  line4\n\n\
-               \t\t- line5\n\
-               \t\t  [[line6]]\n\
-               \t\t\t-\n\
+              "- line1  \n\
+              \  line2  \n\
+               \t-  \n\
+               \t  > line3  \n\
+               \t  line4  \n\n\
+               \t\t- line5  \n\
+               \t\t  [[line6]]  \n\
+               \t\t\t-  \n\
                \t\t\t  ```\n\
                \t\t\t  \t  dwdw\n\
                \t\t\t  \t  jdiejdie\n\
@@ -126,19 +127,19 @@ let export_md =
         ; ( "(5)"
           , `Quick
           , check_aux "- `key`: content **bold**test"
-              "- `key`: content **bold**test" )
-        ; ("(6)", `Quick, check_aux "## heading" "## heading")
+              "- `key`: content **bold**test  " )
+        ; ("(6)", `Quick, check_aux "## heading" "## heading  ")
         ; ( "(7)"
           , `Quick
-          , check_aux "- **bold** *italic*\ntest" "- **bold** *italic*\n  test"
-          )
+          , check_aux "- **bold** *italic*\ntest"
+              "- **bold** *italic*  \n  test" )
         ; ( "indent style='spaces' (1)"
           , `Quick
           , check_aux
               ~config:
                 { default_config with export_md_indent_style = Conf.Spaces }
               "- line1\n  line2\n  - > line3\n    > line4"
-              "line1\nline2\n\t> line3\n\tline4\n" )
+              "line1\nline2  \n\t> line3  \n\tline4  \n" )
         ; ( "indent style='spaces' (2)"
           , `Quick
           , check_aux
@@ -150,7 +151,12 @@ let export_md =
               \    > line4\n\
               \    - line5\n\
               \      [[line6]]"
-              "line1\nline2\n\t> line3\n\tline4\n\n\t\tline5\n\t\t[[line6]]" )
+              "line1\n\
+               line2  \n\
+               \t> line3  \n\
+               \tline4  \n\n\
+               \t\tline5\n\
+               \t\t[[line6]]" )
         ; ( "indent style='no-indent' (2)"
           , `Quick
           , check_aux
@@ -162,18 +168,18 @@ let export_md =
               \    > line4\n\
               \    - line5\n\
               \      [[line6]]"
-              "line1\nline2\n> line3\nline4\n\nline5\n[[line6]]" )
+              "line1\nline2  \n> line3  \nline4  \n\nline5\n[[line6]]" )
         ; ( "heading size"
           , `Quick
           , check_aux "- # line1\n  - ##  TODO line2\n  - line3"
-              "- # line1\n\t- ## TODO line2\n\t- line3" )
+              "- # line1  \n\t- ## TODO line2  \n\t- line3  " )
         ; ( "replace cloze with its content (1)"
           , `Quick
-          , check_aux "- {{cloze content1,content2}}" "- content1,content2" )
+          , check_aux "- {{cloze content1,content2}}" "- content1,content2  " )
         ; ( "replace cloze with its content (2)"
           , `Quick
-          , check_aux "- {{cloze (content1,content2)}}" "- (content1,content2)"
-          )
+          , check_aux "- {{cloze (content1,content2)}}"
+              "- (content1,content2)  " )
         ] )
   ]
 
