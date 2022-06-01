@@ -511,9 +511,22 @@ let inline =
                :END:\r\n"
               (Property_Drawer
                  [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
+        ; ( "front-matter-endwith-space"
+          , `Quick
+          , check_aux
+              "---\r\n\
+               now: 1614485729874   \n\
+               done: 1614485743195   \n\
+               ---\r\n"
+              (Property_Drawer
+                 [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
         ; ( "simplified-property-syntax"
           , `Quick
           , check_aux "a.b.c:: def\na-b-c::"
+              (Property_Drawer [ ("a.b.c", "def"); ("a-b-c", "") ]) )
+        ; ( "simplified-endwith-space"
+          , `Quick
+          , check_aux "a.b.c:: def      \na-b-c::"
               (Property_Drawer [ ("a.b.c", "def"); ("a-b-c", "") ]) )
         ; ( "empty-property"
           , `Quick

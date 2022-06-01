@@ -13,7 +13,7 @@ open Type
 let kv_parse =
   let key_parser = take_while1 (fun c -> c <> ':' && non_eol c) in
   let sep_parser = char ':' <* spaces in
-  let value_parser = take_till is_eol <|> (end_of_input >>| fun _ -> "") in
+  let value_parser = take_till is_space_eol <|> (end_of_input >>| fun _ -> "") in
   let p =
     lift3
       (fun key _sep value -> Directive (key, value))
