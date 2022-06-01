@@ -182,6 +182,17 @@ let block =
                      ; I.Break_Line
                      ]
                  ]) )
+        ; ( "multi lines(2) issue: https://github.com/logseq/logseq/issues/4879"
+          , `Quick
+          , check_aux "#+BEGIN_QUOTE\n aaa\nbbb\n#+END_QUOTE"
+              (Quote
+                 [ paragraph
+                     [ I.Plain "aaa"
+                     ; I.Break_Line
+                     ; I.Plain "bbb"
+                     ; I.Break_Line
+                     ]
+                 ]) )
         ] )
   ; ( "example"
     , testcases

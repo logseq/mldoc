@@ -149,8 +149,14 @@ struct
                 else
                   List.map
                     (fun line ->
-                      (* FIXME: only remove blanks *)
-                      safe_sub line indent (String.length line - indent))
+                      let line_ltrim = String.ltrim line in
+                      if String.length line - String.length line_ltrim >= indent
+                      then
+                        safe_sub line indent (String.length line - indent)
+                      else if line_ltrim = "" then
+                        line
+                      else
+                        line_ltrim)
                     lines
             in
             let name = String.lowercase_ascii name in
