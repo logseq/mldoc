@@ -50,7 +50,7 @@ let mldoc_object =
         print_endline (Printexc.to_string error);
         input
 
-    method get_references config_json input =
+    method export getReferences config_json input =
       let str = Js.to_string input in
       try
         let config_json = Yojson.Safe.from_string config_json in
@@ -64,7 +64,6 @@ let mldoc_object =
       with error ->
         print_endline (Printexc.to_string error);
         input
-
 
     method export to_format input config_json references =
       let to_format = Js.to_string to_format in
