@@ -7,6 +7,7 @@ let default_config : Conf.t =
   ; heading_to_list = false
   ; exporting_keep_properties = false
   ; inline_type_with_pos = false
+  ; inline_skip_macro = false
   ; export_md_indent_style = Conf.Dashes
   ; export_md_remove_options = []
   ; hiccup_in_block = true
@@ -30,7 +31,7 @@ let refs : Reference.parsed_t =
                 ; size = None
                 }
             ; Type.Property_Drawer
-                [ ("id", "60d2ead8-23c1-4617-b2df-4ef0dcfbbf2e") ]
+                [ ("id", "60d2ead8-23c1-4617-b2df-4ef0dcfbbf2e", []) ]
             ]
           , [ Type.Heading
                 { Type.title =
@@ -47,7 +48,7 @@ let refs : Reference.parsed_t =
                 ; size = None
                 }
             ; Type.Property_Drawer
-                [ ("id", "60d2ead8-23c1-4617-b2df-4ef0dcfbbf2e") ]
+                [ ("id", "60d2ead8-23c1-4617-b2df-4ef0dcfbbf2e", []) ]
             ] ) )
       ]
   ; parsed_embed_pages = []

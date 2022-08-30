@@ -7,6 +7,7 @@ let default_config : Conf.t =
   ; heading_to_list = false
   ; exporting_keep_properties = false
   ; inline_type_with_pos = false
+  ; inline_skip_macro = false
   ; export_md_indent_style = Conf.Dashes
   ; export_md_remove_options = []
   ; hiccup_in_block = true
@@ -208,7 +209,7 @@ let block =
           , check_aux
               ":PROPERTIES:\n:XXX: 1\n:yyy: 2\n:END:\n#+ZZZ: 3\n#+UUU: 4"
               (Property_Drawer
-                 [ ("XXX", "1"); ("yyy", "2"); ("ZZZ", "3"); ("UUU", "4") ]) )
+                 [ ("XXX", "1", []); ("yyy", "2", []); ("ZZZ", "3", []); ("UUU", "4", []) ]) )
         ; ( "no drawer in quote"
           , `Quick
           , check_aux "#+BEGIN_QUOTE\na:: b\n#+END_QUOTE"

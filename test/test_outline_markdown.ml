@@ -7,6 +7,7 @@ let default_config : Conf.t =
   ; heading_to_list = false
   ; exporting_keep_properties = false
   ; inline_type_with_pos = false
+  ; inline_skip_macro = false
   ; export_md_indent_style = Conf.Dashes
   ; export_md_remove_options = []
   ; hiccup_in_block = true
@@ -319,13 +320,13 @@ let inline =
           , check_aux
               ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
-                 [ ("type", "programming_lang"); ("creator", "test") ]) )
+                 [ ("type", "programming_lang", []); ("creator", "test", []) ]) )
         ; ( "spaces-before-drawer"
           , `Quick
           , check_aux
               " :PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
-                 [ ("type", "programming_lang"); ("creator", "test") ]) )
+                 [ ("type", "programming_lang", []); ("creator", "test", []) ]) )
         ; ( "endwith-carriage-return"
           , `Quick
           , check_aux
@@ -334,7 +335,7 @@ let inline =
                :done: 1614485743195\r\n\
                :END:\n"
               (Property_Drawer
-                 [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
+                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ]) )
         ; ( "endwith-carriage-return-2"
           , `Quick
           , check_aux
@@ -343,11 +344,11 @@ let inline =
                :done: 1614485743195\r\n\
                :END:\r\n"
               (Property_Drawer
-                 [ ("now", "1614485729874"); ("done", "1614485743195") ]) )
+                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ]) )
         ; ( "simplified-property-syntax"
           , `Quick
           , check_aux "a.b.c:: def\na-b-c::"
-              (Property_Drawer [ ("a.b.c", "def"); ("a-b-c", "") ]) )
+              (Property_Drawer [ ("a.b.c", "def", []); ("a-b-c", "", []) ]) )
         ; ( "empty-property"
           , `Quick
           , check_aux ":PROPERTIES:\r\n:END:\r\n" (Property_Drawer []) )
@@ -714,7 +715,7 @@ let block =
         ; ( "drawer"
           , `Quick
           , check_aux "a:: 1\n#+b: 2"
-              (Type.Property_Drawer [ ("a", "1"); ("b", "2") ]) )
+              (Type.Property_Drawer [ ("a", "1", []); ("b", "2", []) ]) )
         ] )
   ; ( "code block"
     , testcases

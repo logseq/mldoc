@@ -16,7 +16,7 @@ type heading =
 
 and meta =
   { timestamps : Inline.timestamp list
-  ; properties : (string * string) list  (** The properties of the heading *)
+  ; properties : (string * string * Inline.t list) list  (** The properties of the heading *)
   }
 [@@deriving yojson]
 
@@ -87,7 +87,7 @@ and t =
   | Displayed_Math of string
   (* FIXME:  *)
   | Drawer of string * string list  (** A drawer *)
-  | Property_Drawer of (string * string) list  (** A property drawer *)
+  | Property_Drawer of (string * string * Inline.t list) list  (** A property drawer *)
   | Footnote_Definition of string * Inline.t_with_pos list
       (** The definition of a footnote : name and contents *)
   | Horizontal_Rule  (** Horizontal rule *)

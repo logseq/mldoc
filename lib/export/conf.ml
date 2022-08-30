@@ -49,6 +49,7 @@ type t =
   ; exporting_keep_properties : bool
         [@default false] (* keep properties when exporting *)
   ; inline_type_with_pos : bool [@default false]
+  ; inline_skip_macro: bool [@default false]
   ; export_md_indent_style : indent_style [@default Dashes]
   ; export_md_remove_options : meta_chars list [@default []]
   ; hiccup_in_block : bool [@default true]

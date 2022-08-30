@@ -21,7 +21,7 @@ open Type
 
 let end_mark = ":END:"
 
-let property =
+let property config =
   let property_key =
     optional spaces
     *> between_char ':' ':'
@@ -35,9 +35,11 @@ let property =
   let property_value =
     optional spaces *> optional_line <* (eol *> return () <|> end_of_input)
   in
-  lift2 (fun key value -> (key, value)) property_key property_value
+  lift2 (fun key value ->
+      let inlines = Property.property_references config value in
+      (key, value, inlines)) property_key property_value
 
-let drawer_properties = many property
+let drawer_properties config = many (property config)
 
 let drawer_name =
   spaces
@@ -52,11 +54,11 @@ let parse1 config =
     let name = spaces *> string_ci ":PROPERTIES:" <* eol in
     lift2
       (fun _name properties -> Property_Drawer properties)
-      name drawer_properties
+      name (drawer_properties config)
   in
   let p' = p <* spaces <* string_ci end_mark <* optional eol in
   if is_markdown then
-    Markdown_property.parse <|> p'
+    Markdown_property.parse config <|> p'
   else
     p'
 
@@ -67,7 +69,7 @@ let name =
 let parse2 =
   let p =
     lift2
-      (fun name value -> Property_Drawer [ (name, value) ])
+      (fun name value -> Property_Drawer [ (name, value, []) ])
       name (spaces *> optional_line)
   in
   between_eols p

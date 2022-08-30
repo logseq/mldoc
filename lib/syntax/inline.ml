@@ -994,27 +994,30 @@ let macro_args config =
   optional spaces *> args_p
 
 let macro config =
-  let p =
-    take_while1 (function
-      | '}'
-      | '\r'
-      | '\n' ->
-        false
-      | _ -> true)
-    >>= fun s ->
-    match parse_string ~consume:Prefix macro_name s with
-    | Ok name -> (
-      let l = String.length s in
-      let args = String.sub s (String.length name) (l - String.length name) in
-      if String.length args == 0 then
-        return (Macro { name; arguments = [] })
-      else
-        match parse_string (macro_args config) ~consume:All args with
-        | Ok arguments -> return (Macro { name; arguments })
-        | Error e -> fail e)
-    | Error _e -> fail "macro name"
-  in
-  between_string "{{{" "}}}" p <|> between_string "{{" "}}" p
+  if config.inline_skip_macro then
+    fail "skipped_macro"
+  else
+    let p =
+      take_while1 (function
+          | '}'
+          | '\r'
+          | '\n' ->
+            false
+          | _ -> true)
+      >>= fun s ->
+      match parse_string ~consume:Prefix macro_name s with
+      | Ok name -> (
+          let l = String.length s in
+          let args = String.sub s (String.length name) (l - String.length name) in
+          if String.length args == 0 then
+            return (Macro { name; arguments = [] })
+          else
+            match parse_string (macro_args config) ~consume:All args with
+            | Ok arguments -> return (Macro { name; arguments })
+            | Error e -> fail e)
+      | Error _e -> fail "macro name"
+    in
+    between_string "{{{" "}}}" p <|> between_string "{{" "}}" p
 
 let date_time close_char ~active typ =
   let open Timestamp in

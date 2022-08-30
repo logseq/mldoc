@@ -466,13 +466,13 @@ and drawer state config name lines =
 and property_drawer state config name kvs =
   if config.format != Conf.Org && name = "PROPERTIES" then
     flatten_map
-      (fun (k, v) -> raw_text_indent state config (k ^ ":: " ^ v) @ [ newline ])
+      (fun (k, v, _) -> raw_text_indent state config (k ^ ":: " ^ v) @ [ newline ])
       kvs
   else
     List.flatten
       [ [ raw_text @@ ":" ^ name ^ ":"; newline ]
       ; flatten_map
-          (fun (k, v) ->
+          (fun (k, v, _) ->
              (raw_text_indent state config @@ ":" ^ k ^ ":")
              @ [ Space; raw_text v; newline ])
           kvs

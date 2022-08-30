@@ -19,6 +19,7 @@ let config =
   ; heading_to_list = false
   ; exporting_keep_properties = false
   ; inline_type_with_pos = false
+  ; inline_skip_macro = false
   ; export_md_indent_style = Dashes
   ; export_md_remove_options = []
   ; hiccup_in_block = true
