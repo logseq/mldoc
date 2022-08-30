@@ -530,12 +530,19 @@ let inline =
         ; ( "property-value-mixed-refs"
           , `Quick
           , check_aux
-              ":PROPERTIES:\n:type: [[programming [[clojure]]]], #test something, [[programming_lang]]\n:creator: test\n:END:"
+              ":PROPERTIES:\n:type: [[programming [[clojure]]]], #test something, [[programming_lang]], {{embed [[page-in-macro]]}}\n:creator: test\n:END:"
               (Property_Drawer
-                 [ ("type", "[[programming [[clojure]]]], #test something, [[programming_lang]]",
+                 [ ("type", "[[programming [[clojure]]]], #test something, [[programming_lang]], {{embed [[page-in-macro]]}}",
                     [nested_page;
                      I.Tag [ I.Plain "test" ];
-                     programming_lang]);
+                     programming_lang;
+                     I.Link
+                       { url = I.Page_ref "page-in-macro"
+                       ; label = [ Plain "" ]
+                       ; title = None
+                       ; full_text = "[[page-in-macro]]"
+                       ; metadata = ""
+                       }]);
                    ("creator", "test", []) ]) )
         ; ( "spaces-before-drawer"
           , `Quick

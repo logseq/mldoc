@@ -1,5 +1,7 @@
 type inline_list = Inline.t_with_pos list [@@deriving yojson]
 
+type inline_list_no_pos = Inline.t list [@@deriving yojson]
+
 type heading =
   { title : inline_list  (** The title as inline formatted content *)
   ; tags : string list  (** The tags set by the user *)
