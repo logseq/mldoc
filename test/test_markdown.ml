@@ -45,7 +45,23 @@ let footnote_definition (s, l) =
 
 let inline =
   let open Type in
+  let open Nested_link in
   let module I = Inline in
+  let nested_page = I.Nested_link
+      {
+        content = "[[programming [[clojure]]]]"
+      ; children = [
+          Label "programming "
+        ; Nested_link ({content = "[[clojure]]"; children = [ Label "clojure" ]}, None)
+        ]
+      } in
+  let programming_lang = I.Link
+      { url = I.Page_ref "programming_lang"
+      ; label = [ Plain "" ]
+      ; title = None
+      ; full_text = "[[programming_lang]]"
+      ; metadata = ""
+      } in
   [ ( "inline-link"
     , testcases
         [ ( "normal"
@@ -488,6 +504,39 @@ let inline =
               ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
                  [ ("type", "programming_lang", []); ("creator", "test", []) ]) )
+        ; ( "property-value-refs"
+            , `Quick
+            , check_aux
+                ":PROPERTIES:\n:type: [[programming_lang]]\n:creator: test\n:END:"
+                (Property_Drawer
+                   [ ("type", "[[programming_lang]]", [programming_lang]);
+                     ("creator", "test", []) ]) )
+        ; ( "property-value-tags"
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\n:type: #programming_lang, #clojure\n:creator: test\n:END:"
+              (Property_Drawer
+                 [ ("type", "#programming_lang, #clojure",
+                    [I.Tag [ I.Plain "programming_lang" ];
+                     I.Tag [ I.Plain "clojure" ]]
+                   ); ("creator", "test", []) ]) )
+        ; ( "property-value-nested-ref"
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\n:type: [[programming [[clojure]]]]\n:creator: test\n:END:"
+              (Property_Drawer
+                 [ ("type", "[[programming [[clojure]]]]", [nested_page]);
+                   ("creator", "test", []) ]) )
+        ; ( "property-value-mixed-refs"
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\n:type: [[programming [[clojure]]]], #test something, [[programming_lang]]\n:creator: test\n:END:"
+              (Property_Drawer
+                 [ ("type", "[[programming [[clojure]]]], #test something, [[programming_lang]]",
+                    [nested_page;
+                     I.Tag [ I.Plain "test" ];
+                     programming_lang]);
+                   ("creator", "test", []) ]) )
         ; ( "spaces-before-drawer"
           , `Quick
           , check_aux
