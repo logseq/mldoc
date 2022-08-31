@@ -13,7 +13,7 @@ let hashtag_name =
     <|> ( take_while (fun c -> List.mem c tag_delims)
           *> (satisfy is_space_eol *> return () <|> end_of_input)
           *> return `Finish
-        <|> (String.make 1 <$> not_one_of [ '#' ] >>| fun c -> `Continue c)
+        <|> (String.make 1 <$> not_one_of [ '#'; ','; '!'; '?'; '\''; '"'; ':' ] >>| fun c -> `Continue c)
         >>= fun r ->
           match r with
           | `Finish -> fail "hashtag_name_part finish"

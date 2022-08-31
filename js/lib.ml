@@ -50,20 +50,16 @@ let mldoc_object =
         print_endline (Printexc.to_string error);
         input
 
-    method export getReferences config_json input =
+    method getReferences input config_json =
       let str = Js.to_string input in
-      try
-        let config_json = Yojson.Safe.from_string config_json in
-        match Conf.of_yojson config_json with
-        | Ok config -> (
-            let result = Mldoc.Property.property_references config str in
-            Mldoc.Type.inline_list_no_pos_to_yojson result |> Yojson.Safe.to_string |> Js.string)
-        | Error e ->
-          print_endline e;
-          input
-      with error ->
-        print_endline (Printexc.to_string error);
-        input
+      let config_json = Js.to_string config_json in
+      let config_json = Yojson.Safe.from_string config_json in
+      match Conf.of_yojson config_json with
+      | Ok config -> (
+          let result = Mldoc.Property.property_references config str in
+          Mldoc.Type.inline_list_no_pos_to_yojson result |> Yojson.Safe.to_string |> Js.string)
+      | Error e ->
+        Js_of_ocaml.Js.string ("Config error: " ^ e)
 
     method export to_format input config_json references =
       let to_format = Js.to_string to_format in
