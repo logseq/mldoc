@@ -192,10 +192,10 @@ let code config =
 
 (* TODO: optimization *)
 let org_plain_delims =
-  [ '\\'; '_'; '^'; '['; '*'; '/'; '+'; '^'; '$' ] @ whitespace_chars
+  [ '\\'; '_'; '^'; '['; '*'; '/'; '+'; '^'; '$'; '#' ] @ whitespace_chars
 
 let markdown_plain_delims =
-  [ '\\'; '_'; '^'; '['; '*'; '~'; '`'; '='; '$' ] @ whitespace_chars
+  [ '\\'; '_'; '^'; '['; '*'; '~'; '`'; '='; '$'; '#' ] @ whitespace_chars
 
 (* replace list with a  *)
 let in_plain_delims config c =
