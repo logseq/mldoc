@@ -22,8 +22,8 @@ let property config =
   in
   lift2 (fun k v ->
       let value = String.trim v in
-      let inlines = Property.property_references config value in
-      (k, value, inlines)) key value
+      let references = Property.property_references config value in
+      (k, value, references)) key value
   <|> (only_key >>| fun k -> (k, "", []))
 
 let parse config = many1 (property config) >>| fun kvs -> Property_Drawer kvs

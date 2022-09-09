@@ -20,7 +20,10 @@ open Conf
 
 let property_references config s =
   let config = { config with inline_skip_macro = true } in
-  if s.[0] == '"' && last_char s == Some '"' then
+  let end_quoted = match last_char s with
+    | Some '"' -> true
+    | _ -> false in
+  if s.[0] == '"' && end_quoted then
     []
   else
     match parse_string ~consume:All (Inline.parse config) s with
