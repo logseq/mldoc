@@ -1,6 +1,4 @@
 open Angstrom
-open Parsers
-open Type
 open Prelude
 open Conf
 
@@ -20,21 +18,23 @@ open Conf
 
 let property_references config s =
   let config = { config with inline_skip_macro = true } in
-  let end_quoted = match last_char s with
+  let end_quoted =
+    match last_char s with
     | Some '"' -> true
-    | _ -> false in
+    | _ -> false
+  in
   if s.[0] == '"' && end_quoted then
     []
   else
     match parse_string ~consume:All (Inline.parse config) s with
     | Ok result ->
       let result = List.map fst result in
-      List.filter (fun e ->
+      List.filter
+        (fun e ->
           match e with
           | Inline.Tag _ -> true
           | Inline.Link _ -> true
           | Inline.Nested_link _ -> true
-          | _ -> false
-        )
+          | _ -> false)
         result
     | Error _ -> []

@@ -1,7 +1,6 @@
 open Angstrom
 open Parsers
 open Type
-open Conf
 
 (*
    Add Property syntax to markdown format.
@@ -20,10 +19,12 @@ let property config =
   let value =
     spaces *> take_till is_eol <* (eol *> return () <|> end_of_input)
   in
-  lift2 (fun k v ->
+  lift2
+    (fun k v ->
       let value = String.trim v in
       let references = Property.property_references config value in
-      (k, value, references)) key value
+      (k, value, references))
+    key value
   <|> (only_key >>| fun k -> (k, "", []))
 
 let parse config = many1 (property config) >>| fun kvs -> Property_Drawer kvs
