@@ -21,9 +21,8 @@ let property_references config s =
   let end_quoted =
     match last_char s with
     | Some '"' -> true
-    | _ -> false
-  in
-  if s.[0] == '"' && end_quoted then
+    | _ -> false in
+  if s = "" || (s.[0] == '"' && end_quoted) then
     []
   else
     match parse_string ~consume:All (Inline.parse config) s with
