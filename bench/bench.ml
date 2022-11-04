@@ -28,7 +28,7 @@ let config =
 let outline_config = { config with parse_outline_only = true }
 
 let main () =
-  Command.run
+  Command_unix.run
     (Bench.make_command
        [ Bench.Test.create ~name:"Inline parse (doc)" (fun () ->
              let p = Inline.parse config in

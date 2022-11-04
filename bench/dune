@@ -1,6 +1,6 @@
 (executable
  (name bench)
- (libraries angstrom mldoc core core_bench))
+ (libraries angstrom mldoc core core_bench core_unix.command_unix))
 
 (alias
  (name bench)
