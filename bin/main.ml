@@ -87,7 +87,7 @@ let options =
     & opt_all (pair ~sep:'=' string string) []
     & info [ "x"; "option" ] ~docv:"OPTIONS" ~doc)
 
-let cmd = Term.(pure generate $ backend $ output $ options $ filename)
+let cmd = Term.(const generate $ backend $ output $ options $ filename)
 
 let doc = "converts org-mode or markdown files into various formats"
 
@@ -102,13 +102,11 @@ let man =
   ]
   @ options
 
-let infos = Term.info "mldoc" ~version:"0" ~doc ~man
-
+let infos = Cmd.info "mldoc" ~version:"0" ~doc ~man
 let main () =
-  match Term.eval (cmd, infos) with
-  | `Error _ -> exit 1
-  | `Ok expr -> Lwt_main.run expr
-  | _ -> exit 0
+  match Cmd.v infos cmd |> Cmd.eval_value with
+  | Ok (`Ok expr) -> Lwt_main.run expr
+  | _ -> exit 1
 
 let () =
   let _ = Printexc.record_backtrace true in

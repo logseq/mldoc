@@ -14,6 +14,7 @@ depends: [
   "cmdliner"
   "core"
   "core_bench"
+  "core_unix"
   "js_of_ocaml"
   "js_of_ocaml-ppx"
   "ppx_deriving_yojson"
