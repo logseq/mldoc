@@ -47,21 +47,25 @@ let inline =
   let open Type in
   let open Nested_link in
   let module I = Inline in
-  let nested_page = I.Nested_link
-      {
-        content = "[[programming [[clojure]]]]"
-      ; children = [
-          Label "programming "
-        ; Nested_link ({content = "[[clojure]]"; children = [ Label "clojure" ]}, None)
-        ]
-      } in
-  let programming_lang = I.Link
+  let nested_page =
+    I.Nested_link
+      { content = "[[programming [[clojure]]]]"
+      ; children =
+          [ Label "programming "
+          ; Nested_link
+              ({ content = "[[clojure]]"; children = [ Label "clojure" ] }, None)
+          ]
+      }
+  in
+  let programming_lang =
+    I.Link
       { url = I.Page_ref "programming_lang"
       ; label = [ Plain "" ]
       ; title = None
       ; full_text = "[[programming_lang]]"
       ; metadata = ""
-      } in
+      }
+  in
   [ ( "inline-link"
     , testcases
         [ ( "normal"
@@ -503,53 +507,74 @@ let inline =
           , check_aux
               ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
-                 [ ("type", "programming_lang", []); ("creator", "test", []) ]) )
+                 [ ("type", "programming_lang", []); ("creator", "test", []) ])
+          )
         ; ( "property-value-refs"
-            , `Quick
-            , check_aux
-                ":PROPERTIES:\n:type: [[programming_lang]]\n:creator: test\n:END:"
-                (Property_Drawer
-                   [ ("type", "[[programming_lang]]", [programming_lang]);
-                     ("creator", "test", []) ]) )
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\n:type: [[programming_lang]]\n:creator: test\n:END:"
+              (Property_Drawer
+                 [ ("type", "[[programming_lang]]", [ programming_lang ])
+                 ; ("creator", "test", [])
+                 ]) )
         ; ( "property-value-tags"
           , `Quick
           , check_aux
-              ":PROPERTIES:\n:type: #programming_lang, #clojure\n:creator: test\n:END:"
+              ":PROPERTIES:\n\
+               :type: #programming_lang, #clojure\n\
+               :creator: test\n\
+               :END:"
               (Property_Drawer
-                 [ ("type", "#programming_lang, #clojure",
-                    [I.Tag [ I.Plain "programming_lang" ];
-                     I.Tag [ I.Plain "clojure" ]]
-                   ); ("creator", "test", []) ]) )
+                 [ ( "type"
+                   , "#programming_lang, #clojure"
+                   , [ I.Tag [ I.Plain "programming_lang" ]
+                     ; I.Tag [ I.Plain "clojure" ]
+                     ] )
+                 ; ("creator", "test", [])
+                 ]) )
         ; ( "property-value-nested-ref"
           , `Quick
           , check_aux
-              ":PROPERTIES:\n:type: [[programming [[clojure]]]]\n:creator: test\n:END:"
+              ":PROPERTIES:\n\
+               :type: [[programming [[clojure]]]]\n\
+               :creator: test\n\
+               :END:"
               (Property_Drawer
-                 [ ("type", "[[programming [[clojure]]]]", [nested_page]);
-                   ("creator", "test", []) ]) )
+                 [ ("type", "[[programming [[clojure]]]]", [ nested_page ])
+                 ; ("creator", "test", [])
+                 ]) )
         ; ( "property-value-mixed-refs"
           , `Quick
           , check_aux
-              ":PROPERTIES:\n:type: [[programming [[clojure]]]], #test something, [[programming_lang]], {{embed [[page-in-macro]]}}\n:creator: test\n:END:"
+              ":PROPERTIES:\n\
+               :type: [[programming [[clojure]]]], #test something, \
+               [[programming_lang]], {{embed [[page-in-macro]]}}\n\
+               :creator: test\n\
+               :END:"
               (Property_Drawer
-                 [ ("type", "[[programming [[clojure]]]], #test something, [[programming_lang]], {{embed [[page-in-macro]]}}",
-                    [nested_page;
-                     I.Tag [ I.Plain "test" ];
-                     programming_lang;
-                     I.Link
-                       { url = I.Page_ref "page-in-macro"
-                       ; label = [ Plain "" ]
-                       ; title = None
-                       ; full_text = "[[page-in-macro]]"
-                       ; metadata = ""
-                       }]);
-                   ("creator", "test", []) ]) )
+                 [ ( "type"
+                   , "[[programming [[clojure]]]], #test something, \
+                      [[programming_lang]], {{embed [[page-in-macro]]}}"
+                   , [ nested_page
+                     ; I.Tag [ I.Plain "test" ]
+                     ; programming_lang
+                     ; I.Link
+                         { url = I.Page_ref "page-in-macro"
+                         ; label = [ Plain "" ]
+                         ; title = None
+                         ; full_text = "[[page-in-macro]]"
+                         ; metadata = ""
+                         }
+                     ] )
+                 ; ("creator", "test", [])
+                 ]) )
         ; ( "spaces-before-drawer"
           , `Quick
           , check_aux
               " :PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
-                 [ ("type", "programming_lang", []); ("creator", "test", []) ]) )
+                 [ ("type", "programming_lang", []); ("creator", "test", []) ])
+          )
         ; ( "endwith-carriage-return"
           , `Quick
           , check_aux
@@ -558,7 +583,8 @@ let inline =
                :done: 1614485743195\r\n\
                :END:\n"
               (Property_Drawer
-                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ]) )
+                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ])
+          )
         ; ( "endwith-carriage-return-2"
           , `Quick
           , check_aux
@@ -567,7 +593,8 @@ let inline =
                :done: 1614485743195\r\n\
                :END:\r\n"
               (Property_Drawer
-                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ]) )
+                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ])
+          )
         ; ( "simplified-property-syntax"
           , `Quick
           , check_aux "a.b.c:: def\na-b-c::"
@@ -969,6 +996,28 @@ let block =
                   ; language = None
                   ; options = None
                   ; pos_meta = { Pos.start_pos = 6; end_pos = 11 }
+                  }
+              ] )
+        ; ( "(2) language and options"
+          , `Quick
+          , check_aux2 "- ``` clj :results\n(inc 2)\n```"
+              [ Type.Heading
+                  { title = []
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Src
+                  { lines = [ "(inc 2)"; "\n" ]
+                  ; language = Some "clj"
+                  ; options = Some [ ":results" ]
+                  ; pos_meta = { Pos.start_pos = 19; end_pos = 27 }
                   }
               ] )
         ] )

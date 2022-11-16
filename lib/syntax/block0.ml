@@ -43,6 +43,14 @@ struct
   let displayed_math =
     string "$$" *> end_string "$$" (fun s -> Displayed_Math s)
 
+  let separate_name_options = function
+    | None -> (None, None)
+    | Some s -> (
+      match String.split_on_char ' ' s with
+      | [] -> (None, None)
+      | [ name ] -> (Some name, None)
+      | name :: options -> (Some name, Some options))
+
   (* ``` json
    * {
    *   "firstName": "John",
@@ -54,7 +62,7 @@ struct
     (string "```" <|> string "~~~") *> spaces *> optional line <* optional eol
 
   let fenced_code_block =
-    fenced_language >>= fun language ->
+    fenced_language >>= fun language_and_options ->
     let p =
       between_lines ~trim:false
         (fun line ->
@@ -65,7 +73,8 @@ struct
     let p' = with_pos_meta p in
     p' >>| fun (lines, { start_pos; end_pos }) ->
     let pos_meta = { start_pos; end_pos = end_pos - 3 } in
-    Src { language; options = None; lines; pos_meta }
+    let language, options = separate_name_options language_and_options in
+    Src { language; options; lines; pos_meta }
 
   let block_name_options_parser =
     lift2
@@ -114,14 +123,6 @@ struct
     in
     let p = Helper.with_pos_meta p in
     many1 p
-
-  let separate_name_options = function
-    | None -> (None, None)
-    | Some s -> (
-      match String.split_on_char ' ' s with
-      | [] -> (None, None)
-      | [ name ] -> (Some name, None)
-      | name :: options -> (Some name, Some options))
 
   let block_parse config =
     fix (fun parse ->
