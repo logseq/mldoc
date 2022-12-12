@@ -10,7 +10,7 @@ bug-reports: "https://github.com/logseq/mldoc/issues"
 depends: [
   "dune" {>= "2.8"}
   "ocaml" {>= "4.11.1"}
-  "angstrom"
+  "angstrom" {= "dev"}
   "cmdliner" {>= "1.1.0"}
   "core"
   "core_bench"
@@ -21,7 +21,7 @@ depends: [
   "uri"
   "yojson"
   "lwt"
-  "xmlm"
+  "xmlm" {= "dev"}
   "odoc" {with-doc}
   "alcotest" {with-test}
   "qcheck" {with-test}
