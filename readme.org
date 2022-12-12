@@ -14,6 +14,12 @@
      make test
    #+end_src
 
+** Run utop
+   #+begin_src sh
+     cd lib
+     dune utop
+   #+end_src
+
 ** Usage
 *** For Javascript users
     #+BEGIN_SRC sh
