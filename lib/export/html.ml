@@ -239,6 +239,12 @@ let size_to_hN size =
   in
   "h" ^ string_of_int size'
 
+let concat_elements l r =
+  if (last l) == Xml.empty then
+    l @ [r]
+  else
+    l @ [(Xml.data " "); r]
+
 let heading config { title; tags; marker; level; priority; numbering; size; _ }
     =
   let numbering = construct_numbering config level numbering in
@@ -250,7 +256,7 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ }
           [ ("class", "task-status " ^ String.lowercase_ascii v)
           ; ("style", "margin-right:6px")
           ]
-        [ Xml.data (String.uppercase_ascii v) ]
+        [ Xml.data (String.uppercase_ascii v); ]
     | None -> Xml.empty
   in
   let priority =
@@ -274,12 +280,11 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ }
            tags)
   in
 
-  let r =
-    Xml.list
-      (numbering :: marker :: priority
-       :: map_inline config (Type_op.inline_list_strip_pos title)
-      @ [ tags ])
-  in
+  let elements = numbering :: marker :: priority
+                 :: (Xml.block "span" (map_inline config (Type_op.inline_list_strip_pos title)))
+                 :: [ tags ] in
+  let result = List.fold_left (fun acc e -> concat_elements acc e) [] elements in
+  let r = Xml.list result in
   match size with
   | Some s -> Xml.block (size_to_hN s) [ r ]
   | None -> r
