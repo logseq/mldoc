@@ -282,9 +282,7 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ } 
 
   let inlines = Xml.block "span" (map_inline config (Type_op.inline_list_strip_pos title)) in
   let elements = [numbering; marker; priority; inlines; tags] in
-  let r = Xml.list elements in
   let r = Xml.list @@ List.fold_left (fun acc element -> concat_html_elements acc element) [] elements in
-  in
   match size with
   | Some s -> Xml.block (size_to_hN s) [ r ]
   | None -> r
