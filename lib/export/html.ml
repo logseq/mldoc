@@ -122,29 +122,29 @@ and inline config t =
   | Latex_Fragment (Inline s) -> [ Xml.data ("\\(" ^ s ^ "\\)") ]
   | Target s -> [ Xml.block "a" ~attr:[ ("id", s) ] [ Xml.data s ] ]
   | Link { url; label; _ } -> (
-    match url with
-    | Page_ref s -> [ Xml.data s ]
-    | _ ->
-      let href = Inline.string_of_url url in
-      (* If it is an image *)
-      if
-        Inline.is_embed_data url
-        || List.exists (ends_with href)
-             [ ".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp" ]
-      then
-        handle_image_link url href label
-      else
-        let href =
-          match url with
-          | Search x -> "#" ^ Type_parser.Heading.anchor_link x
-          | _ -> href
-        in
-        let label =
-          match url with
-          | Search s -> [ Xml.data s ]
-          | _ -> map_inline config label
-        in
-        [ Xml.block "a" ~attr:[ ("href", href) ] label ])
+      match url with
+      | Page_ref s -> [ Xml.data s ]
+      | _ ->
+        let href = Inline.string_of_url url in
+        (* If it is an image *)
+        if
+          Inline.is_embed_data url
+          || List.exists (ends_with href)
+            [ ".png"; ".jpg"; ".jpeg"; ".svg"; ".ico"; ".gif"; ".bmp" ]
+        then
+          handle_image_link url href label
+        else
+          let href =
+            match url with
+            | Search x -> "#" ^ Type_parser.Heading.anchor_link x
+            | _ -> href
+          in
+          let label =
+            match url with
+            | Search s -> [ Xml.data s ]
+            | _ -> map_inline config label
+          in
+          [ Xml.block "a" ~attr:[ ("href", href) ] label ])
   | Verbatim s
   | Code s ->
     [ Xml.block "code" [ Xml.data s ] ]
@@ -185,22 +185,22 @@ and inline config t =
         ]
     ]
   | Macro { name; arguments } -> (
-    if name = "cloze" then
-      [ Xml.Data (String.concat "," arguments) ]
-    else
-      try
-        let value = List.assoc name !macros in
-        let buff = Buffer.create (String.length value) in
-        Buffer.add_substitute buff
-          (fun v -> try List.nth arguments (int_of_string v - 1) with _ -> v)
-          value;
-        let content = Buffer.contents buff in
-        match
-          Angstrom.parse_string ~consume:All (Inline.parse config) content
-        with
-        | Ok inlines -> map_inline config (List.map fst inlines)
-        | Error _e -> [ Xml.empty ]
-      with Not_found -> [ Xml.empty ])
+      if name = "cloze" then
+        [ Xml.Data (String.concat "," arguments) ]
+      else
+        try
+          let value = List.assoc name !macros in
+          let buff = Buffer.create (String.length value) in
+          Buffer.add_substitute buff
+            (fun v -> try List.nth arguments (int_of_string v - 1) with _ -> v)
+            value;
+          let content = Buffer.contents buff in
+          match
+            Angstrom.parse_string ~consume:All (Inline.parse config) content
+          with
+          | Ok inlines -> map_inline config (List.map fst inlines)
+          | Error _e -> [ Xml.empty ]
+        with Not_found -> [ Xml.empty ])
   | _ -> [ Xml.empty ]
 
 let get_int_option name =
@@ -240,13 +240,15 @@ let size_to_hN size =
   "h" ^ string_of_int size'
 
 let concat_elements l r =
-  if (last l) == Xml.empty then
-    l @ [r]
-  else
-    l @ [(Xml.data " "); r]
+  match l with
+  | [] -> [r]
+  | _ ->
+    if (last l) == Xml.empty then
+      l @ [r]
+    else
+      l @ [(Xml.data " "); r]
 
-let heading config { title; tags; marker; level; priority; numbering; size; _ }
-    =
+let heading config { title; tags; marker; level; priority; numbering; size; _ } =
   let numbering = construct_numbering config level numbering in
   let marker =
     match marker with
@@ -275,8 +277,8 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ }
         ~attr:[ ("class", "heading-tags") ]
         (List.map
            (fun tag ->
-             Xml.block "span" ~attr:[ ("class", "tag") ]
-               [ Xml.block "span" ~attr:[ ("class", tag) ] [ Xml.data tag ] ])
+              Xml.block "span" ~attr:[ ("class", "tag") ]
+                [ Xml.block "span" ~attr:[ ("class", tag) ] [ Xml.data tag ] ])
            tags)
   in
 
@@ -352,17 +354,17 @@ and table config { header; groups; col_groups } =
     Xml.block "tr"
       (List.map
          (fun col ->
-           Xml.block elm
-             ~attr:[ ("scope", "col"); ("class", "org-left") ]
-             (map_inline config col))
+            Xml.block elm
+              ~attr:[ ("scope", "col"); ("class", "org-left") ]
+              (map_inline config col))
          cols)
   in
   let col_groups =
     try
       List.map
         (fun number ->
-          let col_elem = Xml.block "col" ~attr:[ ("class", "org-left") ] [] in
-          Xml.block "colgroup" (repeat number col_elem))
+           let col_elem = Xml.block "col" ~attr:[ ("class", "org-left") ] [] in
+           Xml.block "colgroup" (repeat number col_elem))
         col_groups
     with _ -> []
   in
@@ -489,16 +491,16 @@ let toc config content =
         let items =
           List.map
             (fun { title; level; anchor; numbering; items } ->
-              let numbering =
-                construct_numbering config ~toc:true level (Some numbering)
-              in
-              let link =
-                Xml.block "a"
-                  ~attr:[ ("href", "#" ^ anchor) ]
-                  (numbering
-                  :: map_inline config (Type_op.inline_list_strip_pos title))
-              in
-              Xml.block "li" [ link; go items ])
+               let numbering =
+                 construct_numbering config ~toc:true level (Some numbering)
+               in
+               let link =
+                 Xml.block "a"
+                   ~attr:[ ("href", "#" ^ anchor) ]
+                   (numbering
+                    :: map_inline config (Type_op.inline_list_strip_pos title))
+               in
+               Xml.block "li" [ link; go items ])
             content
         in
         Xml.block "ul" items
@@ -515,8 +517,8 @@ let collect_macros directives =
     directives
     |> List.filter (fun (name, _) -> String.uppercase_ascii name = "MACRO")
     |> List.map (fun (_, df) ->
-           let name, definition = splitl (fun c -> c <> ' ') df in
-           (name, String.trim definition))
+        let name, definition = splitl (fun c -> c <> ' ') df in
+        (name, String.trim definition))
   in
   macros := collected
 
@@ -530,10 +532,10 @@ let collect_options directives =
       in
       snd options |> String.split_on_char ' '
       |> List.map (fun s ->
-             match String.split_on_char ':' s with
-             | [] -> ("", "")
-             | [ k; v ] -> (k, v)
-             | a -> (List.hd a, List.nth a 1))
+          match String.split_on_char ':' s with
+          | [] -> ("", "")
+          | [ k; v ] -> (k, v)
+          | a -> (List.hd a, List.nth a 1))
     with Not_found -> []
   in
   options := collected
