@@ -246,7 +246,7 @@ let concat_elements l r =
     if (last l) == Xml.empty then
       l @ [r]
     else
-      l @ [(Xml.data " "); r]
+      l @ [(Xml.block "span" [Xml.data " "]); r]
 
 let heading config { title; tags; marker; level; priority; numbering; size; _ } =
   let numbering = construct_numbering config level numbering in
@@ -255,9 +255,7 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ } 
     | Some v ->
       Xml.block "span"
         ~attr:
-          [ ("class", "task-status " ^ String.lowercase_ascii v)
-          ; ("style", "margin-right:6px")
-          ]
+          [ ("class", "task-status " ^ String.lowercase_ascii v) ]
         [ Xml.data (String.uppercase_ascii v); ]
     | None -> Xml.empty
   in
@@ -265,7 +263,7 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ } 
     match priority with
     | Some v ->
       Xml.block "span"
-        ~attr:[ ("class", "priority"); ("style", "margin-right:6px") ]
+        ~attr:[ ("class", "priority") ]
         [ Xml.data (Util.priority_to_string v) ]
     | None -> Xml.empty
   in

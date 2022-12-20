@@ -6,8 +6,6 @@ open Angstrom
 
 let doc_org = load_file "./examples/doc.org"
 
-let syntax_org = load_file "./examples/syntax.org"
-
 let syntax_md = load_file "./examples/syntax.md"
 
 let config =
