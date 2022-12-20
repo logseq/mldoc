@@ -239,7 +239,7 @@ let size_to_hN size =
   in
   "h" ^ string_of_int size'
 
-let concat_elements l r =
+let concat_html_elements l r =
   match l with
   | [] -> [r]
   | _ ->
@@ -256,7 +256,7 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ } 
       Xml.block "span"
         ~attr:
           [ ("class", "task-status " ^ String.lowercase_ascii v) ]
-        [ Xml.data (String.uppercase_ascii v); ]
+        [ Xml.data (String.uppercase_ascii v) ]
     | None -> Xml.empty
   in
   let priority =
@@ -280,11 +280,11 @@ let heading config { title; tags; marker; level; priority; numbering; size; _ } 
            tags)
   in
 
-  let elements = numbering :: marker :: priority
-                 :: (Xml.block "span" (map_inline config (Type_op.inline_list_strip_pos title)))
-                 :: [ tags ] in
-  let result = List.fold_left (fun acc e -> concat_elements acc e) [] elements in
-  let r = Xml.list result in
+  let inlines = Xml.block "span" (map_inline config (Type_op.inline_list_strip_pos title)) in
+  let elements = [numbering; marker; priority; inlines; tags] in
+  let r = Xml.list elements in
+  let r = Xml.list @@ List.fold_left (fun acc element -> concat_html_elements acc element) [] elements in
+  in
   match size with
   | Some s -> Xml.block (size_to_hN s) [ r ]
   | None -> r
