@@ -481,9 +481,9 @@ let target =
         | _ -> true)
     >>= fun s -> return @@ Target s )
 
-(* \alpha *)
+(* \alpha, \alpha{} *)
 let entity =
-  char '\\' *> take_while1 is_letter >>| fun s ->
+  char '\\' *> take_while1 is_letter <* optional (string "{}") >>| fun s ->
   try
     let entity = Entity.find s in
     Entity entity
