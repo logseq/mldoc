@@ -647,6 +647,39 @@ let inline =
           , check_aux "[as`d](http://dwdw)`"
               (paragraph [ I.Plain "[as"; I.Code "d](http://dwdw)" ]) )
         ] )
+  ; ( "inline-entity"
+    , testcases
+        [
+          ( "space separator"
+            , `Quick
+            , check_aux "\\Delta G"
+              (paragraph
+                 [ I.Entity
+                 { name = "Delta"
+                 ; latex = "\\Delta"
+                 ; latex_mathp = true
+                 ; html = "&Delta;"
+                 ; ascii = "Delta"
+                 ; unicode = "Δ"}
+                 ; I.Plain " G" ]))
+          ; ( "no separator"
+            , `Quick
+            , check_aux "\\DeltaG"
+              (paragraph
+                 [ I.Plain "DeltaG" ]))
+          ; ( "{} separator"
+          , `Quick
+          , check_aux "\\Delta{}G"
+              (paragraph
+                 [ I.Entity
+                 { name = "Delta"
+                 ; latex = "\\Delta"
+                 ; latex_mathp = true
+                 ; html = "&Delta;"
+                 ; ascii = "Delta"
+                 ; unicode = "Δ"}
+                 ; I.Plain "G" ]))
+                 ])
   ; ( "emphasis"
     , testcases
         [ ( "normal"
