@@ -36,6 +36,11 @@ yargs.usage('Usage: mldoc convert [options]')
     type: 'string',
     default: 'utf8'
   })
+  .option('with-pos', {
+    describe: 'Include positions meta',
+    type: 'boolean',
+    default: false
+  })
   .option('a', {
     alias: 'append',
     describe: 'Append data to output instead of overwriting',
@@ -95,7 +100,7 @@ function run () {
     "format": format,
     "heading_to_list": false,
     "exporting_keep_properties": true,
-    "inline_type_with_pos": false,
+    "inline_type_with_pos": argv.withPos,
     "export_md_remove_options": [],
     "hiccup_in_block": true,
   });
