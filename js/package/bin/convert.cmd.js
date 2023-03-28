@@ -23,10 +23,17 @@ yargs.usage('Usage: mldoc convert [options]')
     type: 'string',
     default: false
   })
+  .option('f', {
+    alias : 'format',
+    describe: 'Output format',
+    type: 'string',
+    default: false
+  })
   .option('u', {
     alias : 'encoding',
     describe: 'Input encoding',
-    type: 'string'
+    type: 'string',
+    default: 'utf8'
   })
   .option('a', {
     alias : 'append',
@@ -57,43 +64,46 @@ function run () {
        * MSG object
        * @type {Messenger}
        */
-      messenger = new Messenger(msgMode, argv.q, argv.m),
+      messenger = new Messenger(msgMode, argv.quiet, argv.mute),
       read = (readMode === 'stdin') ? readFromStdIn : readFromFile,
       write = (writeMode === 'stdout') ? writeToStdOut : writeToFile,
-      enc = argv.encoding || 'utf8',
-      append = argv.a || false,
       content, output_content;
-  var extension = argv.i.split('.').pop();
+
+  var extension = (readMode === 'file') ? argv.i.split('.').pop() : '';
   var format = (extension === 'org') ? 'Org' : 'Markdown';
-  var to_extension = argv.o.split('.').pop();
-  var to_format = (to_extension === 'org') ? 'org' : 'markdown';
+
+  var to_extension = (writeMode === 'file') ? argv.o.split('.').pop() : '';
+  var to_format = argv.format || to_extension || 'markdown';
+  to_format = to_format.replace('md', 'markdown');
+
   messenger.printMsg('...');
   // read the input
   messenger.printMsg('Reading data from ' + readMode + '...');
-  content = read(enc);
+  content = read(argv.encoding);
 
   // process the input
   messenger.printMsg('Parsing file...');
   messenger.printMsg('Converting to ' + to_format);
 
   // TODO: add config options
-  output_content = MO.export(to_format,
-                             content,
-                             JSON.stringify({"toc": true,
-                                             "parse_outline_only": false,
-                                             "heading_number": true,
-                                             "keep_line_break": false,
-                                             "format": format,
-                                             "heading_to_list": false,
-                                             "exporting_keep_properties": true,
-                                             "inline_type_with_pos": false,
-                                             "export_md_remove_options": [],
-                                             "hiccup_in_block": true}),
-                             '{}');
+  output_content = MO.export(to_format, content,
+    JSON.stringify({
+      "toc": true,
+      "parse_outline_only": false,
+      "heading_number": true,
+      "keep_line_break": false,
+      "format": format,
+      "heading_to_list": false,
+      "exporting_keep_properties": true,
+      "inline_type_with_pos": false,
+      "export_md_remove_options": [],
+      "hiccup_in_block": true}
+    ),
+    '{}');
 
   // write the output
   messenger.printMsg('Writing data to ' + writeMode + '...');
-  write(output_content, append);
+  write(output_content, argv.append);
   messenger.okExit();
 
   function readFromStdIn () {
