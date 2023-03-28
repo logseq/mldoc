@@ -14,30 +14,30 @@ yargs.usage('Usage: mldoc convert [options]')
   .help('h')
   .alias('h', 'help')
   .option('i', {
-    alias : 'input',
+    alias: 'input',
     describe: 'Input source. Usually a org file. If omitted or empty, reads from stdin',
     type: 'string'
   })
   .option('o', {
-    alias : 'output',
+    alias: 'output',
     describe: 'Output target. Usually a html file. If omitted or empty, writes to stdout',
     type: 'string',
     default: false
   })
   .option('f', {
-    alias : 'format',
+    alias: 'format',
     describe: 'Output format',
     type: 'string',
     default: false
   })
   .option('u', {
-    alias : 'encoding',
+    alias: 'encoding',
     describe: 'Input encoding',
     type: 'string',
     default: 'utf8'
   })
   .option('a', {
-    alias : 'append',
+    alias: 'append',
     describe: 'Append data to output instead of overwriting',
     type: 'string',
     default: false
@@ -114,7 +114,11 @@ function run () {
   function readFromStdIn () {
     try {
       var size = fs.fstatSync(process.stdin.fd).size;
-      return size > 0 ? fs.readSync(process.stdin.fd, size)[0] : '';
+      if (size === 0)
+        return ''
+      const buffer = Buffer.alloc(size)
+      fs.readSync(process.stdin.fd, buffer)
+      return buffer.toString(argv.encoding)
     } catch (e) {
       var err = new Error('Could not read from stdin, reason: ' + e.message);
       messenger.errorExit(err);
