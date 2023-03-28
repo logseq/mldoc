@@ -6,6 +6,7 @@ var yargs = require('yargs'),
 yargs.usage('Usage: mldoc convert [options]')
   .example('mldoc convert -i', 'Reads from stdin and outputs to stdout')
   .example('mldoc convert -i foo.org -o bar.html', 'Reads \'foo.org\' and writes to \'bar.html\'')
+  .example('mldoc convert -i foo.md -f ast', 'Reads \'foo.md\' and writes its AST to stdout')
   .version()
   .alias('v', 'version')
   .config('c')
