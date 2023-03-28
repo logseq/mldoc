@@ -86,20 +86,24 @@ function run () {
   messenger.printMsg('Converting to ' + to_format);
 
   // TODO: add config options
-  output_content = MO.export(to_format, content,
-    JSON.stringify({
-      "toc": true,
-      "parse_outline_only": false,
-      "heading_number": true,
-      "keep_line_break": false,
-      "format": format,
-      "heading_to_list": false,
-      "exporting_keep_properties": true,
-      "inline_type_with_pos": false,
-      "export_md_remove_options": [],
-      "hiccup_in_block": true}
-    ),
-    '{}');
+  config = JSON.stringify({
+    "toc": false,
+    "parse_outline_only": false,
+    "heading_number": false,
+    "keep_line_break": false,
+    "format": format,
+    "heading_to_list": false,
+    "exporting_keep_properties": true,
+    "inline_type_with_pos": false,
+    "export_md_remove_options": [],
+    "hiccup_in_block": true,
+  });
+  if (to_format === 'ast')
+    output_content = JSON.stringify(
+      JSON.parse( MO.parseInlineJson(content, config) ),
+      null, 4);
+  else
+    output_content = MO.export(to_format, content, config, '{}');
 
   // write the output
   messenger.printMsg('Writing data to ' + writeMode + '...');
