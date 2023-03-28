@@ -39,7 +39,7 @@ yargs.usage('Usage: mldoc convert [options]')
   .option('a', {
     alias: 'append',
     describe: 'Append data to output instead of overwriting',
-    type: 'string',
+    type: 'boolean',
     default: false
   })
   .option('q', {
@@ -68,7 +68,7 @@ function run () {
       messenger = new Messenger(msgMode, argv.quiet, argv.mute),
       read = (readMode === 'stdin') ? readFromStdIn : readFromFile,
       write = (writeMode === 'stdout') ? writeToStdOut : writeToFile,
-      content, output_content;
+      content, output_content, config;
 
   var extension = (readMode === 'file') ? argv.i.split('.').pop() : '';
   var format = (extension === 'org') ? 'Org' : 'Markdown';
