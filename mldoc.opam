@@ -8,14 +8,14 @@ authors: ["tiensonqin <tiensonqin@gmail.com>" "RCmerci <rcmerci@gmail.com>"]
 homepage: "https://github.com/logseq/mldoc"
 bug-reports: "https://github.com/logseq/mldoc/issues"
 depends: [
-  "dune" {>= "2.8"}
-  "ocaml" {>= "4.11.1"}
+  "dune" {>= "3.5"}
+  "ocaml" {>= "4.14.0"}
   "angstrom" {= "dev"}
   "cmdliner" {>= "1.1.0"}
   "core"
   "core_bench"
   "core_unix"
-  "js_of_ocaml"
+  "js_of_ocaml" {>= "5.2.0"}
   "js_of_ocaml-ppx"
   "ppx_deriving_yojson"
   "uri"

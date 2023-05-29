@@ -3,6 +3,7 @@
  (modes js)
  (preprocess
   (pps js_of_ocaml-ppx))
+ (js_of_ocaml (flags --target-env browser))
  (libraries angstrom js_of_ocaml mldoc))
 
 (alias
