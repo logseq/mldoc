@@ -39,9 +39,9 @@ struct
         return (len, true, None)
       | Markdown ->
         let markdown_heading =
-          Markdown_level.parse >>| fun s ->
+          Markdown_level.parse >>| fun (indents, s) ->
           let len = String.length s in
-          (len, false, Some len)
+          (Option.map_default (fun indents -> String.length indents + 1) 1 indents, false, Some len)
         in
         let unordered =
           lift2

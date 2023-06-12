@@ -312,7 +312,7 @@ and heading state config h =
         if unordered || level <= 0 then
           [ Indent (state.current_level, 0); raw_text "-" ]
         else
-          [ raw_text @@ String.make level '#' ]
+          [ raw_text @@ String.make (Option.default level size) '#' ]
     in
     let title_size =
       if unordered || level <= 0 then
