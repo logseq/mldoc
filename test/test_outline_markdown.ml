@@ -11,6 +11,7 @@ let default_config : Conf.t =
   ; export_md_indent_style = Conf.Dashes
   ; export_md_remove_options = []
   ; hiccup_in_block = true
+  ; enable_drawers = true
   }
 
 let check_mldoc_type =

@@ -40,6 +40,7 @@ let generate backend output _opts filename =
       ; export_md_indent_style = Dashes
       ; export_md_remove_options = []
       ; hiccup_in_block = true
+      ; enable_drawers = true
       }
     in
     let ast = parse config (String.concat "\n" lines) in

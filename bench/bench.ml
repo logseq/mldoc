@@ -21,6 +21,7 @@ let config =
   ; export_md_indent_style = Dashes
   ; export_md_remove_options = []
   ; hiccup_in_block = true
+  ; enable_drawers = true
   }
 
 let outline_config = { config with parse_outline_only = true }

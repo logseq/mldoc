@@ -18,6 +18,7 @@ let default_config =
   ; export_md_indent_style = Spaces
   ; export_md_remove_options = []
   ; hiccup_in_block = true
+  ; enable_drawers = true
   }
 
 let attr ?(uri = "") local value : Xmlm.attribute = ((uri, local), value)

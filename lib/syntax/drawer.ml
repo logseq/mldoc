@@ -18,6 +18,7 @@ open! Prelude
 open Angstrom
 open Parsers
 open Type
+open Conf
 
 let end_mark = ":END:"
 
@@ -94,14 +95,17 @@ let drawer_parse =
 (* combine
    :PROPERTIES: :END: properties and #+NAME: VALUE properties *)
 let parse config =
-  many1 (parse1 config <|> parse2)
-  >>= (fun properties ->
+  if config.enable_drawers then
+    many1 (parse1 config <|> parse2)
+    >>= (fun properties ->
         return
         @@ Property_Drawer
-             (List.fold_left
-                (fun r e ->
-                  match e with
-                  | Property_Drawer kvs -> List.append r kvs
-                  | _ -> failwith "unreachable")
-                [] properties))
-  <|> drawer_parse
+          (List.fold_left
+             (fun r e ->
+                match e with
+                | Property_Drawer kvs -> List.append r kvs
+                | _ -> failwith "unreachable")
+             [] properties))
+        <|> drawer_parse
+  else
+    fail "drawer"
