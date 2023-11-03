@@ -10,6 +10,7 @@ type date =
 type time =
   { hour : int
   ; min : int
+  ; second : int
   }
 [@@deriving yojson]
 
@@ -56,8 +57,12 @@ let null_date = { year = 0; month = 0; day = 0 }
 (* let null_time = {min= 0; hour= 0} *)
 
 let parse_time s =
-  try Scanf.sscanf s "%d:%d" (fun hour min -> Some { hour; min })
-  with _ -> None
+  try
+    Scanf.sscanf s "%d:%d:%d" (fun hour min second ->
+        Some { hour; min; second })
+  with _ -> (
+    try Scanf.sscanf s "%d:%d" (fun hour min -> Some { hour; min; second = 0 })
+    with _ -> None)
 
 let parse_date s =
   try
