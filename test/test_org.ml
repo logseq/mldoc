@@ -210,7 +210,11 @@ let block =
           , check_aux
               ":PROPERTIES:\n:XXX: 1\n:yyy: 2\n:END:\n#+ZZZ: 3\n#+UUU: 4"
               (Property_Drawer
-                 [ ("XXX", "1", []); ("yyy", "2", []); ("ZZZ", "3", []); ("UUU", "4", []) ]) )
+                 [ ("XXX", "1", [])
+                 ; ("yyy", "2", [])
+                 ; ("ZZZ", "3", [])
+                 ; ("UUU", "4", [])
+                 ]) )
         ; ( "no drawer in quote"
           , `Quick
           , check_aux "#+BEGIN_QUOTE\na:: b\n#+END_QUOTE"
@@ -279,6 +283,109 @@ let block =
                  ; priority = None
                  ; anchor = "aaa_label"
                  ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = None
+                 }) )
+        ] )
+  ; ( "Headline with timestamps"
+    , testcases
+        [ ( "Schedule"
+          , `Quick
+          , check_aux "* aaa\nSCHEDULED: <1999-03-31 Wed>"
+              (Type.Heading
+                 { title = [ (I.Plain "aaa", None) ]
+                 ; tags = []
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = "aaa"
+                 ; meta =
+                     { Type.timestamps =
+                         [ I.Scheduled
+                             { date = { day = 31; month = 3; year = 1999 }
+                             ; time = None
+                             ; repetition = None
+                             ; wday = "Wed"
+                             ; active = true
+                             }
+                         ]
+                     ; properties = []
+                     }
+                 ; unordered = true
+                 ; size = None
+                 }) )
+        ; ( "Schedule repeater"
+          , `Quick
+          , check_aux "* aaa\nSCHEDULED: <1999-03-31 Wed .+1y>"
+              (Type.Heading
+                 { title = [ (I.Plain "aaa", None) ]
+                 ; tags = []
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = "aaa"
+                 ; meta =
+                     { Type.timestamps =
+                         [ I.Scheduled
+                             { date = { day = 31; month = 3; year = 1999 }
+                             ; time = None
+                             ; repetition = Some (Dotted, Year, 1)
+                             ; wday = "Wed"
+                             ; active = true
+                             }
+                         ]
+                     ; properties = []
+                     }
+                 ; unordered = true
+                 ; size = None
+                 }) )
+        ; ( "Schedule repeater and deadline"
+          , `Quick
+          , check_aux
+              "* aaa [[link][label]]     :bb:cc:\n\
+               SCHEDULED: <1999-03-31 Wed 12:00-12:30 ++2w>\n\
+               DEADLINE: <1999-04-01 Thu>"
+              (Type.Heading
+                 { title =
+                     [ (I.Plain "aaa ", None)
+                     ; ( I.Link
+                           { I.url = I.Search "link"
+                           ; label = [ I.Plain "label" ]
+                           ; title = None
+                           ; full_text = "[[link][label]]"
+                           ; metadata = ""
+                           }
+                       , None )
+                     ]
+                 ; tags = [ "bb"; "cc" ]
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = "aaa_label"
+                 ; meta =
+                     { Type.timestamps =
+                         [ I.Scheduled
+                             { date =
+                                 { day = 31; month = 3; year = 1999 }
+                                 (* Having a time range like 12:00-12:30 doesn’t seem supported *)
+                             ; time = Some { hour = 12; min = 0 }
+                             ; repetition = Some (DoublePlus, Week, 2)
+                             ; wday = "Wed"
+                             ; active = true
+                             }
+                         ; I.Deadline
+                             { date = { day = 1; month = 4; year = 1999 }
+                             ; time = None
+                             ; repetition = None
+                             ; wday = "Thu"
+                             ; active = true
+                             }
+                         ]
+                     ; properties = []
+                     }
                  ; unordered = true
                  ; size = None
                  }) )
