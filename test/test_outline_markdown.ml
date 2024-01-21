@@ -12,6 +12,7 @@ let default_config : Conf.t =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; skip_no_braces = false
   }
 
 let check_mldoc_type =

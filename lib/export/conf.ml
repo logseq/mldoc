@@ -54,6 +54,7 @@ type t =
   ; export_md_remove_options : meta_chars list [@default []]
   ; hiccup_in_block : bool [@default true]
   ; enable_drawers : bool [@default true]
+  ; skip_no_braces : bool [@default false]
   }
 [@@deriving yojson]
 

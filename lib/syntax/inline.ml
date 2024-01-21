@@ -503,11 +503,11 @@ let gen_script config s f =
     many1 (choice [ emphasis config; plain config; whitespaces; entity ])
   in
   string (s ^ "{") *> take_while1 (fun c -> non_eol c && c <> '}')
-  <* char '}' <|> p1
+  <* char '}' <|> (if config.skip_no_braces then fail "plain" else p1)
   >>| fun s ->
-  match parse_string ~consume:All p s with
-  | Ok result -> f @@ concat_plains_without_pos result
-  | Error _e -> f [ Plain s ]
+    match parse_string ~consume:All p s with
+    | Ok result -> f @@ concat_plains_without_pos result
+    | Error _e -> f [ Plain s ]
 
 let subscript config = gen_script config "_" (fun x -> Subscript x)
 
