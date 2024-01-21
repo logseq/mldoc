@@ -19,6 +19,7 @@ let default_config =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; skip_no_braces = false
   }
 
 let attr ?(uri = "") local value : Xmlm.attribute = ((uri, local), value)

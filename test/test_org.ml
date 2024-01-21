@@ -12,14 +12,33 @@ let default_config : Conf.t =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; skip_no_braces = false
   }
 
 let check_mldoc_type =
   Alcotest.check (Alcotest.testable Type.pp ( = )) "check mldoc type"
 
-let check_aux source expect =
-  let result = Mldoc.Parser.parse default_config source |> List.hd |> fst in
+let check_aux ?(config = default_config) source expect =
+  let result = Mldoc.Parser.parse config source |> List.hd |> fst in
   fun _ -> check_mldoc_type expect result
+
+let braces_config : Conf.t =
+  { toc = true
+  ; parse_outline_only = false
+  ; heading_number = true
+  ; keep_line_break = false
+  ; format = Conf.Org
+  ; heading_to_list = false
+  ; exporting_keep_properties = false
+  ; inline_type_with_pos = false
+  ; inline_skip_macro = false
+  ; export_md_indent_style = Conf.Dashes
+  ; export_md_remove_options = []
+  ; hiccup_in_block = true
+  ; enable_drawers = true
+  ; skip_no_braces = true
+  }
+
 
 let testcases =
   List.map (fun (case, level, f) -> Alcotest.test_case case level f)
@@ -60,6 +79,18 @@ let inline =
           , `Quick
           , check_aux "a_b_c"
               (paragraph [ I.Plain "a"; I.Subscript [ I.Plain "b_c" ] ]) )
+        ; ( "not emphasis (3)"
+          , `Quick
+          , check_aux "a_{bc}"
+              (paragraph [ I.Plain "a"; I.Subscript [ I.Plain "bc" ] ]) )
+        ; ( "not emphasis (4) - force braces"
+          , `Quick
+          , check_aux ~config:braces_config "a_{bc}"
+              (paragraph [ I.Plain "a"; I.Subscript [ I.Plain "bc" ] ]) )
+        ; ( "not emphasis (5) - force braces"
+          , `Quick
+          , check_aux ~config:braces_config "a_bc"
+              (paragraph [ I.Plain "a_bc" ]) )
         ; ( "contains underline"
           , `Quick
           , check_aux "_a _ a_"
