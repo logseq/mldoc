@@ -12,6 +12,8 @@ let default_config : Conf.t =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; parse_marker = true
+  ; parse_priority = true
   }
 
 let refs : Reference.parsed_t =
@@ -70,7 +72,7 @@ let export_md =
     , testcases
         [ ( "merge paragraph"
           , `Quick
-            (* append 2 spaces at end to add <br /> break tag when rendering*)
+              (* append 2 spaces at end to add <br /> break tag when rendering*)
           , check_aux "- text1 ((ref1)) text2" "- text1 ref1-text text2  " )
         ] )
   ; ( "export md"

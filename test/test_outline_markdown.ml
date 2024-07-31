@@ -12,6 +12,8 @@ let default_config : Conf.t =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; parse_marker = true
+  ; parse_priority = true
   }
 
 let check_mldoc_type =
@@ -321,13 +323,15 @@ let inline =
           , check_aux
               ":PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
-                 [ ("type", "programming_lang", []); ("creator", "test", []) ]) )
+                 [ ("type", "programming_lang", []); ("creator", "test", []) ])
+          )
         ; ( "spaces-before-drawer"
           , `Quick
           , check_aux
               " :PROPERTIES:\n:type: programming_lang\n:creator: test\n:END:"
               (Property_Drawer
-                 [ ("type", "programming_lang", []); ("creator", "test", []) ]) )
+                 [ ("type", "programming_lang", []); ("creator", "test", []) ])
+          )
         ; ( "endwith-carriage-return"
           , `Quick
           , check_aux
@@ -336,7 +340,8 @@ let inline =
                :done: 1614485743195\r\n\
                :END:\n"
               (Property_Drawer
-                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ]) )
+                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ])
+          )
         ; ( "endwith-carriage-return-2"
           , `Quick
           , check_aux
@@ -345,7 +350,8 @@ let inline =
                :done: 1614485743195\r\n\
                :END:\r\n"
               (Property_Drawer
-                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ]) )
+                 [ ("now", "1614485729874", []); ("done", "1614485743195", []) ])
+          )
         ; ( "simplified-property-syntax"
           , `Quick
           , check_aux "a.b.c:: def\na-b-c::"

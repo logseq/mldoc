@@ -12,6 +12,8 @@ let default_config : Conf.t =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; parse_marker = true
+  ; parse_priority = true
   }
 
 let check_aux ?(config = default_config) source expect =

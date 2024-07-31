@@ -12,6 +12,8 @@ let default_config : Conf.t =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; parse_marker = true
+  ; parse_priority = true
   }
 
 let check_mldoc_type =
@@ -650,37 +652,38 @@ let inline =
         ] )
   ; ( "inline-entity"
     , testcases
-        [
-          ( "space separator"
-            , `Quick
-            , check_aux "\\Delta G"
+        [ ( "space separator"
+          , `Quick
+          , check_aux "\\Delta G"
               (paragraph
                  [ I.Entity
-                 { name = "Delta"
-                 ; latex = "\\Delta"
-                 ; latex_mathp = true
-                 ; html = "&Delta;"
-                 ; ascii = "Delta"
-                 ; unicode = "Δ"}
-                 ; I.Plain " G" ]))
-          ; ( "no separator"
-            , `Quick
-            , check_aux "\\DeltaG"
-              (paragraph
-                 [ I.Plain "DeltaG" ]))
-          ; ( "{} separator"
+                     { name = "Delta"
+                     ; latex = "\\Delta"
+                     ; latex_mathp = true
+                     ; html = "&Delta;"
+                     ; ascii = "Delta"
+                     ; unicode = "Δ"
+                     }
+                 ; I.Plain " G"
+                 ]) )
+        ; ( "no separator"
+          , `Quick
+          , check_aux "\\DeltaG" (paragraph [ I.Plain "DeltaG" ]) )
+        ; ( "{} separator"
           , `Quick
           , check_aux "\\Delta{}G"
               (paragraph
                  [ I.Entity
-                 { name = "Delta"
-                 ; latex = "\\Delta"
-                 ; latex_mathp = true
-                 ; html = "&Delta;"
-                 ; ascii = "Delta"
-                 ; unicode = "Δ"}
-                 ; I.Plain "G" ]))
-                 ])
+                     { name = "Delta"
+                     ; latex = "\\Delta"
+                     ; latex_mathp = true
+                     ; html = "&Delta;"
+                     ; ascii = "Delta"
+                     ; unicode = "Δ"
+                     }
+                 ; I.Plain "G"
+                 ]) )
+        ] )
   ; ( "emphasis"
     , testcases
         [ ( "normal"

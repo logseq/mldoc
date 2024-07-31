@@ -41,6 +41,8 @@ let generate backend output _opts filename =
       ; export_md_remove_options = []
       ; hiccup_in_block = true
       ; enable_drawers = true
+      ; parse_marker = true
+      ; parse_priority = true
       }
     in
     let ast = parse config (String.concat "\n" lines) in
@@ -89,9 +91,7 @@ let options =
     & info [ "x"; "option" ] ~docv:"OPTIONS" ~doc)
 
 let cmd = Term.(const generate $ backend $ output $ options $ filename)
-
 let doc = "converts org-mode or markdown files into various formats"
-
 let options = []
 
 let man =
@@ -104,6 +104,7 @@ let man =
   @ options
 
 let infos = Cmd.info "mldoc" ~version:"0" ~doc ~man
+
 let main () =
   match Cmd.v infos cmd |> Cmd.eval_value with
   | Ok (`Ok expr) -> Lwt_main.run expr

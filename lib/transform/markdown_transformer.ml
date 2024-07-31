@@ -5,7 +5,6 @@ module String_Tree_Value : sig
   type t = string Z.l
 
   val of_value : Tree_type.value -> config:Conf.t -> t
-
   val to_value : t -> Tree_type.value_with_content
 end = struct
   type t = string Z.l
@@ -24,6 +23,8 @@ end = struct
     ; export_md_remove_options = []
     ; hiccup_in_block = true
     ; enable_drawers = true
+    ; parse_marker = true
+    ; parse_priority = true
     }
 
   let rec of_value v ~config =

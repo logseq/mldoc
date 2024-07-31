@@ -12,6 +12,8 @@ let default_config : Conf.t =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; parse_marker = true
+  ; parse_priority = true
   }
 
 let check_mldoc_type =
@@ -210,7 +212,11 @@ let block =
           , check_aux
               ":PROPERTIES:\n:XXX: 1\n:yyy: 2\n:END:\n#+ZZZ: 3\n#+UUU: 4"
               (Property_Drawer
-                 [ ("XXX", "1", []); ("yyy", "2", []); ("ZZZ", "3", []); ("UUU", "4", []) ]) )
+                 [ ("XXX", "1", [])
+                 ; ("yyy", "2", [])
+                 ; ("ZZZ", "3", [])
+                 ; ("UUU", "4", [])
+                 ]) )
         ; ( "no drawer in quote"
           , `Quick
           , check_aux "#+BEGIN_QUOTE\na:: b\n#+END_QUOTE"

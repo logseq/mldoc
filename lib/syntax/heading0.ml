@@ -41,7 +41,11 @@ struct
         let markdown_heading =
           Markdown_level.parse >>| fun (indents, s) ->
           let len = String.length s in
-          (Option.map_default (fun indents -> String.length indents + 1) 1 indents, false, Some len)
+          ( Option.map_default
+              (fun indents -> String.length indents + 1)
+              1 indents
+          , false
+          , Some len )
         in
         let unordered =
           lift2
@@ -204,8 +208,14 @@ struct
             ; size
             })
         (level config <?> "Heading level")
-        (optional (ws *> marker <?> "Heading marker"))
-        (optional (ws *> priority <?> "Heading priority"))
+        (if not config.parse_marker then
+           return None
+         else
+           optional (ws *> marker <?> "Heading marker"))
+        (if not config.parse_priority then
+           return None
+         else
+           optional (ws *> priority <?> "Heading priority"))
         (optional (ws *> Angstrom.both pos (title config) <?> "Heading title"))
     in
     p <* optional (end_of_line <|> end_of_input)

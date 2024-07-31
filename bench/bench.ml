@@ -5,7 +5,6 @@ open Core_bench
 open Angstrom
 
 let doc_org = load_file "./examples/doc.org"
-
 let syntax_md = load_file "./examples/syntax.md"
 
 let config =
@@ -22,6 +21,8 @@ let config =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; parse_marker = true
+  ; parse_priority = true
   }
 
 let outline_config = { config with parse_outline_only = true }

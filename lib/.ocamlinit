@@ -18,4 +18,8 @@ let config = { toc = true; parse_outline_only = false; heading_number = true
   export_md_indent_style = Conf.Dashes;
   export_md_remove_options = [];
   hiccup_in_block = true;
-  inline_skip_macro = false};;
+  inline_skip_macro = false;
+  enable_drawers = true;
+  parse_marker = true;
+  parse_priority = true;
+  };;

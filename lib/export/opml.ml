@@ -2,7 +2,6 @@ open Prelude
 open Conf
 
 let default_state = Markdown.default_state
-
 let empty_references = Reference.empty_parsed_t
 
 let default_config =
@@ -19,10 +18,11 @@ let default_config =
   ; export_md_remove_options = []
   ; hiccup_in_block = true
   ; enable_drawers = true
+  ; parse_marker = true
+  ; parse_priority = true
   }
 
 let attr ?(uri = "") local value : Xmlm.attribute = ((uri, local), value)
-
 let tag name attrs : Xmlm.tag = (("", name), attrs)
 
 (* only concat Leaf list, ignore Branch elem *)
@@ -102,7 +102,6 @@ let blocks refs tl title output_buf =
 
 module OPMLExporter = struct
   let name = "opml"
-
   let default_filename = change_ext "opml"
 
   let export ~refs _config (doc : Document.t) output =
