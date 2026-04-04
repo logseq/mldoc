@@ -116,17 +116,17 @@ function run () {
   write(output_content, argv.append);
   messenger.okExit();
 
-  function readFromStdIn () {
+  function readFromStdIn (encoding = 'utf8') {
     try {
-      var size = fs.fstatSync(process.stdin.fd).size;
-      if (size === 0)
-        return ''
-      const buffer = Buffer.alloc(size)
-      fs.readSync(process.stdin.fd, buffer)
-      return buffer.toString(argv.encoding)
+      return fs.readFileSync(process.stdin.fd, encoding);
     } catch (e) {
-      var err = new Error('Could not read from stdin, reason: ' + e.message);
-      messenger.errorExit(err);
+      const chunks = [];
+      let chunk;
+      process.stdin.setEncoding(encoding);
+      while ((chunk = process.stdin.read()) !== null) {
+        chunks.push(chunk);
+      }
+      return chunks.join('');
     }
   }
 
