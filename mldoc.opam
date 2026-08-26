@@ -43,5 +43,5 @@ build: [
 ]
 pin-depends: [
   [ "angstrom.dev" "git+https://github.com/logseq/angstrom#fork" ]
-  [ "xmlm.dev" "git+https://github.com/logseq/xmlm#31c58eacbbf6b3a879f0e3df586e0a8d83c97cf4" ]
+  [ "xmlm.dev" "git+https://github.com/logseq/xmlm#f6c11f85125da62e6b97f3947e91d6615653c2c3" ]
 ]
