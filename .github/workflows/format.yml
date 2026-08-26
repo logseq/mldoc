@@ -16,7 +16,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 4.14.x
-          
+
       - name: Install formatter
         run: opam install ocamlformat.0.26.2 dune
         
@@ -24,6 +24,13 @@ jobs:
         run: |
           mapfile -t files < <(git diff --name-only --diff-filter=ACMRT \
             "origin/${{ github.base_ref }}...HEAD" -- '*.ml' '*.mli')
-          if ((${#files[@]} > 0)); then
-            opam exec -- ocamlformat --check "${files[@]}"
-          fi
+          status=0
+          for file in "${files[@]}"; do
+            formatted="$(mktemp)"
+            opam exec -- ocamlformat "$file" > "$formatted"
+            if ! diff --unified "$file" "$formatted"; then
+              status=1
+            fi
+            rm "$formatted"
+          done
+          exit "$status"
