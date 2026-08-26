@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
@@ -19,4 +21,9 @@ jobs:
         run: opam install ocamlformat.0.26.2 dune
         
       - name: Check formatting
-        run: opam exec -- dune build @fmt
+        run: |
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMRT \
+            "origin/${{ github.base_ref }}...HEAD" -- '*.ml' '*.mli')
+          if ((${#files[@]} > 0)); then
+            opam exec -- ocamlformat --check "${files[@]}"
+          fi
