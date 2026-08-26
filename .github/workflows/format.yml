@@ -5,29 +5,18 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  format:
     runs-on: ubuntu-latest
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.head_ref }}
+      - uses: actions/checkout@v4
 
       - name: Set up OCaml
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v3
         with:
-          # Version of the OCaml compiler to initialise
-          ocaml-version: 4.11.1
+          ocaml-compiler: 4.14.x
           
-      - name: install dependencies
-        run: opam install ocamlformat.0.16.0 dune
+      - name: Install formatter
+        run: opam install ocamlformat.0.26.2 dune
         
-      - name: format
-        run: |
-          opam exec -- dune build @fmt --auto-promote || true
-          
-      - name: commit
-        uses: stefanzweifel/git-auto-commit-action@v4.11.0
-        with:
-          commit_message: Apply formatting changes
-          branch: ${{ github.head_ref }}
+      - name: Check formatting
+        run: opam exec -- dune build @fmt

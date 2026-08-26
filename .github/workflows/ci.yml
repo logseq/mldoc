@@ -13,23 +13,23 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ocaml-compiler: ["4.14.x", "5.3.x"]
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up OCaml
-        uses: avsm/setup-ocaml@v1
+        uses: ocaml/setup-ocaml@v3
         with:
-          # Version of the OCaml compiler to initialise
-          ocaml-version: 4.11.1
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
           
-      - name: install dependencies
+      - name: Install dependencies
         run: opam install . --deps-only --with-doc --with-test
         
-      - name: build
-        run: |
-          opam exec -- dune build @install @JS @main
+      - name: Build
+        run: opam exec -- dune build @install @JS @main
           
-      - name: runtest
+      - name: Test
         run: opam exec -- dune runtest
-
