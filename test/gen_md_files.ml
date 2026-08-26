@@ -64,9 +64,9 @@ let heading ?(init = false) pagenames state =
   let level_g =
     oneofl
       (if init then
-        [ 1 ]
-      else
-        level_candidates (state.last_level + 4))
+         [ 1 ]
+       else
+         level_candidates (state.last_level + 4))
   in
   inlines_g pagenames >>= fun inlines ->
   marker_g >>= fun marker ->
@@ -94,8 +94,7 @@ let blocks_g pagenames : Type.blocks t =
   let* init_heading = heading ~init:true pagenames state in
   let init_heading_with_pos = (init_heading, dummy_pos) in
   let block_with_pos_g =
-    oneof_weighted
-      [ (3, paragragh pagenames); (1, heading pagenames state) ]
+    oneof_weighted [ (3, paragragh pagenames); (1, heading pagenames state) ]
     >|= fun b -> (b, dummy_pos)
   in
   let* blocks' = list_size (10 -- 500) block_with_pos_g in
