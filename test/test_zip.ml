@@ -9,7 +9,7 @@ let g =
                match n with
                | 0 -> map leaf nat
                | n ->
-                 frequency
+                 oneof_weighted
                    [ ( 5
                      , branch
                        <$> ( 0 -- (n / 2) >>= fun n' ->

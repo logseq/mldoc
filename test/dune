@@ -50,3 +50,7 @@
    (run %{zip})
    (run %{export-md})
    (run %{export-opml}))))
+(env
+ (_
+  (flags
+   (:standard -open Mldoc__))))

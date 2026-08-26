@@ -29,7 +29,7 @@ let page_names n =
   let pagename i =
     let+ pagename_l =
       list_size (1 -- 10)
-      @@ frequency
+      @@ oneof_weighted
            [ (1, string_size ~gen:(oneofl char_table) (0 -- 5))
            ; (1, oneofl unicode_table)
            ]
@@ -44,7 +44,7 @@ let plain_inline_g =
   string_size ~gen:(char_range 'A' 'Z') (1 -- 100) >|= fun s -> Inline.Plain s
 
 let inline_g pagenames =
-  frequency [ (10, plain_inline_g); (1, page_ref_g pagenames) ]
+  oneof_weighted [ (10, plain_inline_g); (1, page_ref_g pagenames) ]
 
 let inlines_g pagenames = list_size (1 -- 10) (inline_g pagenames)
 
@@ -54,15 +54,19 @@ let level_candidates max =
 
 let heading ?(init = false) pagenames state =
   let marker_g =
-    frequencyl
-      [ (1, Some "TODO"); (1, Some "DOING"); (1, Some "DONE"); (7, None) ]
+    oneof_weighted
+      [ (1, return (Some "TODO"))
+      ; (1, return (Some "DOING"))
+      ; (1, return (Some "DONE"))
+      ; (7, return None)
+      ]
   in
   let level_g =
     oneofl
       (if init then
-        [ 1 ]
-      else
-        level_candidates (state.last_level + 4))
+         [ 1 ]
+       else
+         level_candidates (state.last_level + 4))
   in
   inlines_g pagenames >>= fun inlines ->
   marker_g >>= fun marker ->
@@ -90,7 +94,7 @@ let blocks_g pagenames : Type.blocks t =
   let* init_heading = heading ~init:true pagenames state in
   let init_heading_with_pos = (init_heading, dummy_pos) in
   let block_with_pos_g =
-    frequency [ (3, paragragh pagenames); (1, heading pagenames state) ]
+    oneof_weighted [ (3, paragragh pagenames); (1, heading pagenames state) ]
     >|= fun b -> (b, dummy_pos)
   in
   let* blocks' = list_size (10 -- 500) block_with_pos_g in
