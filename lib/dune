@@ -18,4 +18,4 @@
   uri
   str
   xmlm)
- (wrapped false))
+ (wrapped true))
