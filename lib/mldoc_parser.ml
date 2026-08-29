@@ -146,44 +146,49 @@ let build_md_outline_parsers config =
 let parse config input =
   let outline_only = Conf.(config.parse_outline_only) in
   let md = Conf.is_markdown config in
-  let parsers =
-    match (md, outline_only) with
-    | true, true -> build_md_outline_parsers config
-    | true, false -> build_choice_parsers md_full_parsers config
-    | false, true -> build_choice_parsers org_outline_parsers config
-    | false, false -> build_choice_parsers org_full_parsers config
-  in
-  match parse_string ~consume:All parsers input with
-  | Ok result ->
-    let ast = Paragraph.concat_paragraph_lines config result in
-    let ast =
-      if outline_only then
-        Prelude.remove
-          (fun (t, _) ->
-            match t with
-            | Type.Results
-            | Type.Example _
-            | Type.Src _
-            | Type.Latex_Environment _
-            | Type.Latex_Fragment _
-            | Type.Displayed_Math _
-            | Type.Horizontal_Rule
-            | Type.Raw_Html _
-            | Type.Hiccup _ ->
-              true
-            | _ -> false)
-          ast
-      else
-        ast
-    in
-    if Conf.is_markdown config then
-      if outline_only && not (String.contains input '\\') then
-        ast
-      else
-        List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
+  (* Markdown outline: line-oriented fast path (no Angstrom block choice). *)
+  if md && outline_only then
+    let ast = Md_outline.parse config input in
+    if String.contains input '\\' then
+      List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
     else
       ast
-  | Error err -> failwith err
+  else
+    let parsers =
+      match (md, outline_only) with
+      | true, false -> build_choice_parsers md_full_parsers config
+      | false, true -> build_choice_parsers org_outline_parsers config
+      | false, false -> build_choice_parsers org_full_parsers config
+      | true, true -> assert false
+    in
+    match parse_string ~consume:All parsers input with
+    | Ok result ->
+      let ast = Paragraph.concat_paragraph_lines config result in
+      let ast =
+        if outline_only then
+          Prelude.remove
+            (fun (t, _) ->
+              match t with
+              | Type.Results
+              | Type.Example _
+              | Type.Src _
+              | Type.Latex_Environment _
+              | Type.Latex_Fragment _
+              | Type.Displayed_Math _
+              | Type.Horizontal_Rule
+              | Type.Raw_Html _
+              | Type.Hiccup _ ->
+                true
+              | _ -> false)
+            ast
+        else
+          ast
+      in
+      if Conf.is_markdown config then
+        List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
+      else
+        ast
+    | Error err -> failwith err
 
 let load_file f =
   let ic = open_in f in

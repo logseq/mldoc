@@ -154,7 +154,56 @@ struct
     else
       []
 
+  let make_outline_heading ~level ~unordered ~size ~marker ~priority ~title =
+    Heading
+      { level
+      ; marker
+      ; priority
+      ; title
+      ; tags = []
+      ; anchor = ""
+      ; meta = { timestamps = []; properties = [] }
+      ; numbering = None
+      ; unordered
+      ; size
+      }
+
+  (** Fast MD outline heading: reuse [level], skip title_aux Block/Drawer. *)
+  let parse_md_outline config =
+    level config <?> "Heading level" >>= fun (level, unordered, size) ->
+    (if not config.parse_marker then return None
+     else optional (spaces *> marker <?> "Heading marker"))
+    >>= fun marker ->
+    (if not config.parse_priority then return None
+     else optional (spaces *> priority <?> "Heading priority"))
+    >>= fun priority ->
+    optional spaces *> peek_char >>= function
+    | Some '`'
+    | Some '>' ->
+      (* Leave fence/quote on the line for Block.parse. *)
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:[])
+    | None ->
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:[])
+    | Some c when is_eol c ->
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:[])
+      <* optional eol
+    | _ ->
+      optional_line >>= fun title ->
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:(outline_title config title))
+      <* optional (end_of_line <|> end_of_input)
+
   let parse config =
+    if config.parse_outline_only && Conf.is_markdown config then
+      parse_md_outline config
+    else
     let p =
       lift4
         (fun (level, unordered, size) marker priority pos_and_title ->
