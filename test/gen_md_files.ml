@@ -83,6 +83,7 @@ let heading ?(init = false) pagenames state =
        ; anchor = ""
        ; meta = { timestamps = []; properties = [] }
        ; unordered = true
+       ; size = None
        }
 
 let paragragh pagenames =
