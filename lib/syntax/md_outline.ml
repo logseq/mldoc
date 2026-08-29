@@ -1,13 +1,35 @@
-(* Fast Markdown outline_only document parser.
+(* Fast Markdown document parser (outline_only + full).
    Line-oriented; avoids Angstrom choice/backtracking on the Logseq hot path.
-   Extracts headings, properties, lists, quotes, footnotes, and outline inline
-   (tags / page refs / block refs / markdown links). *)
+   Outline: headings, properties, lists, quotes, footnotes, outline inline.
+   Full: same structure with Inline.parse, Src fences, latex env, anchors. *)
 
 open! Prelude
 open Type
+open Conf
 
 let dummy = Pos.dummy_pos
 let with_pos t = (t, dummy)
+
+let ensure_trailing_nl s =
+  let n = String.length s in
+  if n = 0 || s.[n - 1] = '\n' then
+    s
+  else
+    s ^ "\n"
+
+let separate_name_options = function
+  | None
+  | Some "" ->
+    (None, None)
+  | Some s -> (
+    match String.split_on_char ' ' (String.trim s) with
+    | [] -> (None, None)
+    | [ name ] -> (Some name, None)
+    | name :: options -> (Some name, Some options))
+
+let anchor_of_title title =
+  Type_parser.Heading.anchor_link
+    (Inline.asciis (Type_op.inline_list_strip_pos title))
 
 let markers =
   [| "IN-PROGRESS"
@@ -133,7 +155,31 @@ let outline_inlines config s =
   else
     []
 
-let outline_paragraph config s = Paragraph (outline_inlines config s)
+let full_inlines config s =
+  if s = "" then
+    []
+  else
+    match Angstrom.parse_string ~consume:All (Inline.parse config) s with
+    | Ok r -> r
+    | Error _ -> []
+
+let content_inlines config s =
+  if config.parse_outline_only then
+    outline_inlines config s
+  else
+    full_inlines config s
+
+let content_paragraph config s = Paragraph (content_inlines config s)
+
+(** Quotes: Angstrom records eol after each line → trailing Break_Line. *)
+let quote_paragraph config s =
+  let s =
+    if config.parse_outline_only then
+      s
+    else
+      ensure_trailing_nl s
+  in
+  Paragraph (content_inlines config s)
 
 let filter_prop_refs inlines =
   List.map fst inlines
@@ -144,14 +190,18 @@ let filter_prop_refs inlines =
          true
        | _ -> false)
 
-let heading ~level ~unordered ~size ~marker ~priority ~title =
+let heading ~outline_only ~level ~unordered ~size ~marker ~priority ~title =
   Heading
     { level
     ; marker
     ; priority
     ; title
     ; tags = []
-    ; anchor = ""
+    ; anchor =
+        (if outline_only then
+           ""
+         else
+           anchor_of_title title)
     ; meta = { timestamps = []; properties = [] }
     ; numbering = None
     ; unordered
@@ -208,10 +258,17 @@ let parse_marker_priority_title config s i =
       ([], true)
     else
       match title.[0] with
-      | '`'
       | '>' ->
+        (* Leave markdown quote for the following block (Angstrom parity). *)
         ([], false)
-      | _ -> (outline_inlines config title, true)
+      | '`'
+      | '~'
+        when String.length title >= 3
+             && title.[1] = title.[0]
+             && title.[2] = title.[0] ->
+        (* Fenced code opener on the heading line. *)
+        ([], false)
+      | _ -> (content_inlines config title, true)
   in
   (marker, priority, title_inlines, keep_title, title)
 
@@ -230,7 +287,13 @@ let parse_size_hashes s i =
     else
       (None, i)
 
-(** [Some (heading, opens_fence)] *)
+(** [Some (heading, rest)] where [rest] is a fence header or quote line left
+    on the same source line after the heading marker. *)
+type heading_rest =
+  | Nothing
+  | Fence of string
+  | Quote_line of string
+
 let try_dash_heading config line =
   let ind = indent_len line in
   let n = String.length line in
@@ -239,9 +302,9 @@ let try_dash_heading config line =
   else if ind + 1 < n && not (is_space_char line.[ind + 1]) then
     if ind + 1 = n then
       Some
-        ( heading ~level:(ind + 1) ~unordered:true ~size:None ~marker:None
-            ~priority:None ~title:[]
-        , false )
+        ( heading ~outline_only:config.parse_outline_only ~level:(ind + 1)
+            ~unordered:true ~size:None ~marker:None ~priority:None ~title:[]
+        , Nothing )
     else
       None
   else
@@ -250,12 +313,25 @@ let try_dash_heading config line =
     let marker, priority, title, keep_title, raw_title =
       parse_marker_priority_title config line i
     in
-    let opens_fence =
-      (not keep_title) && String.length raw_title > 0 && raw_title.[0] = '`'
+    let rest =
+      if keep_title || raw_title = "" then
+        Nothing
+      else if raw_title.[0] = '>' then
+        Quote_line raw_title
+      else if
+        (raw_title.[0] = '`' || raw_title.[0] = '~')
+        && String.length raw_title >= 3
+        && raw_title.[1] = raw_title.[0]
+        && raw_title.[2] = raw_title.[0]
+      then
+        Fence raw_title
+      else
+        Nothing
     in
     Some
-      ( heading ~level:(ind + 1) ~unordered:true ~size ~marker ~priority ~title
-      , opens_fence )
+      ( heading ~outline_only:config.parse_outline_only ~level:(ind + 1)
+          ~unordered:true ~size ~marker ~priority ~title
+      , rest )
 
 let try_atx_heading config line =
   let ind = indent_len line in
@@ -277,8 +353,8 @@ let try_atx_heading config line =
         parse_marker_priority_title config line !j
       in
       Some
-        (heading ~level:(ind + 1) ~unordered:false ~size:(Some size) ~marker
-           ~priority ~title)
+        (heading ~outline_only:config.parse_outline_only ~level:(ind + 1)
+           ~unordered:false ~size:(Some size) ~marker ~priority ~title)
 
 let try_md_property config line =
   let ind = indent_len line in
@@ -308,7 +384,13 @@ let try_md_property config line =
         else
           String.trim (String.sub line rest_i (n - rest_i))
       in
-      Some (key, value, filter_prop_refs (outline_inlines config value))
+      Some
+        ( key
+        , value
+        , (if config.parse_outline_only then
+             filter_prop_refs (outline_inlines config value)
+           else
+             Property.property_references config value) )
     else
       None
 
@@ -359,7 +441,13 @@ let try_org_drawer_prop_line config line =
           else
             String.trim (String.sub line rest_i (n - rest_i))
         in
-        Some (key, value, filter_prop_refs (outline_inlines config value))
+        Some
+        ( key
+        , value
+        , (if config.parse_outline_only then
+             filter_prop_refs (outline_inlines config value)
+           else
+             Property.property_references config value) )
     else
       None
 
@@ -381,10 +469,13 @@ let try_footnote_line config line =
         let inlines =
           if body = "" then
             []
-          else if Outline_inline.may_have_outline_markup config body then
-            outline_inlines config body
+          else if config.parse_outline_only then
+            if Outline_inline.may_have_outline_markup config body then
+              outline_inlines config body
+            else
+              Type_op.inline_list_with_none_pos [ Inline.Plain body ]
           else
-            Type_op.inline_list_with_none_pos [ Inline.Plain body ]
+            content_inlines config body
         in
         Some (Footnote_Definition (name, inlines))
       else
@@ -450,7 +541,15 @@ let collect_paragraph_lines config lines i =
   in
   let ls, j = loop i [] in
   let content = String.concat "\n" ls in
-  (outline_paragraph config content, j)
+  (* When another block follows, each line was newline-terminated in the
+     source — Angstrom records a final Break_Line. *)
+  let content =
+    if (not config.parse_outline_only) && j < n && content <> "" then
+      ensure_trailing_nl content
+    else
+      content
+  in
+  (content_paragraph config content, j)
 
 let skip_fence_body lines i =
   let rec loop j =
@@ -465,7 +564,76 @@ let skip_fence_body lines i =
 
 let skip_fence lines i = skip_fence_body lines (i + 1)
 
-let collect_quote config lines i =
+(** Collect fenced Src given an opening fence header (e.g. "```ocaml") and
+    body lines starting at index [i]. [body_start_pos] / [body_end_pos] are
+    byte offsets in the original input (Angstrom pos_meta parity). *)
+let collect_src_from_header ~body_start_pos ~body_end_pos lines i fence_header =
+  let rest =
+    if String.length fence_header >= 3 then
+      String.trim (String.sub fence_header 3 (String.length fence_header - 3))
+    else
+      ""
+  in
+  let language, options = separate_name_options (Some rest) in
+  let rec loop j acc =
+    if j >= Array.length lines then
+      (List.rev acc, j)
+    else if is_fence_line lines.(j) then
+      (List.rev acc, j + 1)
+    else
+      loop (j + 1) ("\n" :: lines.(j) :: acc)
+  in
+  let body_lines, j = loop i [] in
+  ( Src
+      { lines = body_lines
+      ; language
+      ; options
+      ; pos_meta = { Pos.start_pos = body_start_pos; end_pos = body_end_pos }
+      }
+  , j )
+
+let collect_src ~line_starts lines i =
+  let open_line = lines.(i) in
+  let ind = indent_len open_line in
+  let fence_header =
+    String.sub open_line ind (String.length open_line - ind)
+  in
+  let body_i = i + 1 in
+  let body_start_pos =
+    if body_i < Array.length lines then
+      line_starts.(body_i)
+    else
+      line_starts.(i) + String.length open_line + 1
+  in
+  (* Find closing fence to compute end_pos = start of closing fence line. *)
+  let rec find_end j =
+    if j >= Array.length lines then
+      if Array.length lines = 0 then
+        body_start_pos
+      else
+        line_starts.(Array.length lines - 1)
+        + String.length lines.(Array.length lines - 1)
+    else if is_fence_line lines.(j) then
+      line_starts.(j)
+    else
+      find_end (j + 1)
+  in
+  let body_end_pos = find_end body_i in
+  collect_src_from_header ~body_start_pos ~body_end_pos lines body_i
+    fence_header
+
+let quote_continuation_stop config line =
+  (* Match Block.md_blockquote: stop only on new block markers. *)
+  let trimmed = String.trim line in
+  try_dash_heading config line <> None
+  || try_atx_heading config line <> None
+  || is_list_item_prefix line || is_fence_line line || is_properties_start line
+  || starts_with_at line 0 "- "
+  || starts_with_at line 0 "# "
+  || starts_with_at line 0 "id:: "
+  || trimmed = "-" || trimmed = "#"
+
+let collect_quote config ?first_line lines i =
   let rec loop j acc =
     if j >= Array.length lines then
       (List.rev acc, j)
@@ -485,13 +653,71 @@ let collect_quote config lines i =
           String.sub line body_i (String.length line - body_i)
       in
       loop (j + 1) (body :: acc)
+    else if
+      (not config.parse_outline_only)
+      && not (quote_continuation_stop config lines.(j))
+    then
+      (* Full MD: lines without '>' still belong to the quote. *)
+      loop (j + 1) (lines.(j) :: acc)
     else
       (List.rev acc, j)
   in
-  let bodies, j = loop i [] in
+  let start_acc, start_j =
+    match first_line with
+    | None -> ([], i)
+    | Some line ->
+      let ind = indent_len line in
+      let body_i =
+        if ind < String.length line && line.[ind] = '>' then
+          skip_spaces line (ind + 1)
+        else
+          ind
+      in
+      let body =
+        if body_i >= String.length line then
+          ""
+        else
+          String.sub line body_i (String.length line - body_i)
+      in
+      ([ body ], i)
+  in
+  let bodies, j = loop start_j start_acc in
   (* Match Angstrom quote + concat_paragraph_lines: one merged paragraph. *)
   let content = String.concat "\n" bodies in
-  (Quote [ outline_paragraph config content ], j)
+  (Quote [ quote_paragraph config content ], j)
+
+let try_latex_environment line =
+  let s = String.trim line in
+  let n = String.length s in
+  if n < 8 || not (starts_with_at s 0 "\\begin{") then
+    None
+  else
+    let name_start = 7 in
+    match String.index_from_opt s name_start '}' with
+    | None -> None
+    | Some name_end ->
+      let name = String.sub s name_start (name_end - name_start) in
+      let ending = "\\end{" ^ name ^ "}" in
+      let ending_l = String.lowercase_ascii ending in
+      let rec find_end i =
+        if i + String.length ending > n then
+          None
+        else if
+          String.lowercase_ascii (String.sub s i (String.length ending))
+          = ending_l
+        then
+          Some i
+        else
+          find_end (i + 1)
+      in
+      (match find_end (name_end + 1) with
+      | None -> None
+      | Some end_i ->
+        let content =
+          String.sub s (name_end + 1) (end_i - name_end - 1)
+        in
+        Some
+          (Latex_Environment (String.lowercase_ascii name, None, content)))
 
 let parse_list_item_line line =
   let ind = indent_len line in
@@ -514,7 +740,7 @@ let make_list_item config ~indent ~ordered ~number content children =
       (if content = "" then
          []
        else
-         [ outline_paragraph config content ])
+         [ content_paragraph config content ])
   ; items = children
   ; number
   ; name = []
@@ -566,6 +792,30 @@ let parse config input =
   let raw_lines = String.split_on_char '\n' input in
   let lines = Array.of_list (List.map rstrip_cr raw_lines) in
   let n = Array.length lines in
+  let line_starts =
+    let arr = Array.make (max n 1) 0 in
+    let pos = ref 0 in
+    for idx = 0 to n - 1 do
+      arr.(idx) <- !pos;
+      let nl = if idx + 1 < n then 1 else 0 in
+      pos := !pos + String.length lines.(idx) + nl
+    done;
+    arr
+  in
+  let src_end_pos body_i =
+    let rec find j =
+      if j >= n then
+        if n = 0 then
+          0
+        else
+          line_starts.(n - 1) + String.length lines.(n - 1)
+      else if is_fence_line lines.(j) then
+        line_starts.(j)
+      else
+        find (j + 1)
+    in
+    find body_i
+  in
   let acc = ref [] in
   let i = ref 0 in
   while !i < n do
@@ -574,10 +824,36 @@ let parse config input =
       incr i
     else
       match try_dash_heading config line with
-      | Some (h, opens_fence) ->
+      | Some (h, rest) ->
         acc := with_pos h :: !acc;
         incr i;
-        if opens_fence then i := skip_fence_body lines !i
+        (match rest with
+        | Nothing -> ()
+        | Fence hdr ->
+          if config.parse_outline_only then
+            i := skip_fence_body lines !i
+          else
+            let body_i = !i in
+            let body_start_pos =
+              if body_i < n then
+                line_starts.(body_i)
+              else
+                line_starts.(!i - 1) + String.length lines.(!i - 1) + 1
+            in
+            let body_end_pos = src_end_pos body_i in
+            let src, j =
+              collect_src_from_header ~body_start_pos ~body_end_pos lines body_i
+                hdr
+            in
+            acc := with_pos src :: !acc;
+            i := j
+        | Quote_line qline ->
+          if config.parse_outline_only then
+            ()
+          else
+            let q, j = collect_quote config ~first_line:qline lines !i in
+            acc := with_pos q :: !acc;
+            i := j)
       | None -> (
         match try_atx_heading config line with
         | Some h ->
@@ -600,7 +876,12 @@ let parse config input =
                 i := j
               | [], _ ->
                 if is_fence_line line then
-                  i := skip_fence lines !i
+                  if config.parse_outline_only then
+                    i := skip_fence lines !i
+                  else
+                    let src, j = collect_src ~line_starts lines !i in
+                    acc := with_pos src :: !acc;
+                    i := j
                 else if is_quote_line line then (
                   let q, j = collect_quote config lines !i in
                   acc := with_pos q :: !acc;
@@ -611,9 +892,19 @@ let parse config input =
                   in
                   acc := with_pos (List items) :: !acc;
                   i := j
-                ) else
-                  let p, j = collect_paragraph_lines config lines !i in
-                  acc := with_pos p :: !acc;
-                  i := j))))
+                ) else (
+                  match
+                    if config.parse_outline_only then
+                      None
+                    else
+                      try_latex_environment line
+                  with
+                  | Some latex ->
+                    acc := with_pos latex :: !acc;
+                    incr i
+                  | None ->
+                    let p, j = collect_paragraph_lines config lines !i in
+                    acc := with_pos p :: !acc;
+                    i := j)))))
   done;
   List.rev !acc

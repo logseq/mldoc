@@ -146,20 +146,18 @@ let build_md_outline_parsers config =
 let parse config input =
   let outline_only = Conf.(config.parse_outline_only) in
   let md = Conf.is_markdown config in
-  (* Markdown outline: line-oriented fast path (no Angstrom block choice). *)
-  if md && outline_only then
+  (* Markdown: line-oriented path for outline and full. *)
+  if md then
     let ast = Md_outline.parse config input in
-    if String.contains input '\\' then
+    if (not outline_only) || String.contains input '\\' then
       List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
     else
       ast
   else
     let parsers =
-      match (md, outline_only) with
-      | true, false -> build_choice_parsers md_full_parsers config
-      | false, true -> build_choice_parsers org_outline_parsers config
-      | false, false -> build_choice_parsers org_full_parsers config
-      | true, true -> assert false
+      match outline_only with
+      | true -> build_choice_parsers org_outline_parsers config
+      | false -> build_choice_parsers org_full_parsers config
     in
     match parse_string ~consume:All parsers input with
     | Ok result ->
@@ -184,10 +182,7 @@ let parse config input =
         else
           ast
       in
-      if Conf.is_markdown config then
-        List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
-      else
-        ast
+      ast
     | Error err -> failwith err
 
 let load_file f =
