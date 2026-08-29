@@ -1459,11 +1459,210 @@ let inline_choices state config : t_with_pos Angstrom.t =
   else
     (fun t -> (t, None)) <$> p'
 
-let parse config =
+let parse_angstrom config =
   let state = { last_plain_char = None } in
   many1 (inline_choices state config)
   >>| (fun l -> concat_plains l)
   <?> "inline"
+
+(** Pure-OCaml MD fast path: plain + #tag + [[page]] + ((block)) + Break_Line.
+    No Parseff/effects — faster than Angstrom on Logseq-style titles.
+    Returns None when emphasis, markdown links, urls, nested refs, etc. appear. *)
+let try_fast_md_inline s =
+  let n = String.length s in
+  if n = 0 then
+    None
+  else
+    let rec gate i =
+      if i >= n then
+        true
+      else
+        match s.[i] with
+        | '*'
+        | '_'
+        | '`'
+        | '~'
+        | '='
+        | '$'
+        | '\\'
+        | '!'
+        | '<'
+        | '{'
+        | '@'
+        | '^' ->
+          false
+        | ':' when i + 1 < n && s.[i + 1] = '/' -> false
+        | _ -> gate (i + 1)
+    in
+    if not (gate 0) then
+      None
+    else
+      let is_ws = function
+        | ' '
+        | '\t' ->
+          true
+        | _ -> false
+      in
+      let tag_trail = function
+        | ','
+        | ';'
+        | '.'
+        | '!'
+        | '?'
+        | '\''
+        | '"'
+        | ':'
+        | '#' ->
+          true
+        | _ -> false
+      in
+      let acc = ref [] in
+      let i = ref 0 in
+      let plain_start = ref 0 in
+      let complex = ref false in
+      let flush_plain stop =
+        if stop > !plain_start then
+          acc := Plain (String.sub s !plain_start (stop - !plain_start)) :: !acc
+      in
+      let page_ref_end i0 =
+        if i0 + 1 >= n || s.[i0] <> '[' || s.[i0 + 1] <> '[' then
+          None
+        else
+          let rec loop j depth =
+            if j + 1 >= n then
+              None
+            else if s.[j] = '[' && s.[j + 1] = '[' then
+              loop (j + 2) (depth + 1)
+            else if s.[j] = ']' && s.[j + 1] = ']' then
+              if depth = 1 then
+                Some (j + 2)
+              else
+                loop (j + 2) (depth - 1)
+            else
+              loop (j + 1) depth
+          in
+          loop (i0 + 2) 1
+      in
+      let block_ref_end i0 =
+        if i0 + 1 >= n || s.[i0] <> '(' || s.[i0 + 1] <> '(' then
+          None
+        else
+          let rec loop j =
+            if j + 1 >= n then
+              None
+            else if s.[j] = ')' && s.[j + 1] = ')' then
+              Some (j + 2)
+            else
+              loop (j + 1)
+          in
+          loop (i0 + 2)
+      in
+      while !i < n && not !complex do
+        match s.[!i] with
+        | '\n' ->
+          flush_plain !i;
+          acc := Break_Line :: !acc;
+          incr i;
+          plain_start := !i
+        | '\r' ->
+          flush_plain !i;
+          incr i;
+          if !i < n && s.[!i] = '\n' then incr i;
+          acc := Break_Line :: !acc;
+          plain_start := !i
+        | '#' when !i + 1 < n && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
+          ->
+          flush_plain !i;
+          let start = !i + 1 in
+          let j = ref start in
+          let has_bracket = ref false in
+          while !j < n && (not (is_ws s.[!j])) && s.[!j] <> '\n' do
+            if s.[!j] = '[' then has_bracket := true;
+            incr j
+          done;
+          if !has_bracket then
+            complex := true
+          else
+            let raw = String.sub s start (!j - start) in
+            let rec name_len k =
+              if k > 0 && tag_trail raw.[k - 1] then
+                name_len (k - 1)
+              else
+                k
+            in
+            let nl = name_len (String.length raw) in
+            if nl = 0 then
+              complex := true
+            else (
+              acc := Tag [ Plain (String.sub raw 0 nl) ] :: !acc;
+              if nl < String.length raw then
+                acc :=
+                  Plain (String.sub raw nl (String.length raw - nl)) :: !acc;
+              i := !j;
+              plain_start := !j
+            )
+        | '[' when !i + 1 < n && s.[!i + 1] = '[' -> (
+          match page_ref_end !i with
+          | Some e ->
+            let name = String.sub s (!i + 2) (e - !i - 4) in
+            if String.contains name '[' then
+              complex := true
+            else (
+              flush_plain !i;
+              acc :=
+                Link
+                  { url = Page_ref name
+                  ; label = [ Plain "" ]
+                  ; title = None
+                  ; full_text = "[[" ^ name ^ "]]"
+                  ; metadata = ""
+                  }
+                :: !acc;
+              i := e;
+              plain_start := e
+            )
+          | None -> complex := true)
+        | '[' -> complex := true
+        | '(' when !i + 1 < n && s.[!i + 1] = '(' -> (
+          match block_ref_end !i with
+          | Some e ->
+            flush_plain !i;
+            let id = String.sub s (!i + 2) (e - !i - 4) in
+            acc :=
+              Link
+                { url = Block_ref id
+                ; label = [ Plain "" ]
+                ; title = None
+                ; full_text = "((" ^ id ^ "))"
+                ; metadata = ""
+                }
+              :: !acc;
+            i := e;
+            plain_start := e
+          | None -> incr i)
+        | _ -> incr i
+      done;
+      if !complex then
+        None
+      else (
+        flush_plain n;
+        match !acc with
+        | [] -> None
+        | _ ->
+          Some (concat_plains (List.map (fun t -> (t, None)) (List.rev !acc)))
+      )
+
+let parse config =
+  if Conf.is_markdown config then
+    take_while (fun _ -> true) >>= fun s ->
+    match try_fast_md_inline s with
+    | Some result -> return result
+    | None -> (
+      match parse_string ~consume:All (parse_angstrom config) s with
+      | Result.Ok result -> return result
+      | Result.Error e -> fail e)
+  else
+    parse_angstrom config
 
 let is_embed_data = function
   | Embed_data _ -> true

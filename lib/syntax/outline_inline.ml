@@ -134,23 +134,29 @@ let strip_tag_trail raw =
   strip raw
 
 (** Fast path for #tag / [[page]] / ((block)). Returns None when markdown
-    links or nested-page hashtags need the angstrom parser. *)
-let try_fast_scan s =
-  (* Escapes / backslashes need the real parser. *)
-  if String.contains s '\\' then
+    links or nested-page hashtags need the angstrom parser.
+    Scans [s] from [off] with length [len] (no need to sub the whole title). *)
+let try_fast_scan_range s off len =
+  if len < 0 || off < 0 || off + len > String.length s then
+    None
+  else if
+    let rec has_bs i = i < off + len && (s.[i] = '\\' || has_bs (i + 1)) in
+    has_bs off
+  then
     None
   else
-    let n = String.length s in
+    let end_ = off + len in
     let acc = ref [] in
-    let i = ref 0 in
+    let i = ref off in
     let complex = ref false in
-    while !i < n && not !complex do
+    while !i < end_ && not !complex do
       match s.[!i] with
-      | '#' when !i + 1 < n && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#' ->
+      | '#' when !i + 1 < end_ && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
+        ->
         let start = !i + 1 in
         let j = ref start in
         let has_bracket = ref false in
-        while !j < n && not (is_ws s.[!j]) do
+        while !j < end_ && not (is_ws s.[!j]) do
           if s.[!j] = '[' then has_bracket := true;
           incr j
         done;
@@ -160,27 +166,30 @@ let try_fast_scan s =
           let name = strip_tag_trail (String.sub s start (!j - start)) in
           if name <> "" then acc := Inline.Tag [ Inline.Plain name ] :: !acc;
           i := !j
-      | '[' when !i + 1 < n && s.[!i + 1] = '[' -> (
+      | '[' when !i + 1 < end_ && s.[!i + 1] = '[' -> (
+        (* find_page_ref_end walks to string end; clamp by checking within range *)
         match find_page_ref_end s !i with
-        | Some e ->
+        | Some e when e <= end_ ->
           let name = String.sub s (!i + 2) (e - !i - 4) in
           acc := page_ref_link name :: !acc;
           i := e
-        | None -> complex := true)
+        | _ -> complex := true)
       | '[' -> complex := true
-      | '(' when !i + 1 < n && s.[!i + 1] = '(' -> (
+      | '(' when !i + 1 < end_ && s.[!i + 1] = '(' -> (
         match find_block_ref_end s !i with
-        | Some e ->
+        | Some e when e <= end_ ->
           let id = String.sub s (!i + 2) (e - !i - 4) in
           acc := block_ref_link id :: !acc;
           i := e
-        | None -> incr i)
+        | _ -> incr i)
       | _ -> incr i
     done;
     if !complex then
       None
     else
       Some (Type_op.inline_list_with_none_pos (List.rev !acc))
+
+let try_fast_scan s = try_fast_scan_range s 0 (String.length s)
 
 let parse config =
   take_while (fun _ -> true) >>= fun s ->

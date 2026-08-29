@@ -5,7 +5,6 @@
 
 open! Prelude
 open Type
-open Conf
 
 let dummy = Pos.dummy_pos
 let with_pos t = (t, dummy)

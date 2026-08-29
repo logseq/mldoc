@@ -1,9 +1,9 @@
 (include_subdirs unqualified)
 
-(env
+ (env
  (dev
   (flags
-   (:standard -warn-error -A))))
+   (:standard -warn-error -A -alert -deprecated))))
 
 (library
  (name mldoc)
