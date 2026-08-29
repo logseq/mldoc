@@ -387,10 +387,10 @@ let try_md_property config line =
       Some
         ( key
         , value
-        , (if config.parse_outline_only then
-             filter_prop_refs (outline_inlines config value)
-           else
-             Property.property_references config value) )
+        , if config.parse_outline_only then
+            filter_prop_refs (outline_inlines config value)
+          else
+            Property.property_references config value )
     else
       None
 
@@ -442,12 +442,12 @@ let try_org_drawer_prop_line config line =
             String.trim (String.sub line rest_i (n - rest_i))
         in
         Some
-        ( key
-        , value
-        , (if config.parse_outline_only then
-             filter_prop_refs (outline_inlines config value)
-           else
-             Property.property_references config value) )
+          ( key
+          , value
+          , if config.parse_outline_only then
+              filter_prop_refs (outline_inlines config value)
+            else
+              Property.property_references config value )
     else
       None
 
@@ -595,9 +595,7 @@ let collect_src_from_header ~body_start_pos ~body_end_pos lines i fence_header =
 let collect_src ~line_starts lines i =
   let open_line = lines.(i) in
   let ind = indent_len open_line in
-  let fence_header =
-    String.sub open_line ind (String.length open_line - ind)
-  in
+  let fence_header = String.sub open_line ind (String.length open_line - ind) in
   let body_i = i + 1 in
   let body_start_pos =
     if body_i < Array.length lines then
@@ -628,8 +626,7 @@ let quote_continuation_stop config line =
   try_dash_heading config line <> None
   || try_atx_heading config line <> None
   || is_list_item_prefix line || is_fence_line line || is_properties_start line
-  || starts_with_at line 0 "- "
-  || starts_with_at line 0 "# "
+  || starts_with_at line 0 "- " || starts_with_at line 0 "# "
   || starts_with_at line 0 "id:: "
   || trimmed = "-" || trimmed = "#"
 
@@ -695,7 +692,7 @@ let try_latex_environment line =
     let name_start = 7 in
     match String.index_from_opt s name_start '}' with
     | None -> None
-    | Some name_end ->
+    | Some name_end -> (
       let name = String.sub s name_start (name_end - name_start) in
       let ending = "\\end{" ^ name ^ "}" in
       let ending_l = String.lowercase_ascii ending in
@@ -710,14 +707,11 @@ let try_latex_environment line =
         else
           find_end (i + 1)
       in
-      (match find_end (name_end + 1) with
+      match find_end (name_end + 1) with
       | None -> None
       | Some end_i ->
-        let content =
-          String.sub s (name_end + 1) (end_i - name_end - 1)
-        in
-        Some
-          (Latex_Environment (String.lowercase_ascii name, None, content)))
+        let content = String.sub s (name_end + 1) (end_i - name_end - 1) in
+        Some (Latex_Environment (String.lowercase_ascii name, None, content)))
 
 let parse_list_item_line line =
   let ind = indent_len line in
@@ -797,7 +791,12 @@ let parse config input =
     let pos = ref 0 in
     for idx = 0 to n - 1 do
       arr.(idx) <- !pos;
-      let nl = if idx + 1 < n then 1 else 0 in
+      let nl =
+        if idx + 1 < n then
+          1
+        else
+          0
+      in
       pos := !pos + String.length lines.(idx) + nl
     done;
     arr
@@ -824,10 +823,10 @@ let parse config input =
       incr i
     else
       match try_dash_heading config line with
-      | Some (h, rest) ->
+      | Some (h, rest) -> (
         acc := with_pos h :: !acc;
         incr i;
-        (match rest with
+        match rest with
         | Nothing -> ()
         | Fence hdr ->
           if config.parse_outline_only then
@@ -874,15 +873,15 @@ let parse config input =
               | (_ :: _ as kvs), j ->
                 acc := with_pos (Property_Drawer kvs) :: !acc;
                 i := j
-              | [], _ ->
-                if is_fence_line line then
+              | [], _ -> (
+                if is_fence_line line then (
                   if config.parse_outline_only then
                     i := skip_fence lines !i
                   else
                     let src, j = collect_src ~line_starts lines !i in
                     acc := with_pos src :: !acc;
                     i := j
-                else if is_quote_line line then (
+                ) else if is_quote_line line then (
                   let q, j = collect_quote config lines !i in
                   acc := with_pos q :: !acc;
                   i := j
@@ -892,7 +891,7 @@ let parse config input =
                   in
                   acc := with_pos (List items) :: !acc;
                   i := j
-                ) else (
+                ) else
                   match
                     if config.parse_outline_only then
                       None
