@@ -1,5 +1,6 @@
 (** Wall-clock timing focused on Markdown (Logseq) workloads. *)
 open Mldoc.Parser
+
 open Mldoc.Conf
 
 let ensure_logseq_large path =
@@ -7,18 +8,18 @@ let ensure_logseq_large path =
     let buf = Buffer.create 1_200_000 in
     for i = 0 to 3999 do
       Buffer.add_string buf
-        (Printf.sprintf
-           "- Block title %d with [[page %d]] and #tag%d\n" i (i mod 50)
-           (i mod 20));
+        (Printf.sprintf "- Block title %d with [[page %d]] and #tag%d\n" i
+           (i mod 50) (i mod 20));
       if i mod 3 = 0 then
         Buffer.add_string buf
           (Printf.sprintf "  id:: %08x-xxxx-xxxx-xxxx-%012x\n" i i);
       if i mod 5 = 0 then (
         Buffer.add_string buf
-          (Printf.sprintf
-             "  - child of %d with ((%08x-xxxx-xxxx-xxxx-%012x))\n" i i i);
+          (Printf.sprintf "  - child of %d with ((%08x-xxxx-xxxx-xxxx-%012x))\n"
+             i i i);
         Buffer.add_string buf
-          (Printf.sprintf "    more plain text line without markup %d\n" i));
+          (Printf.sprintf "    more plain text line without markup %d\n" i)
+      );
       if i mod 7 = 0 then
         Buffer.add_string buf
           (Printf.sprintf
@@ -26,7 +27,8 @@ let ensure_logseq_large path =
       if i mod 11 = 0 then
         Buffer.add_string buf (Printf.sprintf "  + unordered item %d\n" i);
       if i mod 13 = 0 then
-        Buffer.add_string buf (Printf.sprintf "  ```\n  code line %d\n  ```\n" i)
+        Buffer.add_string buf
+          (Printf.sprintf "  ```\n  code line %d\n  ```\n" i)
     done;
     let content = Buffer.contents buf in
     (* Grow to ~1.2MB so benches stay comparable across revisions. *)
@@ -39,10 +41,10 @@ let ensure_logseq_large path =
     let grown = String.concat "" (List.rev !pieces) in
     let oc = open_out path in
     output_string oc (String.sub grown 0 1_200_000);
-    close_out oc)
+    close_out oc
+  )
 
 let () = ensure_logseq_large "./examples/logseq_large.md"
-
 let doc_org = load_file "./examples/doc.org"
 let syntax_md = load_file "./examples/syntax.md"
 let logseq_md = load_file "./examples/logseq_large.md"
@@ -91,11 +93,11 @@ let () =
   in
   Printf.printf "iterations=%d (avg seconds)\n" n;
   Printf.printf "MD logseq_large full:         %.4f\n" md_full;
-  Printf.printf "MD logseq_large outline_only: %.4f  (%.1fx vs full)\n" md_outline
-    (md_full /. md_outline);
+  Printf.printf "MD logseq_large outline_only: %.4f  (%.1fx vs full)\n"
+    md_outline (md_full /. md_outline);
   Printf.printf "MD syntax.md full:            %.4f\n" syn_full;
-  Printf.printf "MD syntax.md outline_only:    %.4f  (%.1fx vs full)\n" syn_outline
-    (syn_full /. syn_outline);
+  Printf.printf "MD syntax.md outline_only:    %.4f  (%.1fx vs full)\n"
+    syn_outline (syn_full /. syn_outline);
   Printf.printf "Org doc.org full:             %.4f\n" org_full;
-  Printf.printf "Org doc.org outline_only:     %.4f  (%.1fx vs full)\n" org_outline
-    (org_full /. org_outline)
+  Printf.printf "Org doc.org outline_only:     %.4f  (%.1fx vs full)\n"
+    org_outline (org_full /. org_outline)

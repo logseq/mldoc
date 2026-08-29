@@ -17,8 +17,8 @@ struct
   let check_listitem config line =
     let indent = get_indent line in
     let number =
-      try Scanf.sscanf (String.trim line) "%d" (fun x -> Some x)
-      with _ -> None
+      try Scanf.sscanf (String.trim line) "%d" (fun x -> Some x) with
+      | _ -> None
     in
     match number with
     | Some number -> (indent, true, false, Some number)
@@ -145,7 +145,8 @@ struct
           else
             match parse_string ~consume:All (Inline.parse config) name with
             | Ok inlines -> inlines
-            | Error _e -> Type_op.inline_list_with_none_pos [ Inline.Plain name ]
+            | Error _e ->
+              Type_op.inline_list_with_none_pos [ Inline.Plain name ]
         in
         (name, description)
       | None -> ([], description))

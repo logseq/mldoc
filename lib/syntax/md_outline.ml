@@ -8,7 +8,6 @@ open Type
 open Conf
 
 let dummy = Pos.dummy_pos
-
 let with_pos t = (t, dummy)
 
 let markers =
@@ -109,13 +108,13 @@ let is_list_item_prefix line =
     let c = line.[ind] in
     if (c = '+' || c = '*') && is_space_char line.[ind + 1] then
       true
-    else if c >= '0' && c <= '9' then
+    else if c >= '0' && c <= '9' then (
       let j = ref (ind + 1) in
       while !j < n && line.[!j] >= '0' && line.[!j] <= '9' do
         incr j
       done;
       !j < n && line.[!j] = '.' && !j + 1 < n && is_space_char line.[!j + 1]
-    else
+    ) else
       false
   else
     false
@@ -213,8 +212,7 @@ let parse_marker_priority_title config s i =
       | '`'
       | '>' ->
         ([], false)
-      | _ ->
-        (outline_inlines config title, true)
+      | _ -> (outline_inlines config title, true)
   in
   (marker, priority, title_inlines, keep_title, title)
 
@@ -392,7 +390,8 @@ let try_footnote_line config line =
         Some (Footnote_Definition (name, inlines))
       else
         None
-    with Not_found -> None
+    with
+    | Not_found -> None
   else
     None
 
@@ -434,9 +433,7 @@ let is_block_boundary config line =
   is_blank_line line
   || try_dash_heading config line <> None
   || try_atx_heading config line <> None
-  || is_fence_line line
-  || is_quote_line line
-  || is_list_item_prefix line
+  || is_fence_line line || is_quote_line line || is_list_item_prefix line
   || is_properties_start line
   || try_md_property config line <> None
   || try_org_style_prop line <> None
@@ -536,7 +533,8 @@ let rec parse_list_items config lines i min_indent =
     if is_blank_line line then
       incr j
     else if
-      try_dash_heading config line <> None || try_atx_heading config line <> None
+      try_dash_heading config line <> None
+      || try_atx_heading config line <> None
     then
       continue := false
     else if is_list_item_prefix line then
@@ -558,7 +556,8 @@ let rec parse_list_items config lines i min_indent =
         j := j';
         items :=
           make_list_item config ~indent ~ordered ~number content children
-          :: !items)
+          :: !items
+      )
     else
       continue := false
   done;
@@ -579,8 +578,7 @@ let parse config input =
       | Some (h, opens_fence) ->
         acc := with_pos h :: !acc;
         incr i;
-        if opens_fence then
-          i := skip_fence_body lines !i
+        if opens_fence then i := skip_fence_body lines !i
       | None -> (
         match try_atx_heading config line with
         | Some h ->
@@ -598,23 +596,23 @@ let parse config input =
               i := j
             | None -> (
               match collect_properties config lines !i with
-              | _ :: _ as kvs, j ->
+              | (_ :: _ as kvs), j ->
                 acc := with_pos (Property_Drawer kvs) :: !acc;
                 i := j
               | [], _ ->
                 if is_fence_line line then
                   i := skip_fence lines !i
-                else if is_quote_line line then
+                else if is_quote_line line then (
                   let q, j = collect_quote config lines !i in
                   acc := with_pos q :: !acc;
                   i := j
-                else if is_list_item_prefix line then
+                ) else if is_list_item_prefix line then (
                   let items, j =
                     parse_list_items config lines !i (indent_len line)
                   in
                   acc := with_pos (List items) :: !acc;
                   i := j
-                else
+                ) else
                   let p, j = collect_paragraph_lines config lines !i in
                   acc := with_pos p :: !acc;
                   i := j))))

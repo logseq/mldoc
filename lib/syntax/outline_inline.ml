@@ -3,7 +3,12 @@ open Angstrom
 open Parsers
 
 (** Outline mode only extracts node refs and tags (properties are block-level). *)
-let is_outline_special = function '#' | '[' | '(' -> true | _ -> false
+let is_outline_special = function
+  | '#'
+  | '['
+  | '(' ->
+    true
+  | _ -> false
 
 let may_have_outline_markup _config s =
   let n = String.length s in
@@ -31,8 +36,9 @@ let inline_choices config : Inline.t_with_pos option Angstrom.t =
   peek_char_fail >>= function
   | c when is_whitespace c -> any_char *> return None
   | _ ->
-    (interesting config >>| fun t -> Some (t, None))
-    <|> (any_char *> skip_plain_run *> return None)
+    interesting config
+    >>| (fun t -> Some (t, None))
+    <|> any_char *> skip_plain_run *> return None
 
 let parse_angstrom config =
   many1 (inline_choices config)
@@ -41,10 +47,25 @@ let parse_angstrom config =
         Inline.concat_plains l)
   <?> "outline inline"
 
-let is_ws = function ' ' | '\t' | '\n' | '\r' -> true | _ -> false
+let is_ws = function
+  | ' '
+  | '\t'
+  | '\n'
+  | '\r' ->
+    true
+  | _ -> false
 
 let tag_trail = function
-  | ',' | ';' | '.' | '!' | '?' | '\'' | '"' | ':' | '#' -> true
+  | ','
+  | ';'
+  | '.'
+  | '!'
+  | '?'
+  | '\''
+  | '"'
+  | ':'
+  | '#' ->
+    true
   | _ -> false
 
 let find_page_ref_end s i =
@@ -125,21 +146,19 @@ let try_fast_scan s =
     let complex = ref false in
     while !i < n && not !complex do
       match s.[!i] with
-      | '#' when !i + 1 < n && not (is_ws s.[!i + 1]) && s.[!i + 1] <> '#' ->
+      | '#' when !i + 1 < n && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#' ->
         let start = !i + 1 in
         let j = ref start in
         let has_bracket = ref false in
         while !j < n && not (is_ws s.[!j]) do
-          if s.[!j] = '[' then
-            has_bracket := true;
+          if s.[!j] = '[' then has_bracket := true;
           incr j
         done;
         if !has_bracket then
           complex := true
         else
           let name = strip_tag_trail (String.sub s start (!j - start)) in
-          if name <> "" then
-            acc := Inline.Tag [ Inline.Plain name ] :: !acc;
+          if name <> "" then acc := Inline.Tag [ Inline.Plain name ] :: !acc;
           i := !j
       | '[' when !i + 1 < n && s.[!i + 1] = '[' -> (
         match find_page_ref_end s !i with

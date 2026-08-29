@@ -146,9 +146,7 @@ let t_with_pos_of_yojson (json : Yojson.Safe.t) =
 type inner_state = { mutable last_plain_char : char option }
 
 let quicklink_delims = [ '>' ] @ eol_chars
-
 let inline_link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')' ] @ eol_chars
-
 let email = Email_address.email >>| fun email -> Email email
 
 let between ?(e = None) s =
@@ -182,7 +180,6 @@ let code_aux_p c =
   <?> "Inline code"
 
 let org_code = code_aux_p "~"
-
 let md_code = code_aux_p "`" <|> markdown_escape_backticks
 
 let code config =
@@ -355,11 +352,11 @@ let md_em_parser ?(nested = false) ?(include_md_code = true) pattern typ =
           set_char_before_pattern (Plain s);
           Plain s )
       ; (if include_md_code then (
-          md_code >>| fun t ->
-          set_char_before_pattern t;
-          t
-        ) else
-          fail "continue")
+           md_code >>| fun t ->
+           set_char_before_pattern t;
+           t
+         ) else
+           fail "continue")
       ; ( take_while1_include_backslash stop_chars (fun c ->
               not @@ List.mem c stop_chars)
         >>| fun s ->
@@ -521,7 +518,8 @@ let entity =
   try
     let entity = Entity.find s in
     Entity entity
-  with Not_found -> Plain s
+  with
+  | Not_found -> Plain s
 
 (* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
@@ -544,7 +542,6 @@ let gen_script config s f =
   | Error _e -> f [ Plain s ]
 
 let subscript config = gen_script config "_" (fun x -> Subscript x)
-
 let superscript config = gen_script config "^" (fun x -> Superscript x)
 
 (*
@@ -580,7 +577,11 @@ let latex_fragment _config =
       take_while (fun x -> x <> '$' && x <> '\r' && x <> '\n') <* char '$'
       >>= fun s ->
       match last_char s with
-      | Some ' ' | Some '(' | Some '[' | Some '{' -> fail "inline math shouldn't end with a space, (, [, {"
+      | Some ' '
+      | Some '('
+      | Some '['
+      | Some '{' ->
+        fail "inline math shouldn't end with a space, (, [, {"
       | _ -> return @@ Latex_Fragment (Inline (String.make 1 c ^ s)))
   | '\\' -> (
     any_char >>= function
@@ -612,7 +613,8 @@ let link_inline =
     <$> choice [ char '/'; char '?'; char '#' ]
     <*> string_contains_balanced_brackets
           ~excluded_ending_chars:[ ','; ';'; '.'; '!'; '?' ]
-          [ ('(', ')'); ('[', ']') ] (space_chars @ eol_chars)
+          [ ('(', ')'); ('[', ']') ]
+          (space_chars @ eol_chars)
     <|> return ""
   in
   unsafe_lookahead (take_while1 is_letter_or_digit *> string "://")
@@ -663,7 +665,8 @@ let org_link_1 config =
           | None -> fail "not link"
           | Some '[' ->
             string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
-              [ ('[', ']') ] []
+              [ ('[', ']') ]
+              []
           | Some ']' ->
             peek_string 2 >>= fun s ->
             if s = "]]" then
@@ -697,7 +700,8 @@ let org_link_1 config =
                     link
                 in
                 Complex { protocol; link = link' })
-          with _ -> Search url_text
+          with
+          | _ -> Search url_text
       in
       let parser =
         many1
@@ -743,7 +747,8 @@ let org_link_2 =
       try
         Scanf.sscanf s "%[^:]://%[^\n]" (fun protocol link ->
             Complex { protocol; link })
-      with _ -> Page_ref s
+      with
+      | _ -> Page_ref s
   in
   let full_text = Printf.sprintf "[[%s]]" s in
   let label =
@@ -757,7 +762,8 @@ let org_link config = org_link_1 config <|> org_link_2
 
 (* helper for markdown_link and markdown_image *)
 let link_url_part =
-  string_contains_balanced_brackets ~escape_chars:[ '('; ')' ] [ ('(', ')') ]
+  string_contains_balanced_brackets ~escape_chars:[ '('; ')' ]
+    [ ('(', ')') ]
     eol_chars
   >>= fun s ->
   let len = String.length s in
@@ -783,7 +789,8 @@ let label_part_choices =
         | Some '[' ->
           page_ref
           <|> string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
-                [ ('[', ']') ] []
+                [ ('[', ']') ]
+                []
           >>| fun s -> Plain s
         | Some ']' -> fail "not link"
         | Some c when is_eol c -> fail "finish"
@@ -809,14 +816,12 @@ let label_part =
 let link_url_part_inner =
   let url_part =
     both (return `Block_ref_link) block_ref
-    <|> both
-          (return `Other_link1)
+    <|> both (return `Other_link1)
           (char '<'
            *> take_while1_include_backslash [ '<'; '>' ] (fun c ->
                   not (List.mem c [ '<'; '>' ]))
           <* char '>')
-    <|> both
-          (return `Other_link2)
+    <|> both (return `Other_link2)
           (take_while1 (fun c -> non_space_eol c && c <> '['))
     <|> both (return `Page_ref_link) page_ref
     <|> ( peek_char >>= fun c ->
@@ -884,7 +889,8 @@ let markdown_link config =
                     link
                 in
                 Complex { protocol; link = link' })
-          with _ ->
+          with
+          | _ ->
             if
               String.length url > 3
               && (ends_with lowercased_url ".md"
@@ -903,9 +909,8 @@ let markdown_link config =
              ; entity
              ; code config
              ; subscript config
-             ; superscript config
-               (* ; plain config
-                * ; whitespaces *)
+             ; superscript config (* ; plain config
+                                   * ; whitespaces *)
              ])
       in
       let label =
@@ -1000,11 +1005,13 @@ let statistics_cookie =
   try
     let cookie = Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) in
     return (Cookie cookie)
-  with _ -> (
+  with
+  | _ -> (
     try
       let cookie = Scanf.sscanf s "%d%%" (fun n -> Percent n) in
       return (Cookie cookie)
-    with _ -> fail "statistics_cookie")
+    with
+    | _ -> fail "statistics_cookie")
 
 (*
    Define: #+MACRO: demo =$1= ($1)
@@ -1035,22 +1042,22 @@ let macro config =
   else
     let p =
       take_while1 (function
-          | '}'
-          | '\r'
-          | '\n' ->
-            false
-          | _ -> true)
+        | '}'
+        | '\r'
+        | '\n' ->
+          false
+        | _ -> true)
       >>= fun s ->
       match parse_string ~consume:Prefix macro_name s with
       | Ok name -> (
-          let l = String.length s in
-          let args = String.sub s (String.length name) (l - String.length name) in
-          if String.length args == 0 then
-            return (Macro { name; arguments = [] })
-          else
-            match parse_string (macro_args config) ~consume:All args with
-            | Ok arguments -> return (Macro { name; arguments })
-            | Error e -> fail e)
+        let l = String.length s in
+        let args = String.sub s (String.length name) (l - String.length name) in
+        if String.length args == 0 then
+          return (Macro { name; arguments = [] })
+        else
+          match parse_string (macro_args config) ~consume:All args with
+          | Ok arguments -> return (Macro { name; arguments })
+          | Error e -> fail e)
       | Error _e -> fail "macro name"
     in
     between_string "{{{" "}}}" p <|> between_string "{{" "}}" p
@@ -1368,7 +1375,6 @@ let hash_tag_value_string tag =
   | _ -> failwith "unreachable"
 
 let inline_hiccup = Hiccup.parse >>| fun s -> Inline_Hiccup s
-
 let inline_html = Raw_html.parse >>| fun s -> Inline_Html s
 
 (* TODO: configurable, re-order *)
