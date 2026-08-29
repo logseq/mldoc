@@ -3,6 +3,7 @@
 module Document = Document
 module Block = Type_parser.Block
 module Inline = Inline
+module Outline_inline = Outline_inline
 module Nested_link = Nested_link
 module Pos = Pos
 module Exporters = Exporter.Exporters

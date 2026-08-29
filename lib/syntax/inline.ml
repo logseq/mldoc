@@ -197,14 +197,48 @@ let org_plain_delims =
 let markdown_plain_delims =
   [ '\\'; '_'; '^'; '['; '*'; '~'; '`'; '='; '$'; '#' ] @ whitespace_chars
 
-(* replace list with a  *)
+(* Hot path: avoid List.mem per character. *)
+let in_org_plain_delims = function
+  | '\\'
+  | '_'
+  | '^'
+  | '['
+  | '*'
+  | '/'
+  | '+'
+  | '$'
+  | '#'
+  | ' '
+  | '\t'
+  | '\n'
+  | '\r'
+  | '\012' ->
+    true
+  | _ -> false
+
+let in_md_plain_delims = function
+  | '\\'
+  | '_'
+  | '^'
+  | '['
+  | '*'
+  | '~'
+  | '`'
+  | '='
+  | '$'
+  | '#'
+  | ' '
+  | '\t'
+  | '\n'
+  | '\r'
+  | '\012' ->
+    true
+  | _ -> false
+
 let in_plain_delims config c =
-  let plain_delims =
-    match config.format with
-    | Org -> org_plain_delims
-    | Markdown -> markdown_plain_delims
-  in
-  List.mem c plain_delims
+  match config.format with
+  | Org -> in_org_plain_delims c
+  | Markdown -> in_md_plain_delims c
 
 let whitespaces = ws >>| fun spaces -> Plain spaces
 
@@ -566,6 +600,7 @@ let metadata =
   <|> string "{}" <|> return ""
 
 let link_inline =
+  (* Fail fast on ordinary words: require letter+:// without consuming. *)
   let protocol_part = take_while1 is_letter_or_digit <* string "://" in
   let before_path_part =
     take_while1 (fun c ->
@@ -580,16 +615,17 @@ let link_inline =
           [ ('(', ')'); ('[', ']') ] (space_chars @ eol_chars)
     <|> return ""
   in
-  lift3
-    (fun protocol before_path remain ->
-      Link
-        { label = [ Plain (protocol ^ "://" ^ before_path ^ remain) ]
-        ; url = Complex { protocol; link = before_path ^ remain }
-        ; title = None
-        ; full_text = protocol ^ "://" ^ before_path ^ remain
-        ; metadata = ""
-        })
-    protocol_part before_path_part remaining_part
+  unsafe_lookahead (take_while1 is_letter_or_digit *> string "://")
+  *> lift3
+       (fun protocol before_path remain ->
+         Link
+           { label = [ Plain (protocol ^ "://" ^ before_path ^ remain) ]
+           ; url = Complex { protocol; link = before_path ^ remain }
+           ; title = None
+           ; full_text = protocol ^ "://" ^ before_path ^ remain
+           ; metadata = ""
+           })
+       protocol_part before_path_part remaining_part
 
 let quick_link_aux =
   let protocol_part_and_slashes =

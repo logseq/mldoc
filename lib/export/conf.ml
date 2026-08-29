@@ -42,6 +42,9 @@ type t =
     (* hiccup: bool; *)
     toc : bool [@default false]
   ; parse_outline_only : bool [@default false]
+        (** Fast path (esp. Markdown): block structure + properties, and in
+            content only node refs ([[page]] / ((block))), tags (#tag).
+            Skips emphasis/code/timestamps and full Inline.parse. *)
   ; heading_number : bool [@default false]
   ; keep_line_break : bool (* FIXME: is this option deprecated? *)
   ; format : format

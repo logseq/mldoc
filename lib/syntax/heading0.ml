@@ -83,16 +83,34 @@ struct
 
   let title_aux_p config =
     let config = { config with Conf.hiccup_in_block = false } in
-    Angstrom.unsafe_lookahead
-      (choice
-         [ Drawer.parse config
-         ; Hr.parse config
-         ; Table.parse config
-         ; Latex_env.parse config
-         ; Block.parse config
-         ; Footnote.parse config
-         ; Paragraph.parse
-         ])
+    if config.parse_outline_only then
+      (* Only run Block when the title might be a fence/quote. *)
+      Angstrom.unsafe_lookahead
+        ( peek_char >>= function
+          | Some '`'
+          | Some '>' ->
+            Block.parse config <|> Paragraph.parse
+          | _ -> Paragraph.parse )
+    else if Conf.is_markdown config then
+      (* Markdown: most titles are plain lines; avoid Org-heavy lookahead. *)
+      Angstrom.unsafe_lookahead
+        (choice
+           [ Drawer.parse config
+           ; Block.parse config
+           ; Footnote.parse config
+           ; Paragraph.parse
+           ])
+    else
+      Angstrom.unsafe_lookahead
+        (choice
+           [ Drawer.parse config
+           ; Hr.parse config
+           ; Table.parse config
+           ; Latex_env.parse config
+           ; Block.parse config
+           ; Footnote.parse config
+           ; Paragraph.parse
+           ])
 
   (* not include priority, tags, marker
      return (title_line_string, first Type.t) *)
@@ -128,6 +146,14 @@ struct
     in
     explode (String.trim s) |> List.map map_char |> String.concat ""
 
+  let outline_title config title =
+    if Outline_inline.may_have_outline_markup config title then
+      match parse_string ~consume:All (Outline_inline.parse config) title with
+      | Ok title -> title
+      | Error _ -> []
+    else
+      []
+
   let parse config =
     let p =
       lift4
@@ -136,15 +162,12 @@ struct
             match pos_and_title with
             | None -> []
             | Some (_pos, title) -> (
-              let inline_parse =
-                if config.parse_outline_only then
-                  Outline_inline.parse
-                else
-                  Inline.parse
-              in
-              match parse_string ~consume:All (inline_parse config) title with
-              | Ok title -> title
-              | Error _e -> [])
+              if config.parse_outline_only then
+                outline_title config title
+              else
+                match parse_string ~consume:All (Inline.parse config) title with
+                | Ok title -> title
+                | Error _e -> [])
           in
           let title, tags =
             match title with
@@ -192,7 +215,11 @@ struct
               | Markdown -> (title, []))
           in
           let anchor =
-            anchor_link (Inline.asciis (Type_op.inline_list_strip_pos title))
+            if config.parse_outline_only then
+              ""
+            else
+              anchor_link
+                (Inline.asciis (Type_op.inline_list_strip_pos title))
           in
           let meta = { timestamps = []; properties = [] } in
           Heading

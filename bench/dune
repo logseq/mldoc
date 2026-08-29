@@ -2,6 +2,10 @@
  (name bench)
  (libraries angstrom mldoc core core_bench core_unix.command_unix))
 
+(executable
+ (name time_parse)
+ (libraries unix mldoc))
+
 (alias
  (name bench)
- (deps bench.exe))
+ (deps bench.exe time_parse.exe))

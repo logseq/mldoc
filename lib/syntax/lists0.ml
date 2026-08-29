@@ -140,9 +140,12 @@ struct
       match name with
       | Some name ->
         let name =
-          match parse_string ~consume:All (Inline.parse config) name with
-          | Ok inlines -> inlines
-          | Error _e -> Type_op.inline_list_with_none_pos [ Inline.Plain name ]
+          if config.parse_outline_only then
+            Type_op.inline_list_with_none_pos [ Inline.Plain name ]
+          else
+            match parse_string ~consume:All (Inline.parse config) name with
+            | Ok inlines -> inlines
+            | Error _e -> Type_op.inline_list_with_none_pos [ Inline.Plain name ]
         in
         (name, description)
       | None -> ([], description))
