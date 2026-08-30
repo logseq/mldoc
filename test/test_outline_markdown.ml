@@ -325,6 +325,49 @@ let inline =
               (Property_Drawer
                  [ ("type", "programming_lang", []); ("creator", "test", []) ])
           )
+        ; ( "property-value-nested-ref"
+          , `Quick
+          , check_aux
+              ":PROPERTIES:\n\
+               :type: [[programming [[clojure]]]]\n\
+               :creator: test\n\
+               :END:"
+              (Property_Drawer
+                 [ ( "type"
+                   , "[[programming [[clojure]]]]"
+                   , [ I.Nested_link
+                         { content = "[[programming [[clojure]]]]"
+                         ; children =
+                             [ Nested_link.Label "programming "
+                             ; Nested_link.Nested_link
+                                 ( { content = "[[clojure]]"
+                                   ; children = [ Nested_link.Label "clojure" ]
+                                   }
+                                 , None )
+                             ]
+                         }
+                     ] )
+                 ; ("creator", "test", [])
+                 ]) )
+        ; ( "md-property-nested-ref"
+          , `Quick
+          , check_aux "related:: [[programming [[clojure]]]]"
+              (Property_Drawer
+                 [ ( "related"
+                   , "[[programming [[clojure]]]]"
+                   , [ I.Nested_link
+                         { content = "[[programming [[clojure]]]]"
+                         ; children =
+                             [ Nested_link.Label "programming "
+                             ; Nested_link.Nested_link
+                                 ( { content = "[[clojure]]"
+                                   ; children = [ Nested_link.Label "clojure" ]
+                                   }
+                                 , None )
+                             ]
+                         }
+                     ] )
+                 ]) )
         ; ( "spaces-before-drawer"
           , `Quick
           , check_aux

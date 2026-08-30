@@ -171,8 +171,13 @@ let try_fast_scan_range s off len =
         match find_page_ref_end s !i with
         | Some e when e <= end_ ->
           let name = String.sub s (!i + 2) (e - !i - 4) in
-          acc := page_ref_link name :: !acc;
-          i := e
+          (* Nested [[…]] needs Nested_link — fall back to Angstrom. *)
+          if String.contains name '[' then
+            complex := true
+          else (
+            acc := page_ref_link name :: !acc;
+            i := e
+          )
         | _ -> complex := true)
       | '[' -> complex := true
       | '(' when !i + 1 < end_ && s.[!i + 1] = '(' -> (

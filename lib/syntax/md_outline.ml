@@ -181,15 +181,6 @@ let quote_paragraph config s =
   in
   Paragraph (content_inlines config s)
 
-let filter_prop_refs inlines =
-  List.map fst inlines
-  |> List.filter (function
-       | Inline.Tag _
-       | Inline.Link _
-       | Inline.Nested_link _ ->
-         true
-       | _ -> false)
-
 let heading ~outline_only ~level ~unordered ~size ~marker ~priority ~title =
   Heading
     { level
@@ -384,13 +375,7 @@ let try_md_property config line =
         else
           String.trim (String.sub line rest_i (n - rest_i))
       in
-      Some
-        ( key
-        , value
-        , if config.parse_outline_only then
-            filter_prop_refs (outline_inlines config value)
-          else
-            Property.property_references config value )
+      Some (key, value, Property.property_references config value)
     else
       None
 
@@ -441,13 +426,7 @@ let try_org_drawer_prop_line config line =
           else
             String.trim (String.sub line rest_i (n - rest_i))
         in
-        Some
-          ( key
-          , value
-          , if config.parse_outline_only then
-              filter_prop_refs (outline_inlines config value)
-            else
-              Property.property_references config value )
+        Some (key, value, Property.property_references config value)
     else
       None
 
