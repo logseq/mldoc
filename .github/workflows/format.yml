@@ -16,10 +16,11 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: 4.14.x
+          dune-cache: true
 
       - name: Install formatter
         run: opam install ocamlformat.0.26.2 dune
-        
+
       - name: Check formatting
         run: |
           mapfile -t files < <(git diff --name-only --diff-filter=ACMRT \
