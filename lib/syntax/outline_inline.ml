@@ -12,15 +12,15 @@ let is_outline_special = function
 
 let may_have_outline_markup _config s =
   let n = String.length s in
-  let rec loop i =
-    if i >= n then
-      false
-    else if is_outline_special s.[i] then
-      true
+  let i = ref 0 in
+  let found = ref false in
+  while (not !found) && !i < n do
+    if is_outline_special (String.unsafe_get s !i) then
+      found := true
     else
-      loop (i + 1)
-  in
-  loop 0
+      incr i
+  done;
+  !found
 
 let skip_plain_run =
   skip_while (fun c -> (not (is_outline_special c)) && not (is_whitespace c))
@@ -68,56 +68,68 @@ let tag_trail = function
     true
   | _ -> false
 
+(** Iterative scan; returns [(end_pos, has_inner_page_ref)]. *)
 let find_page_ref_end s i =
   let n = String.length s in
   if i + 1 >= n || s.[i] <> '[' || s.[i + 1] <> '[' then
     None
   else
-    let rec loop j depth =
-      if j + 1 >= n then
-        None
-      else if s.[j] = '[' && s.[j + 1] = '[' then
-        loop (j + 2) (depth + 1)
-      else if s.[j] = ']' && s.[j + 1] = ']' then
-        if depth = 1 then
-          Some (j + 2)
+    let j = ref (i + 2) in
+    let depth = ref 1 in
+    let inner = ref false in
+    let found = ref None in
+    while !found = None && !j + 1 < n do
+      let c = String.unsafe_get s !j in
+      if c = '[' && String.unsafe_get s (!j + 1) = '[' then (
+        incr depth;
+        inner := true;
+        j := !j + 2
+      ) else if c = ']' && String.unsafe_get s (!j + 1) = ']' then (
+        decr depth;
+        if !depth = 0 then
+          found := Some (!j + 2)
         else
-          loop (j + 2) (depth - 1)
-      else
-        loop (j + 1) depth
-    in
-    loop (i + 2) 1
+          j := !j + 2
+      ) else
+        incr j
+    done;
+    match !found with
+    | Some e -> Some (e, !inner)
+    | None -> None
 
 let find_block_ref_end s i =
   let n = String.length s in
   if i + 1 >= n || s.[i] <> '(' || s.[i + 1] <> '(' then
     None
   else
-    let rec loop j =
-      if j + 1 >= n then
-        None
-      else if s.[j] = ')' && s.[j + 1] = ')' then
-        Some (j + 2)
+    let j = ref (i + 2) in
+    let found = ref None in
+    while !found = None && !j + 1 < n do
+      if String.unsafe_get s !j = ')' && String.unsafe_get s (!j + 1) = ')' then
+        found := Some (!j + 2)
       else
-        loop (j + 1)
-    in
-    loop (i + 2)
+        incr j
+    done;
+    !found
+
+let empty_plain = [ Inline.Plain "" ]
+let max_nested_ref_depth = 32
 
 let page_ref_link name =
   Inline.Link
     { url = Inline.Page_ref name
-    ; label = [ Inline.Plain "" ]
+    ; label = empty_plain
     ; title = None
-    ; full_text = "[[" ^ name ^ "]]"
+    ; full_text = Printf.sprintf "[[%s]]" name
     ; metadata = ""
     }
 
 let block_ref_link id =
   Inline.Link
     { url = Inline.Block_ref id
-    ; label = [ Inline.Plain "" ]
+    ; label = empty_plain
     ; title = None
-    ; full_text = "((" ^ id ^ "))"
+    ; full_text = Printf.sprintf "((%s))" id
     ; metadata = ""
     }
 
@@ -133,16 +145,50 @@ let strip_tag_trail raw =
   in
   strip raw
 
-(** Fast path for #tag / [[page]] / ((block)). Returns None when markdown
-    links or nested-page hashtags need the angstrom parser.
+let rec build_nested_link s start end_ depth =
+  if depth > max_nested_ref_depth then
+    None
+  else
+    let content = String.sub s start (end_ - start) in
+    let inner_off = start + 2 in
+    let inner_end = end_ - 2 in
+    let children = ref [] in
+    let i = ref inner_off in
+    let ok = ref true in
+    while !i < inner_end && !ok do
+      if !i + 1 < inner_end && s.[!i] = '[' && s.[!i + 1] = '[' then (
+        match find_page_ref_end s !i with
+        | Some (e, _) when e <= inner_end -> (
+          match build_nested_link s !i e (depth + 1) with
+          | Some nl ->
+            children := Nested_link.Nested_link (nl, None) :: !children;
+            i := e
+          | None -> ok := false)
+        | _ -> ok := false
+      ) else
+        let j = ref !i in
+        while
+          !j < inner_end
+          && not (!j + 1 < inner_end && s.[!j] = '[' && s.[!j + 1] = '[')
+        do
+          incr j
+        done;
+        if !j > !i then (
+          children := Nested_link.Label (String.sub s !i (!j - !i)) :: !children;
+          i := !j
+        ) else
+          ok := false
+    done;
+    if (not !ok) || !children = [] then
+      None
+    else
+      Some { Nested_link.content; children = List.rev !children }
+
+(** Fast path for #tag / [[page]] / ((block)) / nested [[a [[b]]]].
+    Returns None when markdown links or nested-page hashtags need Angstrom.
     Scans [s] from [off] with length [len] (no need to sub the whole title). *)
 let try_fast_scan_range s off len =
   if len < 0 || off < 0 || off + len > String.length s then
-    None
-  else if
-    let rec has_bs i = i < off + len && (s.[i] = '\\' || has_bs (i + 1)) in
-    has_bs off
-  then
     None
   else
     let end_ = off + len in
@@ -150,32 +196,39 @@ let try_fast_scan_range s off len =
     let i = ref off in
     let complex = ref false in
     while !i < end_ && not !complex do
-      match s.[!i] with
+      match String.unsafe_get s !i with
+      | '\\' -> complex := true
       | '#' when !i + 1 < end_ && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
         ->
         let start = !i + 1 in
         let j = ref start in
         let has_bracket = ref false in
-        while !j < end_ && not (is_ws s.[!j]) do
-          if s.[!j] = '[' then has_bracket := true;
+        while !j < end_ && not (is_ws (String.unsafe_get s !j)) do
+          if String.unsafe_get s !j = '[' then has_bracket := true;
           incr j
         done;
         if !has_bracket then
           complex := true
         else
           let name = strip_tag_trail (String.sub s start (!j - start)) in
-          if name <> "" then acc := Inline.Tag [ Inline.Plain name ] :: !acc;
+          if name <> "" then
+            acc := (Inline.Tag [ Inline.Plain name ], None) :: !acc;
           i := !j
       | '[' when !i + 1 < end_ && s.[!i + 1] = '[' -> (
-        (* find_page_ref_end walks to string end; clamp by checking within range *)
         match find_page_ref_end s !i with
-        | Some e when e <= end_ ->
+        | Some (e, inner) when e <= end_ ->
           let name = String.sub s (!i + 2) (e - !i - 4) in
-          (* Nested [[…]] needs Nested_link — fall back to Angstrom. *)
-          if String.contains name '[' then
-            complex := true
-          else (
-            acc := page_ref_link name :: !acc;
+          if inner then (
+            match build_nested_link s !i e 0 with
+            | Some nl when List.length nl.children > 1 ->
+              acc := (Inline.Nested_link nl, None) :: !acc;
+              i := e
+            | Some _ ->
+              acc := (page_ref_link name, None) :: !acc;
+              i := e
+            | None -> complex := true
+          ) else (
+            acc := (page_ref_link name, None) :: !acc;
             i := e
           )
         | _ -> complex := true)
@@ -184,7 +237,7 @@ let try_fast_scan_range s off len =
         match find_block_ref_end s !i with
         | Some e when e <= end_ ->
           let id = String.sub s (!i + 2) (e - !i - 4) in
-          acc := block_ref_link id :: !acc;
+          acc := (block_ref_link id, None) :: !acc;
           i := e
         | _ -> incr i)
       | _ -> incr i
@@ -192,7 +245,7 @@ let try_fast_scan_range s off len =
     if !complex then
       None
     else
-      Some (Type_op.inline_list_with_none_pos (List.rev !acc))
+      Some (List.rev !acc)
 
 let try_fast_scan s = try_fast_scan_range s 0 (String.length s)
 
