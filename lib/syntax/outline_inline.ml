@@ -10,17 +10,20 @@ let is_outline_special = function
     true
   | _ -> false
 
-let may_have_outline_markup _config s =
-  let n = String.length s in
-  let i = ref 0 in
+let may_have_outline_markup_range s off len =
+  let end_ = off + len in
+  let i = ref off in
   let found = ref false in
-  while (not !found) && !i < n do
+  while (not !found) && !i < end_ do
     if is_outline_special (String.unsafe_get s !i) then
       found := true
     else
       incr i
   done;
   !found
+
+let may_have_outline_markup _config s =
+  may_have_outline_markup_range s 0 (String.length s)
 
 let skip_plain_run =
   skip_while (fun c -> (not (is_outline_special c)) && not (is_whitespace c))
@@ -115,35 +118,195 @@ let find_block_ref_end s i =
 let empty_plain = [ Inline.Plain "" ]
 let max_nested_ref_depth = 32
 
-let page_ref_link name =
+type 'a rtab =
+  { mutable data : (string * 'a) list array
+  ; mutable count : int
+  }
+
+let rtab_create n = { data = Array.make n []; count = 0 }
+
+let hash_range s off len =
+  let h = ref 0 in
+  for i = 0 to len - 1 do
+    h :=
+      (!h * 31 + Char.code (String.unsafe_get s (off + i))) land 0x3fffffff
+  done;
+  !h
+
+let range_eq s off key =
+  let n = String.length key in
+  let i = ref 0 in
+  let ok = ref true in
+  while !ok && !i < n do
+    if String.unsafe_get s (off + !i) <> String.unsafe_get key !i then
+      ok := false
+    else
+      incr i
+  done;
+  !ok
+
+let rtab_find tbl s off len =
+  let i = hash_range s off len land (Array.length tbl.data - 1) in
+  let rec look = function
+    | [] -> None
+    | (k, v) :: rest ->
+      if String.length k = len && range_eq s off k then
+        Some v
+      else
+        look rest
+  in
+  look tbl.data.(i)
+
+let rtab_add tbl key v =
+  let n = Array.length tbl.data in
+  if tbl.count > n then (
+    let n' = n * 2 in
+    let data' = Array.make n' [] in
+    Array.iter
+      (fun bucket ->
+        List.iter
+          (fun ((k, _) as pair) ->
+            let i = hash_range k 0 (String.length k) land (n' - 1) in
+            data'.(i) <- pair :: data'.(i))
+          bucket)
+      tbl.data;
+    tbl.data <- data'
+  );
+  let i = hash_range key 0 (String.length key) land (Array.length tbl.data - 1) in
+  tbl.data.(i) <- (key, v) :: tbl.data.(i);
+  tbl.count <- tbl.count + 1
+
+type intern =
+  { pages : Inline.t rtab
+  ; tags : Inline.t rtab
+  ; blocks : Inline.t rtab
+  ; titles : (Inline.t * Inline.t, Inline.t_with_pos list) Hashtbl.t
+  }
+
+let make_intern () =
+  { pages = rtab_create 256
+  ; tags = rtab_create 64
+  ; blocks = rtab_create 256
+  ; titles = Hashtbl.create 1024
+  }
+
+let current_intern : intern option ref = ref None
+
+let with_intern f =
+  current_intern := Some (make_intern ());
+  Fun.protect ~finally:(fun () -> current_intern := None) f
+
+let page_ref_link_fresh name full_text =
   Inline.Link
     { url = Inline.Page_ref name
     ; label = empty_plain
     ; title = None
-    ; full_text = Printf.sprintf "[[%s]]" name
+    ; full_text
     ; metadata = ""
     }
 
-let block_ref_link id =
+let page_ref_link name =
+  match !current_intern with
+  | Some t -> (
+    match rtab_find t.pages name 0 (String.length name) with
+    | Some v -> v
+    | None ->
+      let v = page_ref_link_fresh name (Printf.sprintf "[[%s]]" name) in
+      rtab_add t.pages name v;
+      v)
+  | None -> page_ref_link_fresh name (Printf.sprintf "[[%s]]" name)
+
+let page_ref_link_range s start end_ =
+  let name_off = start + 2 in
+  let name_len = end_ - start - 4 in
+  match !current_intern with
+  | Some t -> (
+    match rtab_find t.pages s name_off name_len with
+    | Some v -> v
+    | None ->
+      let name = String.sub s name_off name_len in
+      let full_text = String.sub s start (end_ - start) in
+      let v = page_ref_link_fresh name full_text in
+      rtab_add t.pages name v;
+      v)
+  | None ->
+    let name = String.sub s name_off name_len in
+    let full_text = String.sub s start (end_ - start) in
+    page_ref_link_fresh name full_text
+
+let block_ref_link_fresh id full_text =
   Inline.Link
     { url = Inline.Block_ref id
     ; label = empty_plain
     ; title = None
-    ; full_text = Printf.sprintf "((%s))" id
+    ; full_text
     ; metadata = ""
     }
 
+let block_ref_link id =
+  match !current_intern with
+  | Some t -> (
+    match rtab_find t.blocks id 0 (String.length id) with
+    | Some v -> v
+    | None ->
+      let v = block_ref_link_fresh id (Printf.sprintf "((%s))" id) in
+      rtab_add t.blocks id v;
+      v)
+  | None -> block_ref_link_fresh id (Printf.sprintf "((%s))" id)
+
+let block_ref_link_range s start end_ =
+  let id_off = start + 2 in
+  let id_len = end_ - start - 4 in
+  match !current_intern with
+  | Some t -> (
+    match rtab_find t.blocks s id_off id_len with
+    | Some v -> v
+    | None ->
+      let id = String.sub s id_off id_len in
+      let full_text = String.sub s start (end_ - start) in
+      let v = block_ref_link_fresh id full_text in
+      rtab_add t.blocks id v;
+      v)
+  | None ->
+    let id = String.sub s id_off id_len in
+    let full_text = String.sub s start (end_ - start) in
+    block_ref_link_fresh id full_text
+
+let tag_of_name name =
+  match !current_intern with
+  | Some t -> (
+    match rtab_find t.tags name 0 (String.length name) with
+    | Some v -> v
+    | None ->
+      let v = Inline.Tag [ Inline.Plain name ] in
+      rtab_add t.tags name v;
+      v)
+  | None -> Inline.Tag [ Inline.Plain name ]
+
+let tag_of_range s off len =
+  match !current_intern with
+  | Some t -> (
+    match rtab_find t.tags s off len with
+    | Some v -> v
+    | None ->
+      let name = String.sub s off len in
+      let v = Inline.Tag [ Inline.Plain name ] in
+      rtab_add t.tags name v;
+      v)
+  | None -> Inline.Tag [ Inline.Plain (String.sub s off len) ]
+
 let strip_tag_trail raw =
-  let rec strip t =
-    let len = String.length t in
-    if len = 0 then
-      t
-    else if tag_trail t.[len - 1] then
-      strip (String.sub t 0 (len - 1))
-    else
-      t
-  in
-  strip raw
+  let n = String.length raw in
+  let j = ref n in
+  while !j > 0 && tag_trail raw.[!j - 1] do
+    decr j
+  done;
+  if !j = n then
+    raw
+  else if !j = 0 then
+    ""
+  else
+    String.sub raw 0 !j
 
 let rec build_nested_link s start end_ depth =
   if depth > max_nested_ref_depth then
@@ -223,25 +386,26 @@ let try_fast_scan_range s off len =
         if !has_bracket then
           complex := true
         else
-          let name = strip_tag_trail (String.sub s start (!j - start)) in
-          if name <> "" then
-            acc := (Inline.Tag [ Inline.Plain name ], None) :: !acc;
+          let k = ref !j in
+          while !k > start && tag_trail s.[!k - 1] do
+            decr k
+          done;
+          if !k > start then acc := (tag_of_range s start (!k - start), None) :: !acc;
           i := !j
       | '[' when !i + 1 < end_ && s.[!i + 1] = '[' -> (
         match find_page_ref_end s !i with
         | Some (e, inner) when e <= end_ ->
-          let name = String.sub s (!i + 2) (e - !i - 4) in
           if inner then (
             match build_nested_link s !i e 0 with
             | Some nl when List.length nl.children > 1 ->
               acc := (Inline.Nested_link nl, None) :: !acc;
               i := e
             | Some _ ->
-              acc := (page_ref_link name, None) :: !acc;
+              acc := (page_ref_link_range s !i e, None) :: !acc;
               i := e
             | None -> complex := true
           ) else (
-            acc := (page_ref_link name, None) :: !acc;
+            acc := (page_ref_link_range s !i e, None) :: !acc;
             i := e
           )
         | _ -> complex := true)
@@ -249,8 +413,7 @@ let try_fast_scan_range s off len =
       | '(' when !i + 1 < end_ && s.[!i + 1] = '(' -> (
         match find_block_ref_end s !i with
         | Some e when e <= end_ ->
-          let id = String.sub s (!i + 2) (e - !i - 4) in
-          acc := (block_ref_link id, None) :: !acc;
+          acc := (block_ref_link_range s !i e, None) :: !acc;
           i := e
         | _ -> incr i)
       | _ -> incr i
@@ -258,7 +421,14 @@ let try_fast_scan_range s off len =
     if !complex then
       None
     else
-      Some (List.rev !acc)
+      match (!current_intern, !acc) with
+      | Some t, [ (q, None); (p, None) ] -> (
+        try Some (Hashtbl.find t.titles (p, q)) with
+        | Not_found ->
+          let result = [ (p, None); (q, None) ] in
+          Hashtbl.add t.titles (p, q) result;
+          Some result)
+      | _ -> Some (List.rev !acc)
 
 let try_fast_scan s = try_fast_scan_range s 0 (String.length s)
 

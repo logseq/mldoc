@@ -61,13 +61,57 @@ let rstrip_cr s =
   else
     s
 
-let skip_spaces s i =
-  let n = String.length s in
+let skip_spaces_lim s i lim =
   let j = ref i in
-  while !j < n && is_space_char (String.unsafe_get s !j) do
+  while !j < lim && is_space_char (String.unsafe_get s !j) do
     incr j
   done;
   !j
+
+let skip_spaces s i = skip_spaces_lim s i (String.length s)
+
+type line_index =
+  { src : string
+  ; starts : int array (* starts.(n) = String.length src *)
+  ; n : int
+  }
+
+let index_lines src =
+  let n = String.length src in
+  let nlines = ref 1 in
+  for i = 0 to n - 1 do
+    if String.unsafe_get src i = '\n' then incr nlines
+  done;
+  let starts = Array.make (!nlines + 1) 0 in
+  let idx = ref 1 in
+  for i = 0 to n - 1 do
+    if String.unsafe_get src i = '\n' then (
+      starts.(!idx) <- i + 1;
+      incr idx
+    )
+  done;
+  starts.(!nlines) <- n;
+  { src; starts; n = !nlines }
+
+(** Content span [off, lim) without trailing CR/LF. *)
+let line_lim idx i =
+  let off = idx.starts.(i) in
+  let next = idx.starts.(i + 1) in
+  if next > off && String.unsafe_get idx.src (next - 1) = '\n' then
+    let e = next - 1 in
+    if e > off && String.unsafe_get idx.src (e - 1) = '\r' then
+      (off, e - 1)
+    else
+      (off, e)
+  else
+    (off, next)
+
+let line_at idx i =
+  let off, lim = line_lim idx i in
+  if lim <= off then
+    ""
+  else
+    String.sub idx.src off (lim - off)
 
 let indent_len s =
   let n = String.length s in
@@ -339,23 +383,40 @@ let quote_paragraph config s =
   in
   Paragraph (content_inlines config s)
 
+let heading_cache : (int * bool * Type.inline_list, Type.t) Hashtbl.t option ref
+    =
+  ref None
+
 let heading ~outline_only ~level ~unordered ~size ~marker ~priority ~title =
-  Heading
-    { level
-    ; marker
-    ; priority
-    ; title
-    ; tags = []
-    ; anchor =
-        (if outline_only then
-           ""
-         else
-           anchor_of_title title)
-    ; meta = empty_meta
-    ; numbering = None
-    ; unordered
-    ; size
-    }
+  let make () =
+    Heading
+      { level
+      ; marker
+      ; priority
+      ; title
+      ; tags = []
+      ; anchor =
+          (if outline_only then
+             ""
+           else
+             anchor_of_title title)
+      ; meta = empty_meta
+      ; numbering = None
+      ; unordered
+      ; size
+      }
+  in
+  if outline_only && marker = None && priority = None && size = None then
+    match !heading_cache with
+    | Some tbl -> (
+      try Hashtbl.find tbl (level, unordered, title) with
+      | Not_found ->
+        let h = make () in
+        Hashtbl.add tbl (level, unordered, title) h;
+        h)
+    | None -> make ()
+  else
+    make ()
 
 let try_marker s i =
   if i >= String.length s then
@@ -393,6 +454,147 @@ let try_priority s i =
     Some (s.[i + 2], i + 4)
   else
     None
+
+let try_marker_lim s i lim =
+  if i >= lim then
+    None
+  else
+    match s.[i] with
+    | 'I'
+    | 'C'
+    | 'W'
+    | 'S'
+    | 'D'
+    | 'T'
+    | 'N'
+    | 'L' ->
+      let rec loop k =
+        if k >= Array.length markers then
+          None
+        else
+          let m = markers.(k) in
+          let mlen = String.length m in
+          if i + mlen <= lim && starts_with_at s i m then
+            let j = i + mlen in
+            if j >= lim || is_space_char s.[j] then
+              Some (m, j)
+            else
+              loop (k + 1)
+          else
+            loop (k + 1)
+      in
+      loop 0
+    | _ -> None
+
+let try_priority_lim s i lim =
+  if i + 3 < lim && s.[i] = '[' && s.[i + 1] = '#' && s.[i + 3] = ']' then
+    Some (s.[i + 2], i + 4)
+  else
+    None
+
+let parse_size_hashes_lim s i lim =
+  if i >= lim || s.[i] <> '#' then
+    (None, i)
+  else
+    let j = ref i in
+    while !j < lim && s.[!j] = '#' do
+      incr j
+    done;
+    let count = !j - i in
+    if !j >= lim || is_space_char s.[!j] then
+      (Some count, !j)
+    else
+      (None, i)
+
+type heading_rest =
+  | Nothing
+  | Fence of string
+  | Quote_line of string
+
+let parse_marker_priority_title_lim config s i lim =
+  let i = skip_spaces_lim s i lim in
+  let marker, i =
+    match try_marker_lim s i lim with
+    | Some (m, j) -> (Some m, skip_spaces_lim s j lim)
+    | None -> (None, i)
+  in
+  let priority, i =
+    match try_priority_lim s i lim with
+    | Some (p, j) -> (Some p, skip_spaces_lim s j lim)
+    | None -> (None, i)
+  in
+  if i >= lim then
+    (marker, priority, [], true, "")
+  else
+    match s.[i] with
+    | '>' -> (marker, priority, [], false, String.sub s i (lim - i))
+    | '`'
+    | '~'
+      when lim - i >= 3 && s.[i + 1] = s.[i] && s.[i + 2] = s.[i] ->
+      (marker, priority, [], false, String.sub s i (lim - i))
+    | _ ->
+      let title_inlines =
+        if config.parse_outline_only then
+          outline_inlines_range config s i (lim - i)
+        else
+          content_inlines config (String.sub s i (lim - i))
+      in
+      (marker, priority, title_inlines, true, "")
+
+let try_dash_heading_lim config s off lim =
+  let ind = skip_spaces_lim s off lim in
+  if ind >= lim || s.[ind] <> '-' then
+    None
+  else if ind + 1 < lim && not (is_space_char s.[ind + 1]) then
+    None
+  else
+    let i = skip_spaces_lim s (ind + 1) lim in
+    let size, i = parse_size_hashes_lim s i lim in
+    let marker, priority, title, keep_title, raw_title =
+      parse_marker_priority_title_lim config s i lim
+    in
+    let rest =
+      if keep_title || raw_title = "" then
+        Nothing
+      else if raw_title.[0] = '>' then
+        Quote_line raw_title
+      else if
+        (raw_title.[0] = '`' || raw_title.[0] = '~')
+        && String.length raw_title >= 3
+        && raw_title.[1] = raw_title.[0]
+        && raw_title.[2] = raw_title.[0]
+      then
+        Fence raw_title
+      else
+        Nothing
+    in
+    Some
+      ( heading ~outline_only:config.parse_outline_only
+          ~level:(ind - off + 1) ~unordered:true ~size ~marker ~priority ~title
+      , rest )
+
+let try_atx_heading_lim config s off lim =
+  let ind = skip_spaces_lim s off lim in
+  if ind >= lim || s.[ind] <> '#' then
+    None
+  else
+    let j = ref ind in
+    while !j < lim && s.[!j] = '#' do
+      incr j
+    done;
+    let size = !j - ind in
+    if size = 0 then
+      None
+    else if !j < lim && not (is_space_char s.[!j]) then
+      None
+    else
+      let marker, priority, title, _, _ =
+        parse_marker_priority_title_lim config s !j lim
+      in
+      Some
+        (heading ~outline_only:config.parse_outline_only
+           ~level:(ind - off + 1) ~unordered:false ~size:(Some size) ~marker
+           ~priority ~title)
 
 let parse_marker_priority_title config s i =
   let i = skip_spaces s i in
@@ -442,13 +644,6 @@ let parse_size_hashes s i =
       (Some count, !j)
     else
       (None, i)
-
-(** [Some (heading, rest)] where [rest] is a fence header or quote line left
-    on the same source line after the heading marker. *)
-type heading_rest =
-  | Nothing
-  | Fence of string
-  | Quote_line of string
 
 let try_dash_heading config line =
   let ind = indent_len line in
@@ -991,7 +1186,414 @@ let emit_paragraph_or_latex acc i lines config line =
     acc := with_pos p :: !acc;
     i := j
 
-let parse config input =
+let is_fence_span s off lim =
+  let ind = skip_spaces_lim s off lim in
+  ind + 3 <= lim
+  && s.[ind] = '`'
+  && s.[ind + 1] = '`'
+  && s.[ind + 2] = '`'
+
+let is_properties_start_span s off lim =
+  eq_ci_trimmed (if lim <= off then "" else String.sub s off (lim - off))
+    ":properties:"
+
+let try_md_property_lim config s off lim =
+  let i = skip_spaces_lim s off lim in
+  if i >= lim then
+    None
+  else
+    let key_start = i in
+    let j = ref i in
+    while
+      !j < lim && s.[!j] <> ':' && (not (is_space_char s.[!j])) && s.[!j] <> '\n'
+    do
+      incr j
+    done;
+    if !j = key_start then
+      None
+    else if !j + 1 < lim && s.[!j] = ':' && s.[!j + 1] = ':' then
+      let key = String.sub s key_start (!j - key_start) in
+      let rest_i = skip_spaces_lim s (!j + 2) lim in
+      let value =
+        if rest_i >= lim then
+          ""
+        else
+          String.trim (String.sub s rest_i (lim - rest_i))
+      in
+      Some (key, value, property_refs config value)
+    else
+      None
+
+let try_org_style_lim s off lim =
+  let ind = skip_spaces_lim s off lim in
+  if ind + 2 >= lim || s.[ind] <> '#' || s.[ind + 1] <> '+' then
+    None
+  else
+    let i = ind + 2 in
+    let j = ref i in
+    while !j < lim && s.[!j] <> ':' && not (is_space_char s.[!j]) do
+      incr j
+    done;
+    if !j > i && !j < lim && s.[!j] = ':' then
+      let name = String.sub s i (!j - i) in
+      let rest_i = skip_spaces_lim s (!j + 1) lim in
+      let value =
+        if rest_i >= lim then
+          ""
+        else
+          String.sub s rest_i (lim - rest_i)
+      in
+      Some (name, value, [])
+    else
+      None
+
+let looks_like_md_property_span s off lim =
+  let i = skip_spaces_lim s off lim in
+  if i >= lim then
+    false
+  else
+    let j = ref i in
+    while
+      !j < lim && s.[!j] <> ':' && (not (is_space_char s.[!j])) && s.[!j] <> '\n'
+    do
+      incr j
+    done;
+    !j > i && !j + 1 < lim && s.[!j] = ':' && s.[!j + 1] = ':'
+
+let looks_like_org_style_span s off lim =
+  let ind = skip_spaces_lim s off lim in
+  if ind + 2 >= lim || s.[ind] <> '#' || s.[ind + 1] <> '+' then
+    false
+  else
+    let j = ref (ind + 2) in
+    while !j < lim && s.[!j] <> ':' && not (is_space_char s.[!j]) do
+      incr j
+    done;
+    !j > ind + 2 && !j < lim && s.[!j] = ':'
+
+let is_list_span s off lim =
+  let ind = skip_spaces_lim s off lim in
+  if ind + 2 > lim then
+    false
+  else
+    let c = s.[ind] in
+    if (c = '+' || c = '*') && is_space_char s.[ind + 1] then
+      true
+    else if c >= '0' && c <= '9' then (
+      let j = ref (ind + 1) in
+      while !j < lim && s.[!j] >= '0' && s.[!j] <= '9' do
+        incr j
+      done;
+      !j < lim && s.[!j] = '.' && !j + 1 < lim && is_space_char s.[!j + 1]
+    ) else
+      false
+
+let is_block_boundary_span s off lim =
+  if off >= lim then
+    true
+  else
+    let ind = skip_spaces_lim s off lim in
+    if ind >= lim then
+      true
+    else
+      match s.[ind] with
+      | '-' -> ind + 1 >= lim || is_space_char s.[ind + 1]
+      | '#' ->
+        let j = ref ind in
+        while !j < lim && s.[!j] = '#' do
+          incr j
+        done;
+        !j > ind
+        && (!j >= lim || is_space_char s.[!j])
+        || looks_like_org_style_span s off lim
+      | '`' -> is_fence_span s off lim
+      | '>' -> true
+      | '+'
+      | '*'
+      | '0' .. '9' ->
+        is_list_span s off lim
+      | ':' ->
+        is_properties_start_span s off lim
+      | '[' ->
+        ind + 2 < lim && s.[ind + 1] = '^'
+        &&
+        (try
+           let close = String.index_from s (ind + 2) ']' in
+           close < lim && close + 1 < lim && s.[close + 1] = ':'
+         with
+         | Not_found -> false)
+      | _ -> looks_like_md_property_span s off lim
+
+let collect_properties_idx config idx i =
+  let rec loop j acc =
+    if j >= idx.n then
+      (List.rev acc, j)
+    else
+      let off, lim = line_lim idx j in
+      match try_md_property_lim config idx.src off lim with
+      | Some kv -> loop (j + 1) (kv :: acc)
+      | None -> (
+        match try_org_style_lim idx.src off lim with
+        | Some kv -> loop (j + 1) (kv :: acc)
+        | None -> (List.rev acc, j))
+  in
+  loop i []
+
+let collect_paragraph_idx config idx i =
+  let rec loop j =
+    if j >= idx.n then
+      j
+    else
+      let off, lim = line_lim idx j in
+      if is_block_boundary_span idx.src off lim then
+        j
+      else
+        loop (j + 1)
+  in
+  let j = loop i in
+  let has = ref false in
+  let k = ref i in
+  while !k < j && not !has do
+    let off, lim = line_lim idx !k in
+    if
+      Outline_inline.may_have_outline_markup_range idx.src off
+        (max 0 (lim - off))
+    then
+      has := true
+    else
+      incr k
+  done;
+  if not !has then
+    (empty_para, j)
+  else
+    let buf = Buffer.create 64 in
+    for k = i to j - 1 do
+      if k > i then Buffer.add_char buf '\n';
+      let off, lim = line_lim idx k in
+      if lim > off then Buffer.add_substring buf idx.src off (lim - off)
+    done;
+    (content_paragraph config (Buffer.contents buf), j)
+
+let skip_fence_idx idx i =
+  let rec loop j =
+    if j >= idx.n then
+      j
+    else
+      let off, lim = line_lim idx j in
+      if is_fence_span idx.src off lim then
+        j + 1
+      else
+        loop (j + 1)
+  in
+  loop i
+
+let collect_quote_idx config idx i =
+  let rec loop j acc =
+    if j >= idx.n then
+      (List.rev acc, j)
+    else
+      let off, lim = line_lim idx j in
+      let ind = skip_spaces_lim idx.src off lim in
+      if ind < lim && idx.src.[ind] = '>' then
+        let body_i = skip_spaces_lim idx.src (ind + 1) lim in
+        let body =
+          if body_i >= lim then
+            ""
+          else
+            String.sub idx.src body_i (lim - body_i)
+        in
+        loop (j + 1) (body :: acc)
+      else
+        (List.rev acc, j)
+  in
+  let bodies, j = loop i [] in
+  if
+    not
+      (List.exists
+         (fun l -> Outline_inline.may_have_outline_markup config l)
+         bodies)
+  then
+    (Quote [ empty_para ], j)
+  else
+    let content = String.concat "\n" bodies in
+    (Quote [ quote_paragraph config content ], j)
+
+let rec parse_list_items_idx ?(depth = 0) config idx i min_indent =
+  if depth >= max_list_depth then
+    ([], i)
+  else
+    let items = ref [] in
+    let j = ref i in
+    let continue = ref true in
+    while !continue && !j < idx.n do
+      let off, lim = line_lim idx !j in
+      let ind = skip_spaces_lim idx.src off lim in
+      if ind >= lim then
+        incr j
+      else if
+        (idx.src.[ind] = '-' && (ind + 1 >= lim || is_space_char idx.src.[ind + 1]))
+        || idx.src.[ind] = '#'
+           &&
+           let t = ref ind in
+           while !t < lim && idx.src.[!t] = '#' do
+             incr t
+           done;
+           !t > ind && (!t >= lim || is_space_char idx.src.[!t])
+      then
+        continue := false
+      else if is_list_span idx.src off lim then (
+        let line = line_at idx !j in
+        let indent, ordered, number, content = parse_list_item_line line in
+        if indent < min_indent then
+          continue := false
+        else (
+          incr j;
+          let children, j' =
+            if !j < idx.n && is_list_span idx.src (fst (line_lim idx !j)) (snd (line_lim idx !j))
+            then
+              let child_off, _ = line_lim idx !j in
+              let child_indent =
+                skip_spaces_lim idx.src child_off (snd (line_lim idx !j))
+                - child_off
+              in
+              if child_indent > indent then
+                parse_list_items_idx ~depth:(depth + 1) config idx !j child_indent
+              else
+                ([], !j)
+            else
+              ([], !j)
+          in
+          j := j';
+          items :=
+            make_list_item config ~indent ~ordered ~number content children
+            :: !items
+        )
+      ) else
+        continue := false
+    done;
+    (List.rev !items, !j)
+
+let parse_outline config input =
+  let idx = index_lines input in
+  let n = idx.n in
+  let acc = ref [] in
+  let i = ref 0 in
+  while !i < n do
+    let off, lim = line_lim idx !i in
+    let ind = skip_spaces_lim idx.src off lim in
+    if ind >= lim then
+      incr i
+    else
+      match idx.src.[ind] with
+      | '-' -> (
+        match try_dash_heading_lim config idx.src off lim with
+        | Some (h, rest) ->
+          acc := with_pos h :: !acc;
+          incr i;
+          (match rest with
+          | Nothing -> ()
+          | Fence _ -> i := skip_fence_idx idx !i
+          | Quote_line _ -> ())
+        | None -> (
+          match collect_properties_idx config idx !i with
+          | (_ :: _ as kvs), j ->
+            acc := with_pos (Property_Drawer kvs) :: !acc;
+            i := j
+          | [], _ ->
+            let p, j = collect_paragraph_idx config idx !i in
+            acc := with_pos p :: !acc;
+            i := j))
+      | '#' -> (
+        match try_atx_heading_lim config idx.src off lim with
+        | Some h ->
+          acc := with_pos h :: !acc;
+          incr i
+        | None -> (
+          match collect_properties_idx config idx !i with
+          | (_ :: _ as kvs), j ->
+            acc := with_pos (Property_Drawer kvs) :: !acc;
+            i := j
+          | [], _ ->
+            let p, j = collect_paragraph_idx config idx !i in
+            acc := with_pos p :: !acc;
+            i := j))
+      | '[' ->
+        let line = line_at idx !i in
+        (match try_footnote_line config line with
+        | Some fn ->
+          acc := with_pos fn :: !acc;
+          incr i
+        | None -> (
+          match collect_properties_idx config idx !i with
+          | (_ :: _ as kvs), j ->
+            acc := with_pos (Property_Drawer kvs) :: !acc;
+            i := j
+          | [], _ ->
+            let p, j = collect_paragraph_idx config idx !i in
+            acc := with_pos p :: !acc;
+            i := j))
+      | ':' ->
+        if is_properties_start_span idx.src off lim then (
+          let rec loop j acc_kv =
+            if j >= n then
+              (List.rev acc_kv, j)
+            else
+              if eq_ci_trimmed (line_at idx j) ":end:" then
+                (List.rev acc_kv, j + 1)
+              else
+                match try_org_drawer_prop_line config (line_at idx j) with
+                | Some kv -> loop (j + 1) (kv :: acc_kv)
+                | None -> loop (j + 1) acc_kv
+          in
+          let kvs, j = loop (!i + 1) [] in
+          acc := with_pos (Property_Drawer kvs) :: !acc;
+          i := j
+        ) else
+          let p, j = collect_paragraph_idx config idx !i in
+          acc := with_pos p :: !acc;
+          i := j
+      | '`' when is_fence_span idx.src off lim ->
+        i := skip_fence_idx idx (!i + 1)
+      | '>' ->
+        let q, j = collect_quote_idx config idx !i in
+        acc := with_pos q :: !acc;
+        i := j
+      | '+'
+      | '*'
+      | '0' .. '9' ->
+        if is_list_span idx.src off lim then (
+          let items, j = parse_list_items_idx config idx !i (ind - off) in
+          acc := with_pos (List items) :: !acc;
+          i := j
+        ) else (
+          match collect_properties_idx config idx !i with
+          | (_ :: _ as kvs), j ->
+            acc := with_pos (Property_Drawer kvs) :: !acc;
+            i := j
+          | [], _ ->
+            let p, j = collect_paragraph_idx config idx !i in
+            acc := with_pos p :: !acc;
+            i := j
+        )
+      | _ -> (
+        match collect_properties_idx config idx !i with
+        | (_ :: _ as kvs), j ->
+          acc := with_pos (Property_Drawer kvs) :: !acc;
+          i := j
+        | [], _ ->
+          let p, j = collect_paragraph_idx config idx !i in
+          acc := with_pos p :: !acc;
+          i := j)
+  done;
+  List.rev !acc
+
+let rec parse_body config input =
+  if config.parse_outline_only then
+    parse_outline config input
+  else
+    parse_body_full config input
+
+and parse_body_full config input =
   let lines = split_lines_array input in
   let n = Array.length lines in
   let outline = config.parse_outline_only in
@@ -1089,3 +1691,13 @@ let parse config input =
           emit_paragraph_or_latex acc i lines config line
   done;
   List.rev !acc
+
+let parse config input =
+  if config.parse_outline_only then
+    Outline_inline.with_intern (fun () ->
+        heading_cache := Some (Hashtbl.create 1024);
+        Fun.protect
+          ~finally:(fun () -> heading_cache := None)
+          (fun () -> parse_body config input))
+  else
+    parse_body config input
