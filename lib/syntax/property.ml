@@ -18,11 +18,31 @@ open Conf
 
 let property_references config s =
   let config = { config with inline_skip_macro = true } in
+  (* Most Logseq properties are scalar values (ids, dates, booleans, and so
+     on).  Running the complete inline grammar for all of them dominates an
+     outline parse even though only tags and links survive the filter below.
+     Every syntax accepted by that filter starts with one of these bytes, so
+     cheaply reject scalar values before constructing an Angstrom parser. *)
+  let may_have_reference =
+    let length = String.length s in
+    let rec loop i =
+      if i = length then
+        false
+      else
+        match s.[i] with
+        | '#'
+        | '['
+        | '(' ->
+          true
+        | _ -> loop (i + 1)
+    in
+    loop 0
+  in
   let end_quoted =
     match last_char s with
     | Some '"' -> true
     | _ -> false in
-  if s = "" || (s.[0] == '"' && end_quoted) then
+  if (not may_have_reference) || (s.[0] == '"' && end_quoted) then
     []
   else
     match parse_string ~consume:All (Inline.parse config) s with

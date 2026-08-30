@@ -763,22 +763,33 @@ let rec parse_list_items config lines i min_indent =
 
 let parse config input =
   let raw_lines = String.split_on_char '\n' input in
-  let lines = Array.of_list (List.map rstrip_cr raw_lines) in
+  let lines = Array.of_list raw_lines in
+  (* [split_on_char] has already allocated every line.  Reuse those strings
+     for the overwhelmingly common LF input rather than allocating an
+     intermediate mapped list; only replace CRLF lines in place. *)
+  Array.iteri
+    (fun i line ->
+      let stripped = rstrip_cr line in
+      if stripped != line then lines.(i) <- stripped)
+    lines;
   let n = Array.length lines in
   let line_starts =
-    let arr = Array.make (max n 1) 0 in
-    let pos = ref 0 in
-    for idx = 0 to n - 1 do
-      arr.(idx) <- !pos;
-      let nl =
-        if idx + 1 < n then
-          1
-        else
-          0
-      in
-      pos := !pos + String.length lines.(idx) + nl
-    done;
-    arr
+    if config.parse_outline_only then
+      [||]
+    else
+      let arr = Array.make (max n 1) 0 in
+      let pos = ref 0 in
+      for idx = 0 to n - 1 do
+        arr.(idx) <- !pos;
+        let nl =
+          if idx + 1 < n then
+            1
+          else
+            0
+        in
+        pos := !pos + String.length lines.(idx) + nl
+      done;
+      arr
   in
   let src_end_pos body_i =
     let rec find j =
