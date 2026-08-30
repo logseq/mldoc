@@ -290,43 +290,108 @@ let block_ref, block_ref_ignore_bracket =
 
 let any_char_string = String.make 1 <$> any_char
 
+(** Peek (without consuming) if input starts with one of the given strings. *)
+let peek_string_one_of strings =
+  choice
+    (List.map
+       (fun s ->
+         let n = String.length s in
+         available >>= fun len ->
+         if len < n then
+           fail "peek_string_one_of"
+         else
+           peek_string n >>= fun got ->
+           if got = s then
+             return s
+           else
+             fail "peek_string_one_of")
+       strings)
+
+(** Like [take_while1], but also stops (without consuming) before any of
+    [stop_strings]. Used so multi-byte UTF-8 punctuation can terminate URLs. *)
+let take_while1_until_strings stop_strings pred =
+  if stop_strings = [] then
+    take_while1 pred
+  else
+    fix (fun m ->
+        peek_string_one_of stop_strings *> return ""
+        <|> (satisfy pred >>= fun c -> lift (fun r -> String.make 1 c ^ r) m)
+        <|> return "")
+    >>= fun s ->
+    if s = "" then
+      fail "take_while1_until_strings"
+    else
+      return s
+
 let string_contains_balanced_brackets ?(escape_chars = [])
-    ?(excluded_ending_chars = []) bracket_pair other_delims =
+    ?(excluded_ending_chars = []) ?(excluded_ending_strings = []) bracket_pair
+    other_delims =
   let left, right = unzip bracket_pair in
+  let body_pred c =
+    (not @@ List.mem c other_delims)
+    && (not @@ List.mem c excluded_ending_chars)
+    && (not (List.mem c left))
+    && not (List.mem c right)
+  in
+  let take_body =
+    if excluded_ending_strings = [] && escape_chars = [] then
+      take_while1 body_pred
+    else if excluded_ending_strings = [] then
+      take_while1_include_backslash escape_chars body_pred
+    else if escape_chars = [] then
+      take_while1_until_strings excluded_ending_strings body_pred
+    else
+      (* escape + multi-byte stoppers: check stopper before each char *)
+      fix (fun m ->
+          peek_string_one_of excluded_ending_strings *> return ""
+          <|> ( peek_char >>= function
+                | Some '\\' ->
+                  any_char *> peek_char >>= fun c_opt ->
+                  (match c_opt with
+                  | Some c when List.mem c escape_chars -> any_char_string
+                  | Some c when body_pred c -> any_char_string
+                  | Some _ -> return "\\"
+                  | None -> return "\\")
+                  >>= fun s -> lift (fun r -> s ^ r) m
+                | Some c when body_pred c ->
+                  any_char *> lift (fun r -> String.make 1 c ^ r) m
+                | _ -> return "" )
+          <|> return "")
+      >>= fun s ->
+      if s = "" then
+        fail "take_body"
+      else
+        return s
+  in
   fix (fun (m : string list list t) ->
       choice
-        [ (fun s l -> [ List.cons s (List.flatten l) ])
-          <$> take_while1_include_backslash escape_chars (fun c ->
-                  (not @@ List.mem c other_delims)
-                  && (not @@ List.mem c excluded_ending_chars)
-                  && (not (List.mem c left))
-                  && not (List.mem c right))
-          <*> m
-        ; ( peek_char >>= fun c ->
-            match c with
-            | None -> fail "finish"
-            | Some c when List.mem c left ->
-              (fun left l right -> [ [ left ]; List.flatten l; right ])
-              <$> any_char_string <*> m
-              <*> (char (List.assoc c bracket_pair)
-                  >>= (fun c ->
-                        (fun right l -> List.cons right (List.flatten l))
-                        <$> return (String.make 1 c)
-                        <*> m)
-                  <|> return [])
-            | Some c when List.mem c excluded_ending_chars ->
-              available >>= fun len ->
-              if len < 2 then
-                fail "finish"
-              else
-                peek_string 2 >>= fun s ->
-                let s1 = s.[1] in
-                if List.mem s1 other_delims then
-                  fail "finish"
-                else
-                  (fun c l -> [ [ c ]; List.flatten l ])
+        [ (fun s l -> [ List.cons s (List.flatten l) ]) <$> take_body <*> m
+        ; ( peek_string_one_of excluded_ending_strings *> fail "finish"
+          <|> ( peek_char >>= fun c ->
+                match c with
+                | None -> fail "finish"
+                | Some c when List.mem c left ->
+                  (fun left l right -> [ [ left ]; List.flatten l; right ])
                   <$> any_char_string <*> m
-            | Some _ -> fail "delims" )
+                  <*> (char (List.assoc c bracket_pair)
+                      >>= (fun c ->
+                            (fun right l -> List.cons right (List.flatten l))
+                            <$> return (String.make 1 c)
+                            <*> m)
+                      <|> return [])
+                | Some c when List.mem c excluded_ending_chars ->
+                  available >>= fun len ->
+                  if len < 2 then
+                    fail "finish"
+                  else
+                    peek_string 2 >>= fun s ->
+                    let s1 = s.[1] in
+                    if List.mem s1 other_delims then
+                      fail "finish"
+                    else
+                      (fun c l -> [ [ c ]; List.flatten l ])
+                      <$> any_char_string <*> m
+                | Some _ -> fail "delims" ) )
         ; return [ [] ]
         ])
   >>| (String.concat "" << List.flatten)

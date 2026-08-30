@@ -600,19 +600,46 @@ let metadata =
   >>= (fun s -> return ("{" ^ s ^ "}"))
   <|> string "{}" <|> return ""
 
+(* ASCII punctuation stripped from bare-URL ends when followed by a delimiter.
+   CJK punctuation never belongs in a bare URL and always terminates it. *)
+let url_ascii_end_punct = [ ','; ';'; '.'; '!'; '?' ]
+
+let url_cjk_end_punct = [ "，"; "。"; "；"; "！"; "？"; "、"; "：" ]
+
 let link_inline =
   (* Fail fast on ordinary words: require letter+:// without consuming. *)
   let protocol_part = take_while1 is_letter_or_digit <* string "://" in
+  let before_path_delim c =
+    is_space_eol c
+    || List.mem c inline_link_delims
+    || c = '/' || c = '?' || c = '#'
+  in
+  let before_path_normal c =
+    non_space c && (not (before_path_delim c))
+    && not (List.mem c url_ascii_end_punct)
+  in
+  (* Host/authority: allow mid-host '.' etc., but drop trailing ASCII punct and
+     always stop before CJK punctuation (multi-byte, so not in char lists). *)
   let before_path_part =
-    take_while1 (fun c ->
-        non_space c && c <> '/' && c <> '?' && c <> '#'
-        && not (List.mem c inline_link_delims))
+    let atom =
+      take_while1_until_strings url_cjk_end_punct before_path_normal
+      <|> ( take_while1 (fun c -> List.mem c url_ascii_end_punct) >>= fun ps ->
+            peek_string_one_of url_cjk_end_punct *> fail "url trail"
+            <|> ( peek_char >>= function
+                  | None -> fail "url trail"
+                  | Some c when before_path_delim c -> fail "url trail"
+                  | Some _ -> return ps ) )
+    in
+    fix (fun m ->
+        List.cons <$> atom <*> m <|> (List.cons <$> atom <*> return []))
+    >>| String.concat ""
   in
   let remaining_part =
     (fun c remain -> String.make 1 c ^ remain)
     <$> choice [ char '/'; char '?'; char '#' ]
     <*> string_contains_balanced_brackets
-          ~excluded_ending_chars:[ ','; ';'; '.'; '!'; '?' ]
+          ~excluded_ending_chars:url_ascii_end_punct
+          ~excluded_ending_strings:url_cjk_end_punct
           [ ('(', ')'); ('[', ']') ]
           (space_chars @ eol_chars)
     <|> return ""

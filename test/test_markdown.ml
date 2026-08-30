@@ -158,6 +158,107 @@ let inline =
                      }
                  ; I.Plain ". "
                  ]) )
+        ; ( "host endwith '.'"
+          , `Quick
+          , check_aux "http://example.com."
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "example.com" }
+                     ; label = [ Plain "http://example.com" ]
+                     ; title = None
+                     ; full_text = "http://example.com"
+                     ; metadata = ""
+                     }
+                 ; I.Plain "."
+                 ]) )
+        ; ( "host endwith ','"
+          , `Quick
+          , check_aux "http://example.com,"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "example.com" }
+                     ; label = [ Plain "http://example.com" ]
+                     ; title = None
+                     ; full_text = "http://example.com"
+                     ; metadata = ""
+                     }
+                 ; I.Plain ","
+                 ]) )
+        ; ( "path endwith ','"
+          , `Quick
+          , check_aux "http://example.com/path,"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "example.com/path" }
+                     ; label = [ Plain "http://example.com/path" ]
+                     ; title = None
+                     ; full_text = "http://example.com/path"
+                     ; metadata = ""
+                     }
+                 ; I.Plain ","
+                 ]) )
+        ; ( "host endwith chinese period"
+          , `Quick
+          , check_aux "http://example.com。"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "example.com" }
+                     ; label = [ Plain "http://example.com" ]
+                     ; title = None
+                     ; full_text = "http://example.com"
+                     ; metadata = ""
+                     }
+                 ; I.Plain "。"
+                 ]) )
+        ; ( "host endwith chinese comma"
+          , `Quick
+          , check_aux "http://example.com，"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex { protocol = "http"; link = "example.com" }
+                     ; label = [ Plain "http://example.com" ]
+                     ; title = None
+                     ; full_text = "http://example.com"
+                     ; metadata = ""
+                     }
+                 ; I.Plain "，"
+                 ]) )
+        ; ( "path endwith chinese period"
+          , `Quick
+          , check_aux "http://example.com/path。更多"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "example.com/path" }
+                     ; label = [ Plain "http://example.com/path" ]
+                     ; title = None
+                     ; full_text = "http://example.com/path"
+                     ; metadata = ""
+                     }
+                 ; I.Plain "。更多"
+                 ]) )
+        ; ( "path endwith chinese comma"
+          , `Quick
+          , check_aux "http://example.com/path，更多"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "http"; link = "example.com/path" }
+                     ; label = [ Plain "http://example.com/path" ]
+                     ; title = None
+                     ; full_text = "http://example.com/path"
+                     ; metadata = ""
+                     }
+                 ; I.Plain "，更多"
+                 ]) )
         ; ( "include brackets"
           , `Quick
           , check_aux "http://test/(foo)bar"
