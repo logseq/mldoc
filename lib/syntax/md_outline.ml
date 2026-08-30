@@ -9,6 +9,9 @@ open Conf
 
 let dummy = Pos.dummy_pos
 let with_pos t = (t, dummy)
+let empty_meta : Type.meta = { timestamps = []; properties = [] }
+let empty_para = Paragraph []
+let max_list_depth = 64
 
 let ensure_trailing_nl s =
   let n = String.length s in
@@ -60,50 +63,89 @@ let rstrip_cr s =
 
 let skip_spaces s i =
   let n = String.length s in
-  let rec loop j =
-    if j < n && is_space_char s.[j] then
-      loop (j + 1)
-    else
-      j
-  in
-  loop i
+  let j = ref i in
+  while !j < n && is_space_char (String.unsafe_get s !j) do
+    incr j
+  done;
+  !j
 
 let indent_len s =
   let n = String.length s in
-  let rec loop i =
-    if i < n && is_space_char s.[i] then
-      loop (i + 1)
-    else
-      i
-  in
-  loop 0
+  let i = ref 0 in
+  while !i < n && is_space_char (String.unsafe_get s !i) do
+    incr i
+  done;
+  !i
 
 let starts_with_at s i prefix =
   let plen = String.length prefix in
   let n = String.length s in
-  i + plen <= n
-  &&
-  let rec loop k =
-    if k = plen then
-      true
-    else if s.[i + k] = prefix.[k] then
-      loop (k + 1)
-    else
-      false
-  in
-  loop 0
+  if i + plen > n then
+    false
+  else
+    let k = ref 0 in
+    let ok = ref true in
+    while !ok && !k < plen do
+      if String.unsafe_get s (i + !k) <> String.unsafe_get prefix !k then
+        ok := false
+      else
+        incr k
+    done;
+    !ok
 
 let is_blank_line s =
   let n = String.length s in
-  let rec loop i =
-    if i >= n then
-      true
-    else if is_space_char s.[i] then
-      loop (i + 1)
+  let i = ref 0 in
+  let blank = ref true in
+  while !blank && !i < n do
+    if not (is_space_char (String.unsafe_get s !i)) then
+      blank := false
     else
-      false
-  in
-  loop 0
+      incr i
+  done;
+  !blank
+
+(** Single-pass split; strips CR; reuses [""] for empty lines. *)
+let split_lines_array input =
+  let n = String.length input in
+  let nlines = ref 1 in
+  for i = 0 to n - 1 do
+    if String.unsafe_get input i = '\n' then incr nlines
+  done;
+  let arr = Array.make !nlines "" in
+  let idx = ref 0 in
+  let start = ref 0 in
+  for i = 0 to n - 1 do
+    if String.unsafe_get input i = '\n' then (
+      let len = i - !start in
+      arr.(!idx) <-
+        (if len = 0 then
+           ""
+         else if String.unsafe_get input (i - 1) = '\r' then
+           if len = 1 then
+             ""
+           else
+             String.sub input !start (len - 1)
+         else
+           String.sub input !start len);
+      incr idx;
+      start := i + 1
+    )
+  done;
+  let len = n - !start in
+  arr.(!idx) <-
+    (if len = 0 then
+       ""
+     else if String.unsafe_get input (n - 1) = '\r' then
+       if len = 1 then
+         ""
+       else
+         String.sub input !start (len - 1)
+     else if !start = 0 then
+       input
+     else
+       String.sub input !start len);
+  arr
 
 let is_fence_line line =
   let ind = indent_len line in
@@ -117,10 +159,36 @@ let is_quote_line line =
   let ind = indent_len line in
   ind < String.length line && line.[ind] = '>'
 
-let is_properties_start line =
-  String.lowercase_ascii (String.trim line) = ":properties:"
+let eq_ci_trimmed line word =
+  let n = String.length line in
+  let i = skip_spaces line 0 in
+  let j = ref n in
+  while !j > i && is_space_char (String.unsafe_get line (!j - 1)) do
+    decr j
+  done;
+  let wlen = String.length word in
+  if !j - i <> wlen then
+    false
+  else
+    let k = ref 0 in
+    let ok = ref true in
+    while !ok && !k < wlen do
+      let c = String.unsafe_get line (i + !k) in
+      let c =
+        if c >= 'A' && c <= 'Z' then
+          Char.unsafe_chr (Char.code c + 32)
+        else
+          c
+      in
+      if c <> String.unsafe_get word !k then
+        ok := false
+      else
+        incr k
+    done;
+    !ok
 
-let is_end_mark line = String.lowercase_ascii (String.trim line) = ":end:"
+let is_properties_start line = eq_ci_trimmed line ":properties:"
+let is_end_mark line = eq_ci_trimmed line ":end:"
 
 let is_list_item_prefix line =
   let ind = indent_len line in
@@ -140,20 +208,110 @@ let is_list_item_prefix line =
   else
     false
 
-let outline_inlines config s =
-  if s = "" then
+let looks_like_dash_heading line =
+  let ind = indent_len line in
+  let n = String.length line in
+  if ind >= n || line.[ind] <> '-' then
+    false
+  else if ind + 1 >= n then
+    true
+  else
+    is_space_char line.[ind + 1]
+
+let looks_like_atx_heading line =
+  let ind = indent_len line in
+  let n = String.length line in
+  if ind >= n || line.[ind] <> '#' then
+    false
+  else
+    let j = ref ind in
+    while !j < n && line.[!j] = '#' do
+      incr j
+    done;
+    !j > ind && (!j >= n || is_space_char line.[!j])
+
+let looks_like_md_property line =
+  let ind = indent_len line in
+  let n = String.length line in
+  if ind >= n then
+    false
+  else
+    let j = ref ind in
+    while
+      !j < n
+      && line.[!j] <> ':'
+      && (not (is_space_char line.[!j]))
+      && line.[!j] <> '\n'
+    do
+      incr j
+    done;
+    !j > ind && !j + 1 < n && line.[!j] = ':' && line.[!j + 1] = ':'
+
+let looks_like_org_style_prop line =
+  let ind = indent_len line in
+  let n = String.length line in
+  if ind + 2 >= n || line.[ind] <> '#' || line.[ind + 1] <> '+' then
+    false
+  else
+    let j = ref (ind + 2) in
+    while !j < n && line.[!j] <> ':' && not (is_space_char line.[!j]) do
+      incr j
+    done;
+    !j > ind + 2 && !j < n && line.[!j] = ':'
+
+let looks_like_footnote line =
+  let ind = indent_len line in
+  let n = String.length line in
+  if ind + 3 > n || line.[ind] <> '[' || line.[ind + 1] <> '^' then
+    false
+  else
+    try
+      let close = String.index_from line (ind + 2) ']' in
+      close + 1 < n && line.[close + 1] = ':'
+    with
+    | Not_found -> false
+
+let line_may_be_property line =
+  looks_like_md_property line || looks_like_org_style_prop line
+
+let outline_inlines_range config s off len =
+  if len <= 0 then
     []
-  else if Outline_inline.may_have_outline_markup config s then
-    match Outline_inline.try_fast_scan s with
+  else
+    match Outline_inline.try_fast_scan_range s off len with
     | Some r -> r
     | None -> (
+      let sub =
+        if off = 0 && len = String.length s then
+          s
+        else
+          String.sub s off len
+      in
       match
-        Angstrom.parse_string ~consume:All (Outline_inline.parse config) s
+        Angstrom.parse_string ~consume:All
+          (Outline_inline.parse_angstrom config)
+          sub
       with
       | Ok r -> r
       | Error _ -> [])
-  else
+
+let outline_inlines config s = outline_inlines_range config s 0 (String.length s)
+
+let outline_property_references config s =
+  if s = "" then
     []
+  else
+    let n = String.length s in
+    if n >= 2 && s.[0] = '"' && s.[n - 1] = '"' then
+      []
+    else
+      List.map fst (outline_inlines config s)
+
+let property_refs config s =
+  if config.parse_outline_only then
+    outline_property_references config s
+  else
+    Property.property_references config s
 
 let full_inlines config s =
   if s = "" then
@@ -193,7 +351,7 @@ let heading ~outline_only ~level ~unordered ~size ~marker ~priority ~title =
            ""
          else
            anchor_of_title title)
-    ; meta = { timestamps = []; properties = [] }
+    ; meta = empty_meta
     ; numbering = None
     ; unordered
     ; size
@@ -203,21 +361,31 @@ let try_marker s i =
   if i >= String.length s then
     None
   else
-    let rec loop k =
-      if k >= Array.length markers then
-        None
-      else
-        let m = markers.(k) in
-        if starts_with_at s i m then
-          let j = i + String.length m in
-          if j >= String.length s || is_space_char s.[j] then
-            Some (m, j)
+    match s.[i] with
+    | 'I'
+    | 'C'
+    | 'W'
+    | 'S'
+    | 'D'
+    | 'T'
+    | 'N'
+    | 'L' ->
+      let rec loop k =
+        if k >= Array.length markers then
+          None
+        else
+          let m = markers.(k) in
+          if starts_with_at s i m then
+            let j = i + String.length m in
+            if j >= String.length s || is_space_char s.[j] then
+              Some (m, j)
+            else
+              loop (k + 1)
           else
             loop (k + 1)
-        else
-          loop (k + 1)
-    in
-    loop 0
+      in
+      loop 0
+    | _ -> None
 
 let try_priority s i =
   let n = String.length s in
@@ -238,30 +406,27 @@ let parse_marker_priority_title config s i =
     | Some (p, j) -> (Some p, skip_spaces s j)
     | None -> (None, i)
   in
-  let title =
-    if i >= String.length s then
-      ""
-    else
-      String.sub s i (String.length s - i)
-  in
-  let title_inlines, keep_title =
-    if title = "" then
-      ([], true)
-    else
-      match title.[0] with
-      | '>' ->
-        (* Leave markdown quote for the following block (Angstrom parity). *)
-        ([], false)
-      | '`'
-      | '~'
-        when String.length title >= 3
-             && title.[1] = title.[0]
-             && title.[2] = title.[0] ->
-        (* Fenced code opener on the heading line. *)
-        ([], false)
-      | _ -> (content_inlines config title, true)
-  in
-  (marker, priority, title_inlines, keep_title, title)
+  let n = String.length s in
+  if i >= n then
+    (marker, priority, [], true, "")
+  else
+    match s.[i] with
+    | '>' ->
+      (* Leave markdown quote for the following block (Angstrom parity). *)
+      (marker, priority, [], false, String.sub s i (n - i))
+    | '`'
+    | '~'
+      when n - i >= 3 && s.[i + 1] = s.[i] && s.[i + 2] = s.[i] ->
+      (* Fenced code opener on the heading line. *)
+      (marker, priority, [], false, String.sub s i (n - i))
+    | _ ->
+      let title_inlines =
+        if config.parse_outline_only then
+          outline_inlines_range config s i (n - i)
+        else
+          content_inlines config (String.sub s i (n - i))
+      in
+      (marker, priority, title_inlines, true, "")
 
 let parse_size_hashes s i =
   let n = String.length s in
@@ -375,7 +540,7 @@ let try_md_property config line =
         else
           String.trim (String.sub line rest_i (n - rest_i))
       in
-      Some (key, value, Property.property_references config value)
+      Some (key, value, property_refs config value)
     else
       None
 
@@ -426,7 +591,7 @@ let try_org_drawer_prop_line config line =
           else
             String.trim (String.sub line rest_i (n - rest_i))
         in
-        Some (key, value, Property.property_references config value)
+        Some (key, value, property_refs config value)
     else
       None
 
@@ -498,15 +663,13 @@ let collect_properties config lines i =
   in
   loop i []
 
-let is_block_boundary config line =
+let is_block_boundary _config line =
   is_blank_line line
-  || try_dash_heading config line <> None
-  || try_atx_heading config line <> None
+  || looks_like_dash_heading line
+  || looks_like_atx_heading line
   || is_fence_line line || is_quote_line line || is_list_item_prefix line
-  || is_properties_start line
-  || try_md_property config line <> None
-  || try_org_style_prop line <> None
-  || try_footnote_line config line <> None
+  || is_properties_start line || looks_like_md_property line
+  || looks_like_org_style_prop line || looks_like_footnote line
 
 let collect_paragraph_lines config lines i =
   let n = Array.length lines in
@@ -519,16 +682,25 @@ let collect_paragraph_lines config lines i =
       loop (j + 1) (lines.(j) :: acc)
   in
   let ls, j = loop i [] in
-  let content = String.concat "\n" ls in
-  (* When another block follows, each line was newline-terminated in the
-     source — Angstrom records a final Break_Line. *)
-  let content =
-    if (not config.parse_outline_only) && j < n && content <> "" then
-      ensure_trailing_nl content
-    else
-      content
-  in
-  (content_paragraph config content, j)
+  if
+    config.parse_outline_only
+    && not
+         (List.exists
+            (fun l -> Outline_inline.may_have_outline_markup config l)
+            ls)
+  then
+    (empty_para, j)
+  else
+    let content = String.concat "\n" ls in
+    (* When another block follows, each line was newline-terminated in the
+       source — Angstrom records a final Break_Line. *)
+    let content =
+      if (not config.parse_outline_only) && j < n && content <> "" then
+        ensure_trailing_nl content
+      else
+        content
+    in
+    (content_paragraph config content, j)
 
 let skip_fence_body lines i =
   let rec loop j =
@@ -602,8 +774,8 @@ let collect_src ~line_starts lines i =
 let quote_continuation_stop config line =
   (* Match Block.md_blockquote: stop only on new block markers. *)
   let trimmed = String.trim line in
-  try_dash_heading config line <> None
-  || try_atx_heading config line <> None
+  looks_like_dash_heading line
+  || looks_like_atx_heading line
   || is_list_item_prefix line || is_fence_line line || is_properties_start line
   || starts_with_at line 0 "- " || starts_with_at line 0 "# "
   || starts_with_at line 0 "id:: "
@@ -722,63 +894,119 @@ let make_list_item config ~indent ~ordered ~number content children =
   ; ordered
   }
 
-let rec parse_list_items config lines i min_indent =
-  let items = ref [] in
-  let j = ref i in
-  let continue = ref true in
-  while !continue && !j < Array.length lines do
-    let line = lines.(!j) in
-    if is_blank_line line then
-      incr j
-    else if
-      try_dash_heading config line <> None
-      || try_atx_heading config line <> None
-    then
-      continue := false
-    else if is_list_item_prefix line then
-      let indent, ordered, number, content = parse_list_item_line line in
-      if indent < min_indent then
+let rec parse_list_items ?(depth = 0) config lines i min_indent =
+  if depth >= max_list_depth then
+    ([], i)
+  else
+    let items = ref [] in
+    let j = ref i in
+    let continue = ref true in
+    while !continue && !j < Array.length lines do
+      let line = lines.(!j) in
+      if is_blank_line line then
+        incr j
+      else if looks_like_dash_heading line || looks_like_atx_heading line then
         continue := false
-      else (
-        incr j;
-        let children, j' =
-          if !j < Array.length lines && is_list_item_prefix lines.(!j) then
-            let child_indent = indent_len lines.(!j) in
-            if child_indent > indent then
-              parse_list_items config lines !j child_indent
+      else if is_list_item_prefix line then
+        let indent, ordered, number, content = parse_list_item_line line in
+        if indent < min_indent then
+          continue := false
+        else (
+          incr j;
+          let children, j' =
+            if !j < Array.length lines && is_list_item_prefix lines.(!j) then
+              let child_indent = indent_len lines.(!j) in
+              if child_indent > indent then
+                parse_list_items ~depth:(depth + 1) config lines !j child_indent
+              else
+                ([], !j)
             else
               ([], !j)
+          in
+          j := j';
+          items :=
+            make_list_item config ~indent ~ordered ~number content children
+            :: !items
+        )
+      else
+        continue := false
+    done;
+    (List.rev !items, !j)
+
+let emit_heading acc i lines n line_starts src_end_pos config line =
+  match try_dash_heading config line with
+  | Some (h, rest) ->
+    acc := with_pos h :: !acc;
+    incr i;
+    (match rest with
+    | Nothing -> ()
+    | Fence hdr ->
+      if config.parse_outline_only then
+        i := skip_fence_body lines !i
+      else
+        let body_i = !i in
+        let body_start_pos =
+          if body_i < n then
+            line_starts.(body_i)
           else
-            ([], !j)
+            line_starts.(!i - 1) + String.length lines.(!i - 1) + 1
         in
-        j := j';
-        items :=
-          make_list_item config ~indent ~ordered ~number content children
-          :: !items
-      )
+        let body_end_pos = src_end_pos body_i in
+        let src, j =
+          collect_src_from_header ~body_start_pos ~body_end_pos lines body_i hdr
+        in
+        acc := with_pos src :: !acc;
+        i := j
+    | Quote_line qline ->
+      if not config.parse_outline_only then
+        let q, j = collect_quote config ~first_line:qline lines !i in
+        acc := with_pos q :: !acc;
+        i := j);
+    true
+  | None -> false
+
+let emit_properties_or_paragraph acc i lines config line =
+  if line_may_be_property line then (
+    match collect_properties config lines !i with
+    | (_ :: _ as kvs), j ->
+      acc := with_pos (Property_Drawer kvs) :: !acc;
+      i := j;
+      true
+    | [], _ -> false
+  ) else
+    false
+
+let emit_paragraph_or_latex acc i lines config line =
+  match
+    if config.parse_outline_only then
+      None
     else
-      continue := false
-  done;
-  (List.rev !items, !j)
+      try_latex_environment line
+  with
+  | Some latex ->
+    acc := with_pos latex :: !acc;
+    incr i
+  | None ->
+    let p, j = collect_paragraph_lines config lines !i in
+    acc := with_pos p :: !acc;
+    i := j
 
 let parse config input =
-  let raw_lines = String.split_on_char '\n' input in
-  let lines = Array.of_list (List.map rstrip_cr raw_lines) in
+  let lines = split_lines_array input in
   let n = Array.length lines in
+  let outline = config.parse_outline_only in
   let line_starts =
-    let arr = Array.make (max n 1) 0 in
-    let pos = ref 0 in
-    for idx = 0 to n - 1 do
-      arr.(idx) <- !pos;
-      let nl =
-        if idx + 1 < n then
-          1
-        else
-          0
-      in
-      pos := !pos + String.length lines.(idx) + nl
-    done;
-    arr
+    if outline then
+      [||]
+    else
+      let arr = Array.make (max n 1) 0 in
+      let pos = ref 0 in
+      for idx = 0 to n - 1 do
+        arr.(idx) <- !pos;
+        let nl = if idx + 1 < n then 1 else 0 in
+        pos := !pos + String.length lines.(idx) + nl
+      done;
+      arr
   in
   let src_end_pos body_i =
     let rec find j =
@@ -798,91 +1026,66 @@ let parse config input =
   let i = ref 0 in
   while !i < n do
     let line = lines.(!i) in
-    if is_blank_line line then
+    let ind = indent_len line in
+    if ind >= String.length line then
       incr i
     else
-      match try_dash_heading config line with
-      | Some (h, rest) -> (
-        acc := with_pos h :: !acc;
-        incr i;
-        match rest with
-        | Nothing -> ()
-        | Fence hdr ->
-          if config.parse_outline_only then
-            i := skip_fence_body lines !i
-          else
-            let body_i = !i in
-            let body_start_pos =
-              if body_i < n then
-                line_starts.(body_i)
-              else
-                line_starts.(!i - 1) + String.length lines.(!i - 1) + 1
-            in
-            let body_end_pos = src_end_pos body_i in
-            let src, j =
-              collect_src_from_header ~body_start_pos ~body_end_pos lines body_i
-                hdr
-            in
-            acc := with_pos src :: !acc;
-            i := j
-        | Quote_line qline ->
-          if config.parse_outline_only then
-            ()
-          else
-            let q, j = collect_quote config ~first_line:qline lines !i in
-            acc := with_pos q :: !acc;
-            i := j)
-      | None -> (
+      match line.[ind] with
+      | '-' ->
+        if
+          not
+            (emit_heading acc i lines n line_starts src_end_pos config line)
+        then
+          if not (emit_properties_or_paragraph acc i lines config line) then
+            emit_paragraph_or_latex acc i lines config line
+      | '#' -> (
         match try_atx_heading config line with
         | Some h ->
           acc := with_pos h :: !acc;
           incr i
-        | None -> (
-          match try_footnote_line config line with
-          | Some fn ->
-            acc := with_pos fn :: !acc;
-            incr i
-          | None -> (
-            match collect_properties_drawer config lines !i with
-            | Some (kvs, j) ->
-              acc := with_pos (Property_Drawer kvs) :: !acc;
-              i := j
-            | None -> (
-              match collect_properties config lines !i with
-              | (_ :: _ as kvs), j ->
-                acc := with_pos (Property_Drawer kvs) :: !acc;
-                i := j
-              | [], _ -> (
-                if is_fence_line line then (
-                  if config.parse_outline_only then
-                    i := skip_fence lines !i
-                  else
-                    let src, j = collect_src ~line_starts lines !i in
-                    acc := with_pos src :: !acc;
-                    i := j
-                ) else if is_quote_line line then (
-                  let q, j = collect_quote config lines !i in
-                  acc := with_pos q :: !acc;
-                  i := j
-                ) else if is_list_item_prefix line then (
-                  let items, j =
-                    parse_list_items config lines !i (indent_len line)
-                  in
-                  acc := with_pos (List items) :: !acc;
-                  i := j
-                ) else
-                  match
-                    if config.parse_outline_only then
-                      None
-                    else
-                      try_latex_environment line
-                  with
-                  | Some latex ->
-                    acc := with_pos latex :: !acc;
-                    incr i
-                  | None ->
-                    let p, j = collect_paragraph_lines config lines !i in
-                    acc := with_pos p :: !acc;
-                    i := j)))))
+        | None ->
+          if not (emit_properties_or_paragraph acc i lines config line) then
+            emit_paragraph_or_latex acc i lines config line)
+      | '[' -> (
+        match try_footnote_line config line with
+        | Some fn ->
+          acc := with_pos fn :: !acc;
+          incr i
+        | None ->
+          if not (emit_properties_or_paragraph acc i lines config line) then
+            emit_paragraph_or_latex acc i lines config line)
+      | ':' -> (
+        match collect_properties_drawer config lines !i with
+        | Some (kvs, j) ->
+          acc := with_pos (Property_Drawer kvs) :: !acc;
+          i := j
+        | None -> emit_paragraph_or_latex acc i lines config line)
+      | '`' ->
+        if is_fence_line line then
+          if outline then
+            i := skip_fence lines !i
+          else
+            let src, j = collect_src ~line_starts lines !i in
+            acc := with_pos src :: !acc;
+            i := j
+        else if not (emit_properties_or_paragraph acc i lines config line) then
+          emit_paragraph_or_latex acc i lines config line
+      | '>' ->
+        let q, j = collect_quote config lines !i in
+        acc := with_pos q :: !acc;
+        i := j
+      | '+'
+      | '*'
+      | '0' .. '9' ->
+        if is_list_item_prefix line then (
+          let items, j = parse_list_items config lines !i ind in
+          acc := with_pos (List items) :: !acc;
+          i := j
+        ) else if not (emit_properties_or_paragraph acc i lines config line)
+        then
+          emit_paragraph_or_latex acc i lines config line
+      | _ ->
+        if not (emit_properties_or_paragraph acc i lines config line) then
+          emit_paragraph_or_latex acc i lines config line
   done;
   List.rev !acc
