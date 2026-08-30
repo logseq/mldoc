@@ -2,9 +2,7 @@ open Angstrom
 open Prelude
 
 let whitespace_chars = [ ' '; '\t'; '\n'; '\r'; '\012' ]
-
 let is_whitespace c = c = ' ' || c = '\t' || c = '\n' || c = '\r' || c = '\012'
-
 let space_chars = [ ' '; '\t'; '\026'; '\012' ]
 
 module CharSet = Set.Make (Char)
@@ -13,7 +11,6 @@ let md_escape_chars =
   "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~\\" |> explode |> CharSet.of_list
 
 let is_md_escape_char c = CharSet.mem c md_escape_chars
-
 let is_space c = List.mem c space_chars
 
 let is_tab = function
@@ -21,19 +18,12 @@ let is_tab = function
   | _ -> false
 
 let is_tab_or_space = is_space
-
 let non_tab_or_space = not << is_tab_or_space
-
 let non_space = not << is_space
-
 let eol_chars = [ '\r'; '\n' ]
-
 let is_eol c = List.mem c eol_chars
-
 let non_eol = not << is_eol
-
 let non_space_eol c = non_space c && non_eol c
-
 let is_space_eol c = is_space c || is_eol c
 
 let is_hex = function
@@ -44,41 +34,23 @@ let is_hex = function
   | _ -> false
 
 let digits = take_while1 is_digit
-
 let eol = string "\n" <|> string "\r\n"
-
 let eols = take_while1 is_eol
-
 let two_eols result = eol *> eol *> return result
-
 let ws = take_while1 is_space
-
 let tabs = take_while1 is_tab
-
 let tabs_or_ws = take_while1 is_tab_or_space
-
 let spaces = skip_while is_space
-
 let spaces_or_eols = skip_while (fun c -> is_eol c || is_space c)
-
 let non_spaces = take_while1 non_space_eol
-
 let letters = take_while1 is_letter
-
 let count_spaces = take_while is_space
-
 let lex p = p <* spaces
-
 let optional p = option None (lift (fun x -> Some x) p)
-
 let optional_list p = option [] p
-
 let lift5 f a b c d e = lift4 f a b c d <*> e
-
 let between_char c1 c2 p = char c1 *> p <* char c2
-
 let between_string begin' end' p = string begin' *> p <* string end'
-
 let between_string_ci begin' end' p = string_ci begin' *> p <* string end'
 
 let chainl1 e op =
@@ -171,17 +143,11 @@ let between_string_strict_wrapper ?(ci = false) begin' end' =
   *> end_string end' ~ci (fun s -> String.concat "" [ begin'; s; end' ])
 
 let peek_line = take_till (fun c -> c = '\r' || c = '\n') |> unsafe_lookahead
-
 let peek_spaces = ws |> unsafe_lookahead
-
 let peek_spaces_or_tabs = tabs_or_ws |> unsafe_lookahead
-
 let take_till1 f = take_while1 (fun c -> not (f c))
-
 let line = take_till1 is_eol
-
 let optional_line = take_till is_eol
-
 let line_without_spaces = take_till1 (fun c -> c = '\r' || c = '\n' || c = ' ')
 
 let clear_parser_resource p r error =
@@ -226,11 +192,8 @@ let lines_while p =
   many1 line
 
 let lines_starts_with p = lines_while ((spaces *> p <* spaces) *> optional_line)
-
 let lines_till p = many_till (line <* optional eol) p
-
 let one_of cl = satisfy (fun c -> List.mem c cl)
-
 let not_one_of cl = satisfy (fun c -> not (List.mem c cl))
 
 let take_while1_include_backslash chars_can_escape f =
@@ -344,18 +307,18 @@ let string_contains_balanced_brackets ?(escape_chars = [])
       (* escape + multi-byte stoppers: check stopper before each char *)
       fix (fun m ->
           peek_string_one_of excluded_ending_strings *> return ""
-          <|> ( peek_char >>= function
-                | Some '\\' ->
-                  any_char *> peek_char >>= fun c_opt ->
-                  (match c_opt with
-                  | Some c when List.mem c escape_chars -> any_char_string
-                  | Some c when body_pred c -> any_char_string
-                  | Some _ -> return "\\"
-                  | None -> return "\\")
-                  >>= fun s -> lift (fun r -> s ^ r) m
-                | Some c when body_pred c ->
-                  any_char *> lift (fun r -> String.make 1 c ^ r) m
-                | _ -> return "" )
+          <|> (peek_char >>= function
+               | Some '\\' ->
+                 any_char *> peek_char >>= fun c_opt ->
+                 (match c_opt with
+                 | Some c when List.mem c escape_chars -> any_char_string
+                 | Some c when body_pred c -> any_char_string
+                 | Some _ -> return "\\"
+                 | None -> return "\\")
+                 >>= fun s -> lift (fun r -> s ^ r) m
+               | Some c when body_pred c ->
+                 any_char *> lift (fun r -> String.make 1 c ^ r) m
+               | _ -> return "")
           <|> return "")
       >>= fun s ->
       if s = "" then
@@ -366,7 +329,7 @@ let string_contains_balanced_brackets ?(escape_chars = [])
   fix (fun (m : string list list t) ->
       choice
         [ (fun s l -> [ List.cons s (List.flatten l) ]) <$> take_body <*> m
-        ; ( peek_string_one_of excluded_ending_strings *> fail "finish"
+        ; peek_string_one_of excluded_ending_strings *> fail "finish"
           <|> ( peek_char >>= fun c ->
                 match c with
                 | None -> fail "finish"
@@ -391,7 +354,7 @@ let string_contains_balanced_brackets ?(escape_chars = [])
                     else
                       (fun c l -> [ [ c ]; List.flatten l ])
                       <$> any_char_string <*> m
-                | Some _ -> fail "delims" ) )
+                | Some _ -> fail "delims" )
         ; return [ [] ]
         ])
   >>| (String.concat "" << List.flatten)

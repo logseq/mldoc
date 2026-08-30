@@ -603,7 +603,6 @@ let metadata =
 (* ASCII punctuation stripped from bare-URL ends when followed by a delimiter.
    CJK punctuation never belongs in a bare URL and always terminates it. *)
 let url_ascii_end_punct = [ ','; ';'; '.'; '!'; '?' ]
-
 let url_cjk_end_punct = [ "，"; "。"; "；"; "！"; "？"; "、"; "：" ]
 
 let link_inline =
@@ -615,7 +614,8 @@ let link_inline =
     || c = '/' || c = '?' || c = '#'
   in
   let before_path_normal c =
-    non_space c && (not (before_path_delim c))
+    non_space c
+    && (not (before_path_delim c))
     && not (List.mem c url_ascii_end_punct)
   in
   (* Host/authority: allow mid-host '.' etc., but drop trailing ASCII punct and
@@ -625,10 +625,10 @@ let link_inline =
       take_while1_until_strings url_cjk_end_punct before_path_normal
       <|> ( take_while1 (fun c -> List.mem c url_ascii_end_punct) >>= fun ps ->
             peek_string_one_of url_cjk_end_punct *> fail "url trail"
-            <|> ( peek_char >>= function
-                  | None -> fail "url trail"
-                  | Some c when before_path_delim c -> fail "url trail"
-                  | Some _ -> return ps ) )
+            <|> (peek_char >>= function
+                 | None -> fail "url trail"
+                 | Some c when before_path_delim c -> fail "url trail"
+                 | Some _ -> return ps) )
     in
     fix (fun m ->
         List.cons <$> atom <*> m <|> (List.cons <$> atom <*> return []))
