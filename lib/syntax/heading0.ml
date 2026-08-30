@@ -83,16 +83,34 @@ struct
 
   let title_aux_p config =
     let config = { config with Conf.hiccup_in_block = false } in
-    Angstrom.unsafe_lookahead
-      (choice
-         [ Drawer.parse config
-         ; Hr.parse config
-         ; Table.parse config
-         ; Latex_env.parse config
-         ; Block.parse config
-         ; Footnote.parse config
-         ; Paragraph.parse
-         ])
+    if config.parse_outline_only then
+      (* Only run Block when the title might be a fence/quote. *)
+      Angstrom.unsafe_lookahead
+        (peek_char >>= function
+         | Some '`'
+         | Some '>' ->
+           Block.parse config <|> Paragraph.parse
+         | _ -> Paragraph.parse)
+    else if Conf.is_markdown config then
+      (* Markdown: most titles are plain lines; avoid Org-heavy lookahead. *)
+      Angstrom.unsafe_lookahead
+        (choice
+           [ Drawer.parse config
+           ; Block.parse config
+           ; Footnote.parse config
+           ; Paragraph.parse
+           ])
+    else
+      Angstrom.unsafe_lookahead
+        (choice
+           [ Drawer.parse config
+           ; Hr.parse config
+           ; Table.parse config
+           ; Latex_env.parse config
+           ; Block.parse config
+           ; Footnote.parse config
+           ; Paragraph.parse
+           ])
 
   (* not include priority, tags, marker
      return (title_line_string, first Type.t) *)
@@ -128,95 +146,161 @@ struct
     in
     explode (String.trim s) |> List.map map_char |> String.concat ""
 
+  let outline_title config title =
+    if Outline_inline.may_have_outline_markup config title then
+      match parse_string ~consume:All (Outline_inline.parse config) title with
+      | Ok title -> title
+      | Error _ -> []
+    else
+      []
+
+  let make_outline_heading ~level ~unordered ~size ~marker ~priority ~title =
+    Heading
+      { level
+      ; marker
+      ; priority
+      ; title
+      ; tags = []
+      ; anchor = ""
+      ; meta = { timestamps = []; properties = [] }
+      ; numbering = None
+      ; unordered
+      ; size
+      }
+
+  (** Fast MD outline heading: reuse [level], skip title_aux Block/Drawer. *)
+  let parse_md_outline config =
+    level config <?> "Heading level" >>= fun (level, unordered, size) ->
+    (if not config.parse_marker then
+       return None
+     else
+       optional (spaces *> marker <?> "Heading marker"))
+    >>= fun marker ->
+    (if not config.parse_priority then
+       return None
+     else
+       optional (spaces *> priority <?> "Heading priority"))
+    >>= fun priority ->
+    optional spaces *> peek_char >>= function
+    | Some '`'
+    | Some '>' ->
+      (* Leave fence/quote on the line for Block.parse. *)
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:[])
+    | None ->
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:[])
+    | Some c when is_eol c ->
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:[])
+      <* optional eol
+    | _ ->
+      optional_line >>= fun title ->
+      return
+        (make_outline_heading ~level ~unordered ~size ~marker ~priority
+           ~title:(outline_title config title))
+      <* optional (end_of_line <|> end_of_input)
+
   let parse config =
-    let p =
-      lift4
-        (fun (level, unordered, size) marker priority pos_and_title ->
-          let title =
-            match pos_and_title with
-            | None -> []
-            | Some (_pos, title) -> (
-              let inline_parse =
+    if config.parse_outline_only && Conf.is_markdown config then
+      parse_md_outline config
+    else
+      let p =
+        lift4
+          (fun (level, unordered, size) marker priority pos_and_title ->
+            let title =
+              match pos_and_title with
+              | None -> []
+              | Some (_pos, title) -> (
                 if config.parse_outline_only then
-                  Outline_inline.parse
+                  outline_title config title
                 else
-                  Inline.parse
-              in
-              match parse_string ~consume:All (inline_parse config) title with
-              | Ok title -> title
-              | Error _e -> [])
-          in
-          let title, tags =
-            match title with
-            | [] -> (title, [])
-            | _ -> (
-              match config.format with
-              | Org -> (
-                let last_inline = List.nth title (List.length title - 1) in
-                match last_inline with
-                | Inline.Plain s, _ ->
-                  let s = String.trim s in
-                  if String.length s > 1 && s.[String.length s - 1] = ':' then
-                    let prefix, maybe_tags = splitr (fun c -> c <> ' ') s in
-                    match parse_string ~consume:All tags maybe_tags with
-                    | Ok tags ->
-                      let title =
-                        if prefix = "" then
-                          drop_last 1 title
-                        else
-                          drop_last 1 title
-                          @ Type_op.inline_list_with_none_pos
-                              [ Inline.Plain prefix ]
-                      in
-                      let open Option in
-                      let last_plain =
-                        List.nth_opt title (List.length title - 1)
-                        >>| fun (inline_t, pos) ->
-                        ( (match inline_t with
-                          | Inline.Plain s -> Inline.Plain (String.rtrim s ^ " ")
-                          | _ -> inline_t)
-                        , pos )
-                      in
-                      let title' =
-                        if Option.is_some last_plain then
-                          let _, butlast_title = butlast title in
-                          List.append butlast_title [ Option.get last_plain ]
-                        else
-                          title
-                      in
-                      (title', remove is_blank tags)
-                    | _ -> (title, [])
-                  else
-                    (title, [])
-                | _ -> (title, []))
-              | Markdown -> (title, []))
-          in
-          let anchor =
-            anchor_link (Inline.asciis (Type_op.inline_list_strip_pos title))
-          in
-          let meta = { timestamps = []; properties = [] } in
-          Heading
-            { level
-            ; marker
-            ; priority
-            ; title
-            ; tags
-            ; anchor
-            ; meta
-            ; numbering = None
-            ; unordered
-            ; size
-            })
-        (level config <?> "Heading level")
-        (if not config.parse_marker then
-           return None
-         else
-           optional (ws *> marker <?> "Heading marker"))
-        (if not config.parse_priority then
-           return None
-         else
-           optional (ws *> priority <?> "Heading priority"))
-        (optional (ws *> Angstrom.both pos (title config) <?> "Heading title"))
-    in
-    p <* optional (end_of_line <|> end_of_input)
+                  match
+                    parse_string ~consume:All (Inline.parse config) title
+                  with
+                  | Ok title -> title
+                  | Error _e -> [])
+            in
+            let title, tags =
+              match title with
+              | [] -> (title, [])
+              | _ -> (
+                match config.format with
+                | Org -> (
+                  let last_inline = List.nth title (List.length title - 1) in
+                  match last_inline with
+                  | Inline.Plain s, _ ->
+                    let s = String.trim s in
+                    if String.length s > 1 && s.[String.length s - 1] = ':' then
+                      let prefix, maybe_tags = splitr (fun c -> c <> ' ') s in
+                      match parse_string ~consume:All tags maybe_tags with
+                      | Ok tags ->
+                        let title =
+                          if prefix = "" then
+                            drop_last 1 title
+                          else
+                            drop_last 1 title
+                            @ Type_op.inline_list_with_none_pos
+                                [ Inline.Plain prefix ]
+                        in
+                        let open Option in
+                        let last_plain =
+                          List.nth_opt title (List.length title - 1)
+                          >>| fun (inline_t, pos) ->
+                          ( (match inline_t with
+                            | Inline.Plain s ->
+                              Inline.Plain (String.rtrim s ^ " ")
+                            | _ -> inline_t)
+                          , pos )
+                        in
+                        let title' =
+                          if Option.is_some last_plain then
+                            let _, butlast_title = butlast title in
+                            List.append butlast_title [ Option.get last_plain ]
+                          else
+                            title
+                        in
+                        (title', remove is_blank tags)
+                      | _ -> (title, [])
+                    else
+                      (title, [])
+                  | _ -> (title, []))
+                | Markdown -> (title, []))
+            in
+            let anchor =
+              if config.parse_outline_only then
+                ""
+              else
+                anchor_link
+                  (Inline.asciis (Type_op.inline_list_strip_pos title))
+            in
+            let meta = { timestamps = []; properties = [] } in
+            Heading
+              { level
+              ; marker
+              ; priority
+              ; title
+              ; tags
+              ; anchor
+              ; meta
+              ; numbering = None
+              ; unordered
+              ; size
+              })
+          (level config <?> "Heading level")
+          (if not config.parse_marker then
+             return None
+           else
+             optional (ws *> marker <?> "Heading marker"))
+          (if not config.parse_priority then
+             return None
+           else
+             optional (ws *> priority <?> "Heading priority"))
+          (optional
+             (ws *> Angstrom.both pos (title config) <?> "Heading title"))
+      in
+      p <* optional (end_of_line <|> end_of_input)
 end

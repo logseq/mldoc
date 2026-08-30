@@ -18,20 +18,26 @@ let trim_last_space s =
 
 let parse = line >>| fun l -> Paragraph_line l
 
+let plain_paragraph content =
+  Paragraph (Type_op.inline_list_with_none_pos [ Inline.Plain content ])
+
 let parse_lines config lines pos1 pos2 =
   let lines = List.rev lines in
   let content = String.concat "" lines in
   let paragraph =
-    let inline_parse =
-      if config.parse_outline_only then
-        Outline_inline.parse
+    if config.parse_outline_only then
+      if Outline_inline.may_have_outline_markup config content then
+        match
+          parse_string ~consume:All (Outline_inline.parse config) content
+        with
+        | Ok result -> Paragraph result
+        | Error _ -> Paragraph []
       else
-        Inline.parse
-    in
-    match parse_string ~consume:All (inline_parse config) content with
-    | Ok result -> Paragraph result
-    | Error _ ->
-      Paragraph (Type_op.inline_list_with_none_pos [ Inline.Plain content ])
+        Paragraph []
+    else
+      match parse_string ~consume:All (Inline.parse config) content with
+      | Ok result -> Paragraph result
+      | Error _ -> plain_paragraph content
   in
   (paragraph, { start_pos = pos1; end_pos = pos2 })
 

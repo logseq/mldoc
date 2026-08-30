@@ -1,3 +1,4 @@
+open Mldoc
 open Mldoc.Parser
 open Mldoc.Conf
 open Core
@@ -26,6 +27,8 @@ let config =
   }
 
 let outline_config = { config with parse_outline_only = true }
+let md_config = { config with format = Markdown }
+let md_outline_config = { md_config with parse_outline_only = true }
 
 let main () =
   Command_unix.run
@@ -41,9 +44,9 @@ let main () =
        ; Bench.Test.create ~name:"Mldoc Org mode parser (outline only)"
            (fun () -> ignore (parse outline_config doc_org))
        ; Bench.Test.create ~name:"Mldoc Markdown parser" (fun () ->
-             ignore (parse config syntax_md))
+             ignore (parse md_config syntax_md))
        ; Bench.Test.create ~name:"Mldoc Markdown parser (outline only)"
-           (fun () -> ignore (parse outline_config syntax_md))
+           (fun () -> ignore (parse md_outline_config syntax_md))
        ])
 
 let () = main ()

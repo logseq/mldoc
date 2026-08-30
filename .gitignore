@@ -12,3 +12,4 @@ _tags
 /dune-workspace
 examples/syntax.html
 js/package/index.js
+examples/logseq_large.md

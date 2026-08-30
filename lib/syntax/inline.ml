@@ -146,9 +146,7 @@ let t_with_pos_of_yojson (json : Yojson.Safe.t) =
 type inner_state = { mutable last_plain_char : char option }
 
 let quicklink_delims = [ '>' ] @ eol_chars
-
 let inline_link_delims = [ '['; ']'; '<'; '>'; '{'; '}'; '('; ')' ] @ eol_chars
-
 let email = Email_address.email >>| fun email -> Email email
 
 let between ?(e = None) s =
@@ -182,7 +180,6 @@ let code_aux_p c =
   <?> "Inline code"
 
 let org_code = code_aux_p "~"
-
 let md_code = code_aux_p "`" <|> markdown_escape_backticks
 
 let code config =
@@ -197,14 +194,48 @@ let org_plain_delims =
 let markdown_plain_delims =
   [ '\\'; '_'; '^'; '['; '*'; '~'; '`'; '='; '$'; '#' ] @ whitespace_chars
 
-(* replace list with a  *)
+(* Hot path: avoid List.mem per character. *)
+let in_org_plain_delims = function
+  | '\\'
+  | '_'
+  | '^'
+  | '['
+  | '*'
+  | '/'
+  | '+'
+  | '$'
+  | '#'
+  | ' '
+  | '\t'
+  | '\n'
+  | '\r'
+  | '\012' ->
+    true
+  | _ -> false
+
+let in_md_plain_delims = function
+  | '\\'
+  | '_'
+  | '^'
+  | '['
+  | '*'
+  | '~'
+  | '`'
+  | '='
+  | '$'
+  | '#'
+  | ' '
+  | '\t'
+  | '\n'
+  | '\r'
+  | '\012' ->
+    true
+  | _ -> false
+
 let in_plain_delims config c =
-  let plain_delims =
-    match config.format with
-    | Org -> org_plain_delims
-    | Markdown -> markdown_plain_delims
-  in
-  List.mem c plain_delims
+  match config.format with
+  | Org -> in_org_plain_delims c
+  | Markdown -> in_md_plain_delims c
 
 let whitespaces = ws >>| fun spaces -> Plain spaces
 
@@ -321,11 +352,11 @@ let md_em_parser ?(nested = false) ?(include_md_code = true) pattern typ =
           set_char_before_pattern (Plain s);
           Plain s )
       ; (if include_md_code then (
-          md_code >>| fun t ->
-          set_char_before_pattern t;
-          t
-        ) else
-          fail "continue")
+           md_code >>| fun t ->
+           set_char_before_pattern t;
+           t
+         ) else
+           fail "continue")
       ; ( take_while1_include_backslash stop_chars (fun c ->
               not @@ List.mem c stop_chars)
         >>| fun s ->
@@ -487,7 +518,8 @@ let entity =
   try
     let entity = Entity.find s in
     Entity entity
-  with Not_found -> Plain s
+  with
+  | Not_found -> Plain s
 
 (* FIXME: nested emphasis not working *)
 (* foo_bar, foo_{bar}, foo^bar, foo^{bar} *)
@@ -510,7 +542,6 @@ let gen_script config s f =
   | Error _e -> f [ Plain s ]
 
 let subscript config = gen_script config "_" (fun x -> Subscript x)
-
 let superscript config = gen_script config "^" (fun x -> Superscript x)
 
 (*
@@ -546,7 +577,11 @@ let latex_fragment _config =
       take_while (fun x -> x <> '$' && x <> '\r' && x <> '\n') <* char '$'
       >>= fun s ->
       match last_char s with
-      | Some ' ' | Some '(' | Some '[' | Some '{' -> fail "inline math shouldn't end with a space, (, [, {"
+      | Some ' '
+      | Some '('
+      | Some '['
+      | Some '{' ->
+        fail "inline math shouldn't end with a space, (, [, {"
       | _ -> return @@ Latex_Fragment (Inline (String.make 1 c ^ s)))
   | '\\' -> (
     any_char >>= function
@@ -566,6 +601,7 @@ let metadata =
   <|> string "{}" <|> return ""
 
 let link_inline =
+  (* Fail fast on ordinary words: require letter+:// without consuming. *)
   let protocol_part = take_while1 is_letter_or_digit <* string "://" in
   let before_path_part =
     take_while1 (fun c ->
@@ -577,19 +613,21 @@ let link_inline =
     <$> choice [ char '/'; char '?'; char '#' ]
     <*> string_contains_balanced_brackets
           ~excluded_ending_chars:[ ','; ';'; '.'; '!'; '?' ]
-          [ ('(', ')'); ('[', ']') ] (space_chars @ eol_chars)
+          [ ('(', ')'); ('[', ']') ]
+          (space_chars @ eol_chars)
     <|> return ""
   in
-  lift3
-    (fun protocol before_path remain ->
-      Link
-        { label = [ Plain (protocol ^ "://" ^ before_path ^ remain) ]
-        ; url = Complex { protocol; link = before_path ^ remain }
-        ; title = None
-        ; full_text = protocol ^ "://" ^ before_path ^ remain
-        ; metadata = ""
-        })
-    protocol_part before_path_part remaining_part
+  unsafe_lookahead (take_while1 is_letter_or_digit *> string "://")
+  *> lift3
+       (fun protocol before_path remain ->
+         Link
+           { label = [ Plain (protocol ^ "://" ^ before_path ^ remain) ]
+           ; url = Complex { protocol; link = before_path ^ remain }
+           ; title = None
+           ; full_text = protocol ^ "://" ^ before_path ^ remain
+           ; metadata = ""
+           })
+       protocol_part before_path_part remaining_part
 
 let quick_link_aux =
   let protocol_part_and_slashes =
@@ -627,7 +665,8 @@ let org_link_1 config =
           | None -> fail "not link"
           | Some '[' ->
             string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
-              [ ('[', ']') ] []
+              [ ('[', ']') ]
+              []
           | Some ']' ->
             peek_string 2 >>= fun s ->
             if s = "]]" then
@@ -661,7 +700,8 @@ let org_link_1 config =
                     link
                 in
                 Complex { protocol; link = link' })
-          with _ -> Search url_text
+          with
+          | _ -> Search url_text
       in
       let parser =
         many1
@@ -707,7 +747,8 @@ let org_link_2 =
       try
         Scanf.sscanf s "%[^:]://%[^\n]" (fun protocol link ->
             Complex { protocol; link })
-      with _ -> Page_ref s
+      with
+      | _ -> Page_ref s
   in
   let full_text = Printf.sprintf "[[%s]]" s in
   let label =
@@ -721,7 +762,8 @@ let org_link config = org_link_1 config <|> org_link_2
 
 (* helper for markdown_link and markdown_image *)
 let link_url_part =
-  string_contains_balanced_brackets ~escape_chars:[ '('; ')' ] [ ('(', ')') ]
+  string_contains_balanced_brackets ~escape_chars:[ '('; ')' ]
+    [ ('(', ')') ]
     eol_chars
   >>= fun s ->
   let len = String.length s in
@@ -747,7 +789,8 @@ let label_part_choices =
         | Some '[' ->
           page_ref
           <|> string_contains_balanced_brackets ~escape_chars:[ '['; ']' ]
-                [ ('[', ']') ] []
+                [ ('[', ']') ]
+                []
           >>| fun s -> Plain s
         | Some ']' -> fail "not link"
         | Some c when is_eol c -> fail "finish"
@@ -773,14 +816,12 @@ let label_part =
 let link_url_part_inner =
   let url_part =
     both (return `Block_ref_link) block_ref
-    <|> both
-          (return `Other_link1)
+    <|> both (return `Other_link1)
           (char '<'
            *> take_while1_include_backslash [ '<'; '>' ] (fun c ->
                   not (List.mem c [ '<'; '>' ]))
           <* char '>')
-    <|> both
-          (return `Other_link2)
+    <|> both (return `Other_link2)
           (take_while1 (fun c -> non_space_eol c && c <> '['))
     <|> both (return `Page_ref_link) page_ref
     <|> ( peek_char >>= fun c ->
@@ -848,7 +889,8 @@ let markdown_link config =
                     link
                 in
                 Complex { protocol; link = link' })
-          with _ ->
+          with
+          | _ ->
             if
               String.length url > 3
               && (ends_with lowercased_url ".md"
@@ -867,9 +909,8 @@ let markdown_link config =
              ; entity
              ; code config
              ; subscript config
-             ; superscript config
-               (* ; plain config
-                * ; whitespaces *)
+             ; superscript config (* ; plain config
+                                   * ; whitespaces *)
              ])
       in
       let label =
@@ -964,11 +1005,13 @@ let statistics_cookie =
   try
     let cookie = Scanf.sscanf s "%d/%d" (fun n n' -> Absolute (n, n')) in
     return (Cookie cookie)
-  with _ -> (
+  with
+  | _ -> (
     try
       let cookie = Scanf.sscanf s "%d%%" (fun n -> Percent n) in
       return (Cookie cookie)
-    with _ -> fail "statistics_cookie")
+    with
+    | _ -> fail "statistics_cookie")
 
 (*
    Define: #+MACRO: demo =$1= ($1)
@@ -999,22 +1042,22 @@ let macro config =
   else
     let p =
       take_while1 (function
-          | '}'
-          | '\r'
-          | '\n' ->
-            false
-          | _ -> true)
+        | '}'
+        | '\r'
+        | '\n' ->
+          false
+        | _ -> true)
       >>= fun s ->
       match parse_string ~consume:Prefix macro_name s with
       | Ok name -> (
-          let l = String.length s in
-          let args = String.sub s (String.length name) (l - String.length name) in
-          if String.length args == 0 then
-            return (Macro { name; arguments = [] })
-          else
-            match parse_string (macro_args config) ~consume:All args with
-            | Ok arguments -> return (Macro { name; arguments })
-            | Error e -> fail e)
+        let l = String.length s in
+        let args = String.sub s (String.length name) (l - String.length name) in
+        if String.length args == 0 then
+          return (Macro { name; arguments = [] })
+        else
+          match parse_string (macro_args config) ~consume:All args with
+          | Ok arguments -> return (Macro { name; arguments })
+          | Error e -> fail e)
       | Error _e -> fail "macro name"
     in
     between_string "{{{" "}}}" p <|> between_string "{{" "}}" p
@@ -1332,7 +1375,6 @@ let hash_tag_value_string tag =
   | _ -> failwith "unreachable"
 
 let inline_hiccup = Hiccup.parse >>| fun s -> Inline_Hiccup s
-
 let inline_html = Raw_html.parse >>| fun s -> Inline_Html s
 
 (* TODO: configurable, re-order *)
@@ -1417,11 +1459,210 @@ let inline_choices state config : t_with_pos Angstrom.t =
   else
     (fun t -> (t, None)) <$> p'
 
-let parse config =
+let parse_angstrom config =
   let state = { last_plain_char = None } in
   many1 (inline_choices state config)
   >>| (fun l -> concat_plains l)
   <?> "inline"
+
+(** Pure-OCaml MD fast path: plain + #tag + [[page]] + ((block)) + Break_Line.
+    No Parseff/effects — faster than Angstrom on Logseq-style titles.
+    Returns None when emphasis, markdown links, urls, nested refs, etc. appear. *)
+let try_fast_md_inline s =
+  let n = String.length s in
+  if n = 0 then
+    None
+  else
+    let rec gate i =
+      if i >= n then
+        true
+      else
+        match s.[i] with
+        | '*'
+        | '_'
+        | '`'
+        | '~'
+        | '='
+        | '$'
+        | '\\'
+        | '!'
+        | '<'
+        | '{'
+        | '@'
+        | '^' ->
+          false
+        | ':' when i + 1 < n && s.[i + 1] = '/' -> false
+        | _ -> gate (i + 1)
+    in
+    if not (gate 0) then
+      None
+    else
+      let is_ws = function
+        | ' '
+        | '\t' ->
+          true
+        | _ -> false
+      in
+      let tag_trail = function
+        | ','
+        | ';'
+        | '.'
+        | '!'
+        | '?'
+        | '\''
+        | '"'
+        | ':'
+        | '#' ->
+          true
+        | _ -> false
+      in
+      let acc = ref [] in
+      let i = ref 0 in
+      let plain_start = ref 0 in
+      let complex = ref false in
+      let flush_plain stop =
+        if stop > !plain_start then
+          acc := Plain (String.sub s !plain_start (stop - !plain_start)) :: !acc
+      in
+      let page_ref_end i0 =
+        if i0 + 1 >= n || s.[i0] <> '[' || s.[i0 + 1] <> '[' then
+          None
+        else
+          let rec loop j depth =
+            if j + 1 >= n then
+              None
+            else if s.[j] = '[' && s.[j + 1] = '[' then
+              loop (j + 2) (depth + 1)
+            else if s.[j] = ']' && s.[j + 1] = ']' then
+              if depth = 1 then
+                Some (j + 2)
+              else
+                loop (j + 2) (depth - 1)
+            else
+              loop (j + 1) depth
+          in
+          loop (i0 + 2) 1
+      in
+      let block_ref_end i0 =
+        if i0 + 1 >= n || s.[i0] <> '(' || s.[i0 + 1] <> '(' then
+          None
+        else
+          let rec loop j =
+            if j + 1 >= n then
+              None
+            else if s.[j] = ')' && s.[j + 1] = ')' then
+              Some (j + 2)
+            else
+              loop (j + 1)
+          in
+          loop (i0 + 2)
+      in
+      while !i < n && not !complex do
+        match s.[!i] with
+        | '\n' ->
+          flush_plain !i;
+          acc := Break_Line :: !acc;
+          incr i;
+          plain_start := !i
+        | '\r' ->
+          flush_plain !i;
+          incr i;
+          if !i < n && s.[!i] = '\n' then incr i;
+          acc := Break_Line :: !acc;
+          plain_start := !i
+        | '#' when !i + 1 < n && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
+          ->
+          flush_plain !i;
+          let start = !i + 1 in
+          let j = ref start in
+          let has_bracket = ref false in
+          while !j < n && (not (is_ws s.[!j])) && s.[!j] <> '\n' do
+            if s.[!j] = '[' then has_bracket := true;
+            incr j
+          done;
+          if !has_bracket then
+            complex := true
+          else
+            let raw = String.sub s start (!j - start) in
+            let rec name_len k =
+              if k > 0 && tag_trail raw.[k - 1] then
+                name_len (k - 1)
+              else
+                k
+            in
+            let nl = name_len (String.length raw) in
+            if nl = 0 then
+              complex := true
+            else (
+              acc := Tag [ Plain (String.sub raw 0 nl) ] :: !acc;
+              if nl < String.length raw then
+                acc :=
+                  Plain (String.sub raw nl (String.length raw - nl)) :: !acc;
+              i := !j;
+              plain_start := !j
+            )
+        | '[' when !i + 1 < n && s.[!i + 1] = '[' -> (
+          match page_ref_end !i with
+          | Some e ->
+            let name = String.sub s (!i + 2) (e - !i - 4) in
+            if String.contains name '[' then
+              complex := true
+            else (
+              flush_plain !i;
+              acc :=
+                Link
+                  { url = Page_ref name
+                  ; label = [ Plain "" ]
+                  ; title = None
+                  ; full_text = "[[" ^ name ^ "]]"
+                  ; metadata = ""
+                  }
+                :: !acc;
+              i := e;
+              plain_start := e
+            )
+          | None -> complex := true)
+        | '[' -> complex := true
+        | '(' when !i + 1 < n && s.[!i + 1] = '(' -> (
+          match block_ref_end !i with
+          | Some e ->
+            flush_plain !i;
+            let id = String.sub s (!i + 2) (e - !i - 4) in
+            acc :=
+              Link
+                { url = Block_ref id
+                ; label = [ Plain "" ]
+                ; title = None
+                ; full_text = "((" ^ id ^ "))"
+                ; metadata = ""
+                }
+              :: !acc;
+            i := e;
+            plain_start := e
+          | None -> incr i)
+        | _ -> incr i
+      done;
+      if !complex then
+        None
+      else (
+        flush_plain n;
+        match !acc with
+        | [] -> None
+        | _ ->
+          Some (concat_plains (List.map (fun t -> (t, None)) (List.rev !acc)))
+      )
+
+let parse config =
+  if Conf.is_markdown config then
+    take_while (fun _ -> true) >>= fun s ->
+    match try_fast_md_inline s with
+    | Some result -> return result
+    | None -> (
+      match parse_string ~consume:All (parse_angstrom config) s with
+      | Result.Ok result -> return result
+      | Result.Error e -> fail e)
+  else
+    parse_angstrom config
 
 let is_embed_data = function
   | Embed_data _ -> true

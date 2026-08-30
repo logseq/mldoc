@@ -4,7 +4,7 @@ open Mldoc
 type state = { mutable last_level : int }
 
 let page_ref_g (pagenames : string list) =
-  oneofl pagenames >|= fun pagename ->
+  oneof_list pagenames >|= fun pagename ->
   Inline.Link
     { url = Inline.Search pagename
     ; label = [ Inline.Plain "" ]
@@ -30,8 +30,8 @@ let page_names n =
     let+ pagename_l =
       list_size (1 -- 10)
       @@ oneof_weighted
-           [ (1, string_size ~gen:(oneofl char_table) (0 -- 5))
-           ; (1, oneofl unicode_table)
+           [ (1, string_size ~gen:(oneof_list char_table) (0 -- 5))
+           ; (1, oneof_list unicode_table)
            ]
     in
     String.(concat "" pagename_l ^ string_of_int i)
@@ -62,7 +62,7 @@ let heading ?(init = false) pagenames state =
       ]
   in
   let level_g =
-    oneofl
+    oneof_list
       (if init then
          [ 1 ]
        else
@@ -74,7 +74,7 @@ let heading ?(init = false) pagenames state =
   state.last_level <- level;
   return
   @@ Type.Heading
-       { title = inlines
+       { title = Type_op.inline_list_with_none_pos inlines
        ; tags = []
        ; marker
        ; level
@@ -83,10 +83,12 @@ let heading ?(init = false) pagenames state =
        ; anchor = ""
        ; meta = { timestamps = []; properties = [] }
        ; unordered = true
+       ; size = None
        }
 
 let paragragh pagenames =
-  inlines_g pagenames >|= fun inlines -> Type.Paragraph inlines
+  inlines_g pagenames >|= fun inlines ->
+  Type.Paragraph (Type_op.inline_list_with_none_pos inlines)
 
 let blocks_g pagenames : Type.blocks t =
   let state = { last_level = 1 } in

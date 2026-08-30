@@ -42,6 +42,9 @@ type t =
     (* hiccup: bool; *)
     toc : bool [@default false]
   ; parse_outline_only : bool [@default false]
+        (** Fast path (esp. Markdown): block structure + properties, and in
+            content only node refs ([[page]] / ((block))), tags (#tag).
+            Skips emphasis/code/timestamps and full Inline.parse. *)
   ; heading_number : bool [@default false]
   ; keep_line_break : bool (* FIXME: is this option deprecated? *)
   ; format : format
@@ -49,16 +52,15 @@ type t =
   ; exporting_keep_properties : bool
         [@default false] (* keep properties when exporting *)
   ; inline_type_with_pos : bool [@default false]
-  ; inline_skip_macro: bool [@default false]
+  ; inline_skip_macro : bool [@default false]
   ; export_md_indent_style : indent_style [@default Dashes]
   ; export_md_remove_options : meta_chars list [@default []]
   ; hiccup_in_block : bool [@default true]
   ; enable_drawers : bool [@default true]
-  ; parse_marker: bool [@default true]
-  ; parse_priority: bool [@default true]
+  ; parse_marker : bool [@default true]
+  ; parse_priority : bool [@default true]
   }
 [@@deriving yojson]
 
 let is_markdown t = t.format = Markdown
-
 let is_org t = t.format = Org
