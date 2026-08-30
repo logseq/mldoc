@@ -771,7 +771,7 @@ let collect_src ~line_starts lines i =
   collect_src_from_header ~body_start_pos ~body_end_pos lines body_i
     fence_header
 
-let quote_continuation_stop config line =
+let quote_continuation_stop _config line =
   (* Match Block.md_blockquote: stop only on new block markers. *)
   let trimmed = String.trim line in
   looks_like_dash_heading line

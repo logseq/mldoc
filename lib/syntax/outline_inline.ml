@@ -187,8 +187,21 @@ let rec build_nested_link s start end_ depth =
 (** Fast path for #tag / [[page]] / ((block)) / nested [[a [[b]]]].
     Returns None when markdown links or nested-page hashtags need Angstrom.
     Scans [s] from [off] with length [len] (no need to sub the whole title). *)
+let has_backslash s off end_ =
+  let i = ref off in
+  let found = ref false in
+  while (not !found) && !i < end_ do
+    if String.unsafe_get s !i = '\\' then
+      found := true
+    else
+      incr i
+  done;
+  !found
+
 let try_fast_scan_range s off len =
   if len < 0 || off < 0 || off + len > String.length s then
+    None
+  else if has_backslash s off (off + len) then
     None
   else
     let end_ = off + len in
