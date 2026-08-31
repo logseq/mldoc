@@ -1621,7 +1621,8 @@ let try_fast_md_inline s =
           when !i + 1 < n
                && (not (is_ws s.[!i + 1]))
                && s.[!i + 1] <> '#'
-               && (!i = 0 || is_tag_boundary s.[!i - 1]) ->
+               && (!i = 0 || is_tag_boundary s.[!i - 1] || tag_trail s.[!i - 1])
+          ->
           flush_plain !i;
           let start = !i + 1 in
           let j = ref start in

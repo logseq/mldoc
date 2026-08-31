@@ -1372,6 +1372,16 @@ let block =
           , check_aux "url:: http://example.com/a#type"
               (Type.Property_Drawer [ ("url", "http://example.com/a#type", []) ])
           )
+        ; ( "property tags after punctuation"
+          , `Quick
+          , check_aux "prop:: #foo: '#bar'"
+              (Type.Property_Drawer
+                 [ ( "prop"
+                   , "#foo: '#bar'"
+                   , [ Inline.Tag [ Inline.Plain "foo" ]
+                     ; Inline.Tag [ Inline.Plain "bar" ]
+                     ] )
+                 ]) )
         ; ( "property macro value stays a drawer"
           , `Quick
           , check_aux "url:: {{docs-base-url url}}"
