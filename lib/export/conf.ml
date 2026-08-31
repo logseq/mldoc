@@ -42,9 +42,10 @@ type t =
     (* hiccup: bool; *)
     toc : bool [@default false]
   ; parse_outline_only : bool [@default false]
-        (** Fast path (esp. Markdown): block structure + properties, Plain
-            text, node refs ([[page]] / ((block))), and tags (#tag).
-            Skips emphasis/code/timestamps and full Inline.parse. *)
+        (** Outline: headings keep title (Plain + [[page]] / ((block)) / #tag),
+            plus status/priority, properties, SCHEDULED/DEADLINE, and
+            front matter (first block only). Skips mixed markdown used for
+            block rendering (emphasis, code, autolinks). *)
   ; heading_number : bool [@default false]
   ; keep_line_break : bool (* FIXME: is this option deprecated? *)
   ; format : format

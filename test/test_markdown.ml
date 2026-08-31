@@ -521,6 +521,41 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "page ref with underscore"
+          , `Quick
+          , check_aux "see [[foo_bar]] and [[baz]]"
+              (paragraph
+                 [ I.Plain "see "
+                 ; I.Link
+                     { url = I.Page_ref "foo_bar"
+                     ; label = [ Plain "" ]
+                     ; title = None
+                     ; full_text = "[[foo_bar]]"
+                     ; metadata = ""
+                     }
+                 ; I.Plain " and "
+                 ; I.Link
+                     { url = I.Page_ref "baz"
+                     ; label = [ Plain "" ]
+                     ; title = None
+                     ; full_text = "[[baz]]"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "page ref then emphasis"
+          , `Quick
+          , check_aux "[[foo_bar]] *ok*"
+              (paragraph
+                 [ I.Link
+                     { url = I.Page_ref "foo_bar"
+                     ; label = [ Plain "" ]
+                     ; title = None
+                     ; full_text = "[[foo_bar]]"
+                     ; metadata = ""
+                     }
+                 ; I.Plain " "
+                 ; I.Emphasis (`Italic, [ I.Plain "ok" ])
+                 ]) )
         ; ( "image link"
           , `Quick
           , check_aux "![lab[el]](url-part)"
@@ -1273,6 +1308,73 @@ let block =
                      ; Inline.Tag [ Inline.Plain "generated-page" ]
                      ] )
                  ]) )
+        ; ( "property wiki links"
+          , `Quick
+          , check_aux "genre:: [[Comedy]], [[Drama]], [[Romance]]"
+              (Type.Property_Drawer
+                 [ ( "genre"
+                   , "[[Comedy]], [[Drama]], [[Romance]]"
+                   , [ Inline.Link
+                         { url = Inline.Page_ref "Comedy"
+                         ; label = [ Inline.Plain "" ]
+                         ; title = None
+                         ; full_text = "[[Comedy]]"
+                         ; metadata = ""
+                         }
+                     ; Inline.Link
+                         { url = Inline.Page_ref "Drama"
+                         ; label = [ Inline.Plain "" ]
+                         ; title = None
+                         ; full_text = "[[Drama]]"
+                         ; metadata = ""
+                         }
+                     ; Inline.Link
+                         { url = Inline.Page_ref "Romance"
+                         ; label = [ Inline.Plain "" ]
+                         ; title = None
+                         ; full_text = "[[Romance]]"
+                         ; metadata = ""
+                         }
+                     ] )
+                 ]) )
+        ; ( "property page-ref with underscore"
+          , `Quick
+          , check_aux "ref:: [[foo_bar]]"
+              (Type.Property_Drawer
+                 [ ( "ref"
+                   , "[[foo_bar]]"
+                   , [ Inline.Link
+                         { url = Inline.Page_ref "foo_bar"
+                         ; label = [ Inline.Plain "" ]
+                         ; title = None
+                         ; full_text = "[[foo_bar]]"
+                         ; metadata = ""
+                         }
+                     ] )
+                 ]) )
+        ; ( "property autolink url"
+          , `Quick
+          , check_aux "url:: http://example.com/a"
+              (Type.Property_Drawer [ ("url", "http://example.com/a", []) ]) )
+        ; ( "front matter first block"
+          , `Quick
+          , check_aux2 "---\ntitle: Hello\n---\n- keep title"
+              [ Type.Directive ("title", "Hello")
+              ; Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos
+                        [ Inline.Plain "keep title" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "keep_title"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ] )
         ] )
   ]
 

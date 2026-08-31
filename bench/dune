@@ -6,6 +6,10 @@
  (name time_parse)
  (libraries unix mldoc))
 
+(executable
+ (name time_graph)
+ (libraries unix mldoc))
+
 (alias
  (name bench)
- (deps bench.exe time_parse.exe))
+ (deps bench.exe time_parse.exe time_graph.exe))

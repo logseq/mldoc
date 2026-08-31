@@ -570,19 +570,45 @@ let inline =
         ] )
   ; ( "Timestamps"
     , testcases
-        [ (* Outline keeps timestamp text as Plain; structured timestamps are full parse. *)
-          ( "scheduled"
+        [ ( "scheduled"
           , `Quick
           , check_aux "SCHEDULED: <2004-12-25 Sat>"
-              (plain "SCHEDULED: <2004-12-25 Sat>") )
+              (paragraph
+                 [ Inline.Timestamp
+                     (Inline.Scheduled
+                        { Timestamp.date = { year = 2004; month = 12; day = 25 }
+                        ; wday = "Sat"
+                        ; time = None
+                        ; repetition = None
+                        ; active = true
+                        })
+                 ]) )
         ; ( "scheduled with time"
           , `Quick
           , check_aux "SCHEDULED: <2004-12-25 Sat 10:00>"
-              (plain "SCHEDULED: <2004-12-25 Sat 10:00>") )
+              (paragraph
+                 [ Inline.Timestamp
+                     (Inline.Scheduled
+                        { Timestamp.date = { year = 2004; month = 12; day = 25 }
+                        ; wday = "Sat"
+                        ; time = Some { hour = 10; min = 0 }
+                        ; repetition = None
+                        ; active = true
+                        })
+                 ]) )
         ; ( "scheduled with a repeater"
           , `Quick
           , check_aux "SCHEDULED: <2004-12-25 Sat +1m>"
-              (plain "SCHEDULED: <2004-12-25 Sat +1m>") )
+              (paragraph
+                 [ Inline.Timestamp
+                     (Inline.Scheduled
+                        { Timestamp.date = { year = 2004; month = 12; day = 25 }
+                        ; wday = "Sat"
+                        ; time = None
+                        ; repetition = Some (Timestamp.Plus, Timestamp.Month, 1)
+                        ; active = true
+                        })
+                 ]) )
         ; ( "scheduled after some text"
           , `Quick
           , check_aux "blabla SCHEDULED: <2004-12-25 Sat>"
@@ -590,15 +616,42 @@ let inline =
         ; ( "deadline"
           , `Quick
           , check_aux "DEADLINE: <2004-12-25 Sat>"
-              (plain "DEADLINE: <2004-12-25 Sat>") )
+              (paragraph
+                 [ Inline.Timestamp
+                     (Inline.Deadline
+                        { Timestamp.date = { year = 2004; month = 12; day = 25 }
+                        ; wday = "Sat"
+                        ; time = None
+                        ; repetition = None
+                        ; active = true
+                        })
+                 ]) )
         ; ( "deadline with time"
           , `Quick
           , check_aux "DEADLINE: <2004-12-25 Sat 10:00>"
-              (plain "DEADLINE: <2004-12-25 Sat 10:00>") )
+              (paragraph
+                 [ Inline.Timestamp
+                     (Inline.Deadline
+                        { Timestamp.date = { year = 2004; month = 12; day = 25 }
+                        ; wday = "Sat"
+                        ; time = Some { hour = 10; min = 0 }
+                        ; repetition = None
+                        ; active = true
+                        })
+                 ]) )
         ; ( "deadline with a repeater"
           , `Quick
           , check_aux "DEADLINE: <2004-12-25 Sat +1m>"
-              (plain "DEADLINE: <2004-12-25 Sat +1m>") )
+              (paragraph
+                 [ Inline.Timestamp
+                     (Inline.Deadline
+                        { Timestamp.date = { year = 2004; month = 12; day = 25 }
+                        ; wday = "Sat"
+                        ; time = None
+                        ; repetition = Some (Timestamp.Plus, Timestamp.Month, 1)
+                        ; active = true
+                        })
+                 ]) )
         ; ( "deadline after some text"
           , `Quick
           , check_aux "blabla DEADLINE: <2004-12-25 Sat>"
@@ -767,7 +820,17 @@ let block =
                   ; unordered = true
                   ; size = None
                   }
-              ; plain "SCHEDULED: <2004-12-25 Sat>"
+              ; paragraph
+                  [ I.Timestamp
+                      (I.Scheduled
+                         { Timestamp.date =
+                             { year = 2004; month = 12; day = 25 }
+                         ; wday = "Sat"
+                         ; time = None
+                         ; repetition = None
+                         ; active = true
+                         })
+                  ]
               ] )
         ; ( "a heading with a scheduled"
           , `Quick
@@ -785,7 +848,17 @@ let block =
                   ; unordered = false
                   ; size = Some 1
                   }
-              ; plain "SCHEDULED: <2004-12-25 Sat>"
+              ; paragraph
+                  [ I.Timestamp
+                      (I.Scheduled
+                         { Timestamp.date =
+                             { year = 2004; month = 12; day = 25 }
+                         ; wday = "Sat"
+                         ; time = None
+                         ; repetition = None
+                         ; active = true
+                         })
+                  ]
               ] )
         ; ( "a heading with a scheduled and some text"
           , `Quick
@@ -804,7 +877,18 @@ let block =
                   ; size = Some 1
                   }
               ; paragraph
-                  [ I.Plain "SCHEDULED: <2004-12-25 Sat>\nsome "
+                  [ I.Timestamp
+                      (I.Scheduled
+                         { Timestamp.date =
+                             { year = 2004; month = 12; day = 25 }
+                         ; wday = "Sat"
+                         ; time = None
+                         ; repetition = None
+                         ; active = true
+                         })
+                  ]
+              ; paragraph
+                  [ I.Plain "some "
                   ; I.Link
                       { url = I.Page_ref "page"
                       ; label = [ I.Plain "" ]
@@ -835,10 +919,29 @@ let block =
                   ; size = Some 1
                   }
               ; paragraph
-                  [ I.Plain
-                      "SCHEDULED: <2004-12-25 Sat>\n\
-                       DEADLINE: <2004-12-25 Sat>\n\
-                       some "
+                  [ I.Timestamp
+                      (I.Scheduled
+                         { Timestamp.date =
+                             { year = 2004; month = 12; day = 25 }
+                         ; wday = "Sat"
+                         ; time = None
+                         ; repetition = None
+                         ; active = true
+                         })
+                  ]
+              ; paragraph
+                  [ I.Timestamp
+                      (I.Deadline
+                         { Timestamp.date =
+                             { year = 2004; month = 12; day = 25 }
+                         ; wday = "Sat"
+                         ; time = None
+                         ; repetition = None
+                         ; active = true
+                         })
+                  ]
+              ; paragraph
+                  [ I.Plain "some "
                   ; I.Link
                       { url = I.Page_ref "page"
                       ; label = [ I.Plain "" ]
@@ -907,6 +1010,51 @@ let block =
                   ; size = None
                   }
               ; Type.Quote [ plain "\"CachyOS <admin@cachyos.org>\"" ]
+              ] )
+        ; ( "front matter first block"
+          , `Quick
+          , check_aux2 "---\ntitle: Hello\n---\n- keep title [[page]]"
+              [ Type.Directive ("title", "Hello")
+              ; Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos
+                        [ Inline.Plain "keep title "
+                        ; Inline.Link
+                            { url = Inline.Page_ref "page"
+                            ; label = [ Inline.Plain "" ]
+                            ; title = None
+                            ; full_text = "[[page]]"
+                            ; metadata = ""
+                            }
+                        ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ] )
+        ; ( "front matter only at first block"
+          , `Quick
+          , check_aux2 "- hello\n---\ntitle: no\n---"
+              [ Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "hello" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; plain "---\ntitle: no\n---"
               ] )
         ] )
   ]

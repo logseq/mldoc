@@ -1,7 +1,7 @@
 (* Fast Markdown document parser (outline_only + full).
    Line-oriented; avoids Angstrom choice/backtracking on the Logseq hot path.
-   Outline: headings, properties, lists, quotes, footnotes, outline inline.
-   Full: same structure with Inline.parse, Src fences, latex env, anchors. *)
+   Outline: title (Plain + refs/tags), properties, timestamps, front matter
+   (first block only). Full: same structure plus mixed markdown inlines. *)
 
 open! Prelude
 open Type
@@ -487,6 +487,90 @@ let collect_properties config lines i =
   in
   loop i []
 
+let is_front_matter_fence line = String.trim line = "---"
+
+let parse_front_matter_directive line =
+  let n = String.length line in
+  let i = skip_spaces line 0 in
+  if i >= n then
+    None
+  else
+    let j = ref i in
+    while !j < n && line.[!j] <> ':' && line.[!j] <> '\n' do
+      incr j
+    done;
+    if !j > i && !j < n && line.[!j] = ':' then
+      let key = String.sub line i (!j - i) in
+      let rest_i = skip_spaces line (!j + 1) in
+      let value =
+        if rest_i >= n then
+          ""
+        else
+          String.sub line rest_i (n - rest_i)
+      in
+      Some (Directive (key, value))
+    else
+      None
+
+(** YAML/Jekyll front matter is only valid as the first block. *)
+let collect_front_matter lines =
+  let n = Array.length lines in
+  if n = 0 || not (is_front_matter_fence lines.(0)) then
+    None
+  else
+    let rec find_close j =
+      if j >= n then
+        None
+      else if is_front_matter_fence lines.(j) then
+        Some j
+      else
+        find_close (j + 1)
+    in
+    match find_close 1 with
+    | None -> None
+    | Some close ->
+      let rec loop j acc =
+        if j >= close then
+          List.rev acc
+        else
+          match parse_front_matter_directive lines.(j) with
+          | Some dir -> loop (j + 1) ((j, dir) :: acc)
+          | None -> loop (j + 1) acc
+      in
+      Some (loop 1 [], close + 1)
+
+let starts_with_ci s prefix =
+  let plen = String.length prefix in
+  let n = String.length s in
+  n >= plen
+  &&
+  let rec loop k =
+    if k = plen then
+      true
+    else if Char.lowercase_ascii s.[k] = Char.lowercase_ascii prefix.[k] then
+      loop (k + 1)
+    else
+      false
+  in
+  loop 0
+
+let is_timestamp_keyword_line line =
+  let t = String.trim line in
+  starts_with_ci t "SCHEDULED:"
+  || starts_with_ci t "DEADLINE:"
+  || starts_with_ci t "CLOSED:"
+
+let try_timestamp_line config line =
+  if not (is_timestamp_keyword_line line) then
+    None
+  else
+    match
+      Angstrom.parse_string ~consume:All (Inline.parse config)
+        (String.trim line)
+    with
+    | Ok inlines -> Some (Paragraph inlines)
+    | Error _ -> None
+
 let is_block_boundary config line =
   is_blank_line line
   || try_dash_heading config line <> None
@@ -496,6 +580,7 @@ let is_block_boundary config line =
   || try_md_property config line <> None
   || try_org_style_prop line <> None
   || try_footnote_line config line <> None
+  || (config.parse_outline_only && is_timestamp_keyword_line line)
 
 let collect_paragraph_lines config lines i =
   let n = Array.length lines in
@@ -810,6 +895,14 @@ let parse config input =
   in
   let acc = ref [] in
   let i = ref 0 in
+  (* Front matter is only valid as the first block. *)
+  (match collect_front_matter lines with
+  | Some (dirs, j) ->
+    List.iter
+      (fun (line_i, dir) -> acc := with_range line_i (line_i + 1) dir :: !acc)
+      dirs;
+    i := j
+  | None -> ());
   while !i < n do
     let line = lines.(!i) in
     if is_blank_line line then
@@ -889,12 +982,15 @@ let parse config input =
                 ) else
                   match
                     if config.parse_outline_only then
-                      None
+                      try_timestamp_line config line
                     else
                       try_latex_environment line
                   with
-                  | Some latex ->
+                  | Some (Latex_Environment _ as latex) ->
                     acc := with_range !i (!i + 1) latex :: !acc;
+                    incr i
+                  | Some ts ->
+                    acc := with_range !i (!i + 1) ts :: !acc;
                     incr i
                   | None ->
                     let start_i = !i in
