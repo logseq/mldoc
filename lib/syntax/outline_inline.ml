@@ -149,8 +149,11 @@ let try_fast_scan_range s off len =
     in
     while !i < end_ && not !complex do
       match s.[!i] with
-      | '#' when !i + 1 < end_ && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
-        ->
+      | '#'
+        when !i + 1 < end_
+             && (not (is_ws s.[!i + 1]))
+             && s.[!i + 1] <> '#'
+             && (!i = off || is_ws s.[!i - 1]) ->
         flush_plain !i;
         let start = !i + 1 in
         let j = ref start in

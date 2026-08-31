@@ -1367,6 +1367,11 @@ let block =
           , `Quick
           , check_aux "url:: http://example.com/a"
               (Type.Property_Drawer [ ("url", "http://example.com/a", []) ]) )
+        ; ( "property url fragment is not a tag"
+          , `Quick
+          , check_aux "url:: http://example.com/a#type"
+              (Type.Property_Drawer [ ("url", "http://example.com/a#type", []) ])
+          )
         ; ( "property macro value stays a drawer"
           , `Quick
           , check_aux "url:: {{docs-base-url url}}"

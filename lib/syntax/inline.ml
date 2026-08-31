@@ -1530,6 +1530,14 @@ let try_fast_md_inline s =
           true
         | _ -> false
       in
+      let is_tag_boundary = function
+        | ' '
+        | '\t'
+        | '\n'
+        | '\r' ->
+          true
+        | _ -> false
+      in
       let tag_trail = function
         | ','
         | ';'
@@ -1609,8 +1617,11 @@ let try_fast_md_inline s =
           ) else
             incr i;
           plain_start := !i
-        | '#' when !i + 1 < n && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
-          ->
+        | '#'
+          when !i + 1 < n
+               && (not (is_ws s.[!i + 1]))
+               && s.[!i + 1] <> '#'
+               && (!i = 0 || is_tag_boundary s.[!i - 1]) ->
           flush_plain !i;
           let start = !i + 1 in
           let j = ref start in
