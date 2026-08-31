@@ -20,6 +20,7 @@ let check_mldoc_type =
   Alcotest.check (Alcotest.testable Type.pp ( = )) "check mldoc type"
 
 let paragraph l = Type.Paragraph (Type_op.inline_list_with_none_pos l)
+let plain s = paragraph [ Inline.Plain s ]
 
 let check_aux source expect =
   let result = Mldoc.Parser.parse default_config source in
@@ -56,7 +57,10 @@ let inline =
   let module I = Inline in
   [ ( "inline-link"
     , testcases
-        [ ("normal", `Quick, check_aux "http://testtest/asdasd" (paragraph []))
+        [ ( "normal"
+          , `Quick
+          , check_aux "http://testtest/asdasd" (plain "http://testtest/asdasd")
+          )
         ; ( "link with page alias"
           , `Quick
           , check_aux "[foo](bar)"
@@ -83,19 +87,20 @@ let inline =
                  ]) )
         ; ( "include brackets"
           , `Quick
-          , check_aux "http://test/(foo)bar" (paragraph []) )
+          , check_aux "http://test/(foo)bar" (plain "http://test/(foo)bar") )
         ; ( "include brackets (2)"
           , `Quick
-          , check_aux "http://test/[(foo)b]ar" (paragraph []) )
+          , check_aux "http://test/[(foo)b]ar" (plain "http://test/[(foo)b]ar")
+          )
         ; ( "include brackets (3)"
           , `Quick
-          , check_aux "http://test/[foo)b]ar" (paragraph []) )
+          , check_aux "http://test/[foo)b]ar" (plain "http://test/[foo)b]ar") )
         ; ( "include brackets (4)"
           , `Quick
-          , check_aux "http://te(s)t/foobar" (paragraph []) )
+          , check_aux "http://te(s)t/foobar" (plain "http://te(s)t/foobar") )
         ; ( "include brackets (5)"
           , `Quick
-          , check_aux "http://test/foo{bar}" (paragraph []) )
+          , check_aux "http://test/foo{bar}" (plain "http://test/foo{bar}") )
         ] )
   ; ( "link"
     , testcases
@@ -117,7 +122,8 @@ let inline =
           , `Quick
           , check_aux "[not label][label](url)"
               (paragraph
-                 [ I.Link
+                 [ I.Plain "[not label]"
+                 ; I.Link
                      { url = I.Search "url"
                      ; label = [ Plain "label" ]
                      ; title = None
@@ -295,7 +301,8 @@ let inline =
           , `Quick
           , check_aux "![lab[el]](url-part)"
               (paragraph
-                 [ I.Link
+                 [ I.Plain "!"
+                 ; I.Link
                      { url = I.Search "url-part"
                      ; label = [ Plain "lab[el]" ]
                      ; title = None
@@ -404,71 +411,86 @@ let inline =
           , check_aux ":PROPERTIES:\r\n:END:\r\n" (Property_Drawer []) )
         ; ( "no drawer in quote"
           , `Quick
-          , check_aux "> a:: b" (Quote [ paragraph [] ]) )
+          , check_aux "> a:: b" (Quote [ plain "a:: b" ]) )
         ] )
   ; ( "inline-code"
     , testcases
-        [ ("normal", `Quick, check_aux "`codes here`" (paragraph []))
-        ; ("overlap-with-emphasis", `Quick, check_aux "*aa`*`" (paragraph []))
+        [ ("normal", `Quick, check_aux "`codes here`" (plain "`codes here`"))
+        ; ("overlap-with-emphasis", `Quick, check_aux "*aa`*`" (plain "*aa`*`"))
         ; ( "overlap-with-emphasis-2"
           , `Quick
-          , check_aux "**aa`**`" (paragraph []) )
-        ; ("overlap-with-emphasis-3", `Quick, check_aux "_a`_`" (paragraph []))
-        ; ("overlap-with-emphasis-4", `Quick, check_aux "__a`__`" (paragraph []))
-        ; ("overlap-with-emphasis-5", `Quick, check_aux "`as*d`*" (paragraph []))
+          , check_aux "**aa`**`" (plain "**aa`**`") )
+        ; ("overlap-with-emphasis-3", `Quick, check_aux "_a`_`" (plain "_a`_`"))
+        ; ( "overlap-with-emphasis-4"
+          , `Quick
+          , check_aux "__a`__`" (plain "__a`__`") )
+        ; ( "overlap-with-emphasis-5"
+          , `Quick
+          , check_aux "`as*d`*" (plain "`as*d`*") )
         ; ( "overlap-with-link"
           , `Quick
-          , check_aux "[as`d](`http://dwdw)" (paragraph []) )
+          , check_aux "[as`d](`http://dwdw)" (plain "[as`d](`http://dwdw)") )
         ; ( "overlap-with-link-2"
           , `Quick
-          , check_aux "[as`d](http://dwdw)`" (paragraph []) )
+          , check_aux "[as`d](http://dwdw)`" (plain "[as`d](http://dwdw)`") )
         ] )
   ; ( "emphasis"
     , testcases
-        [ ("normal", `Quick, check_aux "*abc*" (paragraph []))
-        ; ("normal-2", `Quick, check_aux "**abc**" (paragraph []))
-        ; ("normal-3", `Quick, check_aux "_a_," (paragraph []))
-        ; ("inline-code-inside", `Quick, check_aux "*asd`qwe`*" (paragraph []))
+        [ ("normal", `Quick, check_aux "*abc*" (plain "*abc*"))
+        ; ("normal-2", `Quick, check_aux "**abc**" (plain "**abc**"))
+        ; ("normal-3", `Quick, check_aux "_a_," (plain "_a_,"))
+        ; ( "inline-code-inside"
+          , `Quick
+          , check_aux "*asd`qwe`*" (plain "*asd`qwe`*") )
         ; ( "inline-code-inside-2"
           , `Quick
-          , check_aux "***asd`qwe`***" (paragraph []) )
-        ; ("not emphasis (1)", `Quick, check_aux "a * b*" (paragraph []))
-        ; ("not emphasis (2)", `Quick, check_aux "a_b_c" (paragraph []))
-        ; ("contains underline", `Quick, check_aux "_a _ a_" (paragraph []))
-        ; ("contains star", `Quick, check_aux "*a * a*" (paragraph []))
+          , check_aux "***asd`qwe`***" (plain "***asd`qwe`***") )
+        ; ("not emphasis (1)", `Quick, check_aux "a * b*" (plain "a * b*"))
+        ; ("not emphasis (2)", `Quick, check_aux "a_b_c" (plain "a_b_c"))
+        ; ("contains underline", `Quick, check_aux "_a _ a_" (plain "_a _ a_"))
+        ; ("contains star", `Quick, check_aux "*a * a*" (plain "*a * a*"))
         ; ( "left flanking delimiter"
           , `Quick
-          , check_aux "hello_world_" (paragraph []) )
+          , check_aux "hello_world_" (plain "hello_world_") )
         ; ( "left flanking delimiter (2)"
           , `Quick
-          , check_aux "hello,_world_" (paragraph []) )
-        ; ("highlight (1)", `Quick, check_aux "111==text==222" (paragraph []))
-        ; ("highlight (2)", `Quick, check_aux "111== text==222" (paragraph []))
+          , check_aux "hello,_world_" (plain "hello,_world_") )
+        ; ( "highlight (1)"
+          , `Quick
+          , check_aux "111==text==222" (plain "111==text==222") )
+        ; ( "highlight (2)"
+          , `Quick
+          , check_aux "111== text==222" (plain "111== text==222") )
         ] )
   ; ( "tag"
     , testcases
         [ ( "endwith '.'"
           , `Quick
-          , check_aux "#tag." (paragraph [ I.Tag [ I.Plain "tag" ] ]) )
+          , check_aux "#tag."
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain "." ]) )
         ; ( "endwith ','"
           , `Quick
-          , check_aux "#tag," (paragraph [ I.Tag [ I.Plain "tag" ] ]) )
+          , check_aux "#tag,"
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain "," ]) )
         ; ( "endwith '\"'"
           , `Quick
-          , check_aux "#tag\"" (paragraph [ I.Tag [ I.Plain "tag" ] ]) )
+          , check_aux "#tag\""
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain "\"" ]) )
         ; ( "endwith several periods"
           , `Quick
-          , check_aux "#tag,.?" (paragraph [ I.Tag [ I.Plain "tag" ] ]) )
+          , check_aux "#tag,.?"
+              (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain ",.?" ]) )
         ; ( "with '.'"
           , `Quick
           , check_aux "#a.b.c" (paragraph [ I.Tag [ I.Plain "a.b.c" ] ]) )
         ; ( "with '.' and endwith '.'"
           , `Quick
-          , check_aux "#a.b.c." (paragraph [ I.Tag [ I.Plain "a.b.c" ] ]) )
+          , check_aux "#a.b.c."
+              (paragraph [ I.Tag [ I.Plain "a.b.c" ]; I.Plain "." ]) )
         ; ( "with '.' and endwith '.' (2)"
           , `Quick
-          , check_aux "#a.b.c. defg" (paragraph [ I.Tag [ I.Plain "a.b.c" ] ])
-          )
+          , check_aux "#a.b.c. defg"
+              (paragraph [ I.Tag [ I.Plain "a.b.c" ]; I.Plain ". defg" ]) )
         ; ( "with page-ref"
           , `Quick
           , check_aux "#a.[[b c d ]].e."
@@ -484,6 +506,7 @@ let inline =
                          }
                      ; I.Plain ".e"
                      ]
+                 ; I.Plain "."
                  ]) )
         ] )
   ; ( "footnote-reference"
@@ -492,7 +515,8 @@ let inline =
           , `Quick
           , check_aux "[^1][label](url)"
               (paragraph
-                 [ I.Link
+                 [ I.Plain "[^1]"
+                 ; I.Link
                      { url = I.Search "url"
                      ; label = [ I.Plain "label" ]
                      ; title = None
@@ -503,10 +527,10 @@ let inline =
         ] )
   ; ( "escape metachars"
     , testcases
-        [ ("emphasis(1)", `Quick, check_aux "*a\\*b*" (paragraph []))
-        ; ("emphasis(2)", `Quick, check_aux "*a\\\\\\*b*" (paragraph []))
-        ; ("code", `Quick, check_aux "`a\\``" (paragraph []))
-        ; ("nested emphasis", `Quick, check_aux "_a*b\\*_" (paragraph []))
+        [ ("emphasis(1)", `Quick, check_aux "*a\\*b*" (plain "*a*b*"))
+        ; ("emphasis(2)", `Quick, check_aux "*a\\\\\\*b*" (plain "*a\\*b*"))
+        ; ("code", `Quick, check_aux "`a\\``" (plain "`a``"))
+        ; ("nested emphasis", `Quick, check_aux "_a*b\\*_" (plain "_a*b*_"))
         ; ( "link (1)"
           , `Quick
           , check_aux "[[\\]]]"
@@ -546,31 +570,39 @@ let inline =
         ] )
   ; ( "Timestamps"
     , testcases
-        [ (* Outline mode skips timestamps; only refs/tags/properties. *)
+        [ (* Outline keeps timestamp text as Plain; structured timestamps are full parse. *)
           ( "scheduled"
           , `Quick
-          , check_aux "SCHEDULED: <2004-12-25 Sat>" (paragraph []) )
+          , check_aux "SCHEDULED: <2004-12-25 Sat>"
+              (plain "SCHEDULED: <2004-12-25 Sat>") )
         ; ( "scheduled with time"
           , `Quick
-          , check_aux "SCHEDULED: <2004-12-25 Sat 10:00>" (paragraph []) )
+          , check_aux "SCHEDULED: <2004-12-25 Sat 10:00>"
+              (plain "SCHEDULED: <2004-12-25 Sat 10:00>") )
         ; ( "scheduled with a repeater"
           , `Quick
-          , check_aux "SCHEDULED: <2004-12-25 Sat +1m>" (paragraph []) )
+          , check_aux "SCHEDULED: <2004-12-25 Sat +1m>"
+              (plain "SCHEDULED: <2004-12-25 Sat +1m>") )
         ; ( "scheduled after some text"
           , `Quick
-          , check_aux "blabla SCHEDULED: <2004-12-25 Sat>" (paragraph []) )
+          , check_aux "blabla SCHEDULED: <2004-12-25 Sat>"
+              (plain "blabla SCHEDULED: <2004-12-25 Sat>") )
         ; ( "deadline"
           , `Quick
-          , check_aux "DEADLINE: <2004-12-25 Sat>" (paragraph []) )
+          , check_aux "DEADLINE: <2004-12-25 Sat>"
+              (plain "DEADLINE: <2004-12-25 Sat>") )
         ; ( "deadline with time"
           , `Quick
-          , check_aux "DEADLINE: <2004-12-25 Sat 10:00>" (paragraph []) )
+          , check_aux "DEADLINE: <2004-12-25 Sat 10:00>"
+              (plain "DEADLINE: <2004-12-25 Sat 10:00>") )
         ; ( "deadline with a repeater"
           , `Quick
-          , check_aux "DEADLINE: <2004-12-25 Sat +1m>" (paragraph []) )
+          , check_aux "DEADLINE: <2004-12-25 Sat +1m>"
+              (plain "DEADLINE: <2004-12-25 Sat +1m>") )
         ; ( "deadline after some text"
           , `Quick
-          , check_aux "blabla DEADLINE: <2004-12-25 Sat>" (paragraph []) )
+          , check_aux "blabla DEADLINE: <2004-12-25 Sat>"
+              (plain "blabla DEADLINE: <2004-12-25 Sat>") )
         ] )
   ]
 
@@ -588,14 +620,14 @@ let block =
     , testcases
         [ ( "multi lines"
           , `Quick
-          , check_aux ">foo\n>bar" (Quote [ paragraph [] ]) )
+          , check_aux ">foo\n>bar" (Quote [ plain "foo\nbar" ]) )
         ] )
   ; ( "latex_env"
     , testcases
         [ ( "one-line"
           , `Quick
           , check_aux "\\begin{equation}[a,b,c] x=\\sqrt{b} \\end{equation}"
-              (paragraph []) )
+              (plain "\\begin{equation}[a,b,c] x=\\sqrt{b} \\end{equation}") )
         ] )
   ; ( "list"
     , testcases
@@ -603,7 +635,7 @@ let block =
           , `Quick
           , check_aux "+ line1\n  - heading"
               (List
-                 [ { content = [ paragraph [] ]
+                 [ { content = [ plain "line1" ]
                    ; items = []
                    ; number = None
                    ; name = []
@@ -616,7 +648,7 @@ let block =
           , `Quick
           , check_aux "+ line1\n  -"
               (List
-                 [ { content = [ paragraph [] ]
+                 [ { content = [ plain "line1" ]
                    ; items = []
                    ; number = None
                    ; name = []
@@ -632,7 +664,8 @@ let block =
           , `Quick
           , check_aux "- ## TODO text"
               (Type.Heading
-                 { Type.title = []
+                 { Type.title =
+                     Type_op.inline_list_with_none_pos [ Inline.Plain "text" ]
                  ; tags = []
                  ; marker = Some "TODO"
                  ; level = 1
@@ -657,6 +690,23 @@ let block =
                  ; meta = { Type.timestamps = []; properties = [] }
                  ; unordered = true
                  ; size = Some 2
+                 }) )
+        ; ( "TODO keeps plain title"
+          , `Quick
+          , check_aux "- TODO todo item"
+              (Type.Heading
+                 { Type.title =
+                     Type_op.inline_list_with_none_pos
+                       [ Inline.Plain "todo item" ]
+                 ; tags = []
+                 ; marker = Some "TODO"
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = ""
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = None
                  }) )
         ; ( "followed by #tag"
           , `Quick
@@ -705,7 +755,8 @@ let block =
           , `Quick
           , check_aux2 "- test\nSCHEDULED: <2004-12-25 Sat>"
               [ Type.Heading
-                  { title = []
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "test" ]
                   ; tags = []
                   ; marker = None
                   ; level = 1
@@ -716,13 +767,14 @@ let block =
                   ; unordered = true
                   ; size = None
                   }
-              ; paragraph []
+              ; plain "SCHEDULED: <2004-12-25 Sat>"
               ] )
         ; ( "a heading with a scheduled"
           , `Quick
           , check_aux2 "# test\nSCHEDULED: <2004-12-25 Sat>"
               [ Type.Heading
-                  { title = []
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "test" ]
                   ; tags = []
                   ; marker = None
                   ; level = 1
@@ -733,13 +785,14 @@ let block =
                   ; unordered = false
                   ; size = Some 1
                   }
-              ; paragraph []
+              ; plain "SCHEDULED: <2004-12-25 Sat>"
               ] )
         ; ( "a heading with a scheduled and some text"
           , `Quick
           , check_aux2 "# test\nSCHEDULED: <2004-12-25 Sat>\nsome [[page]]"
               [ Type.Heading
-                  { title = []
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "test" ]
                   ; tags = []
                   ; marker = None
                   ; level = 1
@@ -751,7 +804,8 @@ let block =
                   ; size = Some 1
                   }
               ; paragraph
-                  [ I.Link
+                  [ I.Plain "SCHEDULED: <2004-12-25 Sat>\nsome "
+                  ; I.Link
                       { url = I.Page_ref "page"
                       ; label = [ I.Plain "" ]
                       ; title = None
@@ -768,7 +822,8 @@ let block =
                DEADLINE: <2004-12-25 Sat>\n\
                some [[page]]"
               [ Type.Heading
-                  { title = []
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "test" ]
                   ; tags = []
                   ; marker = None
                   ; level = 1
@@ -780,7 +835,11 @@ let block =
                   ; size = Some 1
                   }
               ; paragraph
-                  [ I.Link
+                  [ I.Plain
+                      "SCHEDULED: <2004-12-25 Sat>\n\
+                       DEADLINE: <2004-12-25 Sat>\n\
+                       some "
+                  ; I.Link
                       { url = I.Page_ref "page"
                       ; label = [ I.Plain "" ]
                       ; title = None
@@ -788,6 +847,66 @@ let block =
                       ; metadata = ""
                       }
                   ]
+              ] )
+        ; ( "nested headings keep titles"
+          , `Quick
+          , check_aux2 "- a\n  - b\n    - c"
+              [ Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "a" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "b" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 3
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos [ Inline.Plain "c" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 5
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ] )
+        ; ( "quote with email"
+          , `Quick
+          , check_aux2 "- > \"CachyOS <admin@cachyos.org>\""
+              [ Type.Heading
+                  { title = []
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Quote [ plain "\"CachyOS <admin@cachyos.org>\"" ]
               ] )
         ] )
   ]

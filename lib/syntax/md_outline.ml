@@ -7,8 +7,7 @@ open! Prelude
 open Type
 open Conf
 
-let dummy = Pos.dummy_pos
-let with_pos t = (t, dummy)
+let plain_inlines s = Type_op.inline_list_with_none_pos [ Inline.Plain s ]
 
 let ensure_trailing_nl s =
   let n = String.length s in
@@ -50,13 +49,6 @@ let is_space_char = function
   | '\t' ->
     true
   | _ -> false
-
-let rstrip_cr s =
-  let n = String.length s in
-  if n > 0 && s.[n - 1] = '\r' then
-    String.sub s 0 (n - 1)
-  else
-    s
 
 let skip_spaces s i =
   let n = String.length s in
@@ -151,9 +143,9 @@ let outline_inlines config s =
         Angstrom.parse_string ~consume:All (Outline_inline.parse config) s
       with
       | Ok r -> r
-      | Error _ -> [])
+      | Error _ -> plain_inlines s)
   else
-    []
+    plain_inlines s
 
 let full_inlines config s =
   if s = "" then
@@ -449,10 +441,7 @@ let try_footnote_line config line =
           if body = "" then
             []
           else if config.parse_outline_only then
-            if Outline_inline.may_have_outline_markup config body then
-              outline_inlines config body
-            else
-              Type_op.inline_list_with_none_pos [ Inline.Plain body ]
+            outline_inlines config body
           else
             content_inlines config body
         in
@@ -762,9 +751,21 @@ let rec parse_list_items config lines i min_indent =
   (List.rev !items, !j)
 
 let parse config input =
-  let raw_lines = String.split_on_char '\n' input in
-  let lines = Array.of_list (List.map rstrip_cr raw_lines) in
+  let raw_split = String.split_on_char '\n' input in
+  let decoded =
+    List.map
+      (fun s ->
+        let n = String.length s in
+        if n > 0 && s.[n - 1] = '\r' then
+          (String.sub s 0 (n - 1), n)
+        else
+          (s, n))
+      raw_split
+  in
+  let lines = Array.of_list (List.map fst decoded) in
+  let raw_lens = Array.of_list (List.map snd decoded) in
   let n = Array.length lines in
+  let input_len = String.length input in
   let line_starts =
     let arr = Array.make (max n 1) 0 in
     let pos = ref 0 in
@@ -776,17 +777,30 @@ let parse config input =
         else
           0
       in
-      pos := !pos + String.length lines.(idx) + nl
+      pos := !pos + raw_lens.(idx) + nl
     done;
     arr
   in
+  let pos_range i j =
+    let start_pos =
+      if i < n then
+        line_starts.(i)
+      else
+        input_len
+    in
+    let end_pos =
+      if j < n then
+        line_starts.(j)
+      else
+        input_len
+    in
+    { Pos.start_pos; end_pos }
+  in
+  let with_range i j t = (t, pos_range i j) in
   let src_end_pos body_i =
     let rec find j =
       if j >= n then
-        if n = 0 then
-          0
-        else
-          line_starts.(n - 1) + String.length lines.(n - 1)
+        input_len
       else if is_fence_line lines.(j) then
         line_starts.(j)
       else
@@ -803,7 +817,8 @@ let parse config input =
     else
       match try_dash_heading config line with
       | Some (h, rest) -> (
-        acc := with_pos h :: !acc;
+        let h_i = !i in
+        acc := with_range h_i (h_i + 1) h :: !acc;
         incr i;
         match rest with
         | Nothing -> ()
@@ -816,59 +831,60 @@ let parse config input =
               if body_i < n then
                 line_starts.(body_i)
               else
-                line_starts.(!i - 1) + String.length lines.(!i - 1) + 1
+                input_len
             in
             let body_end_pos = src_end_pos body_i in
             let src, j =
               collect_src_from_header ~body_start_pos ~body_end_pos lines body_i
                 hdr
             in
-            acc := with_pos src :: !acc;
+            acc := with_range h_i j src :: !acc;
             i := j
         | Quote_line qline ->
-          if config.parse_outline_only then
-            ()
-          else
-            let q, j = collect_quote config ~first_line:qline lines !i in
-            acc := with_pos q :: !acc;
-            i := j)
+          let q_i = h_i in
+          let q, j = collect_quote config ~first_line:qline lines !i in
+          acc := with_range q_i j q :: !acc;
+          i := j)
       | None -> (
         match try_atx_heading config line with
         | Some h ->
-          acc := with_pos h :: !acc;
+          acc := with_range !i (!i + 1) h :: !acc;
           incr i
         | None -> (
           match try_footnote_line config line with
           | Some fn ->
-            acc := with_pos fn :: !acc;
+            acc := with_range !i (!i + 1) fn :: !acc;
             incr i
           | None -> (
             match collect_properties_drawer config lines !i with
             | Some (kvs, j) ->
-              acc := with_pos (Property_Drawer kvs) :: !acc;
+              acc := with_range !i j (Property_Drawer kvs) :: !acc;
               i := j
             | None -> (
               match collect_properties config lines !i with
               | (_ :: _ as kvs), j ->
-                acc := with_pos (Property_Drawer kvs) :: !acc;
+                acc := with_range !i j (Property_Drawer kvs) :: !acc;
                 i := j
               | [], _ -> (
                 if is_fence_line line then (
                   if config.parse_outline_only then
                     i := skip_fence lines !i
                   else
+                    let start_i = !i in
                     let src, j = collect_src ~line_starts lines !i in
-                    acc := with_pos src :: !acc;
+                    acc := with_range start_i j src :: !acc;
                     i := j
                 ) else if is_quote_line line then (
+                  let start_i = !i in
                   let q, j = collect_quote config lines !i in
-                  acc := with_pos q :: !acc;
+                  acc := with_range start_i j q :: !acc;
                   i := j
                 ) else if is_list_item_prefix line then (
+                  let start_i = !i in
                   let items, j =
                     parse_list_items config lines !i (indent_len line)
                   in
-                  acc := with_pos (List items) :: !acc;
+                  acc := with_range start_i j (List items) :: !acc;
                   i := j
                 ) else
                   match
@@ -878,11 +894,12 @@ let parse config input =
                       try_latex_environment line
                   with
                   | Some latex ->
-                    acc := with_pos latex :: !acc;
+                    acc := with_range !i (!i + 1) latex :: !acc;
                     incr i
                   | None ->
+                    let start_i = !i in
                     let p, j = collect_paragraph_lines config lines !i in
-                    acc := with_pos p :: !acc;
+                    acc := with_range start_i j p :: !acc;
                     i := j)))))
   done;
   List.rev !acc

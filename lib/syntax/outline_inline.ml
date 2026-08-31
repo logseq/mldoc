@@ -1,8 +1,8 @@
 open! Prelude
 open Angstrom
-open Parsers
 
-(** Outline mode only extracts node refs and tags (properties are block-level). *)
+(** Outline mode keeps Plain text plus node refs and tags (properties are
+    block-level). Emphasis/code/timestamps are left as Plain. *)
 let is_outline_special = function
   | '#'
   | '['
@@ -22,9 +22,6 @@ let may_have_outline_markup _config s =
   in
   loop 0
 
-let skip_plain_run =
-  skip_while (fun c -> (not (is_outline_special c)) && not (is_whitespace c))
-
 let interesting config : Inline.t Angstrom.t =
   peek_char_fail >>= function
   | '#' -> Inline.hash_tag config
@@ -32,20 +29,15 @@ let interesting config : Inline.t Angstrom.t =
   | '(' -> Inline.block_reference config
   | _ -> fail "not outline inline"
 
-let inline_choices config : Inline.t_with_pos option Angstrom.t =
-  peek_char_fail >>= function
-  | c when is_whitespace c -> any_char *> return None
-  | _ ->
-    interesting config
-    >>| (fun t -> Some (t, None))
-    <|> any_char *> skip_plain_run *> return None
+let inline_choices config : Inline.t_with_pos Angstrom.t =
+  interesting config
+  >>| (fun t -> (t, None))
+  <|> ( take_while1 (fun c -> not (is_outline_special c)) >>| fun s ->
+        (Inline.Plain s, None) )
+  <|> (any_char >>| fun c -> (Inline.Plain (String.make 1 c), None))
 
 let parse_angstrom config =
-  many1 (inline_choices config)
-  >>| (fun l ->
-        let l = List.filter_map (fun x -> x) l in
-        Inline.concat_plains l)
-  <?> "outline inline"
+  many1 (inline_choices config) >>| Inline.concat_plains <?> "outline inline"
 
 let is_ws = function
   | ' '
@@ -133,8 +125,8 @@ let strip_tag_trail raw =
   in
   strip raw
 
-(** Fast path for #tag / [[page]] / ((block)). Returns None when markdown
-    links or nested-page hashtags need the angstrom parser.
+(** Fast path for Plain + #tag / [[page]] / ((block)). Returns None when
+    markdown links or nested-page hashtags need the angstrom parser.
     Scans [s] from [off] with length [len] (no need to sub the whole title). *)
 let try_fast_scan_range s off len =
   if len < 0 || off < 0 || off + len > String.length s then
@@ -148,11 +140,18 @@ let try_fast_scan_range s off len =
     let end_ = off + len in
     let acc = ref [] in
     let i = ref off in
+    let plain_start = ref off in
     let complex = ref false in
+    let flush_plain stop =
+      if stop > !plain_start then
+        acc :=
+          Inline.Plain (String.sub s !plain_start (stop - !plain_start)) :: !acc
+    in
     while !i < end_ && not !complex do
       match s.[!i] with
       | '#' when !i + 1 < end_ && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
         ->
+        flush_plain !i;
         let start = !i + 1 in
         let j = ref start in
         let has_bracket = ref false in
@@ -163,9 +162,20 @@ let try_fast_scan_range s off len =
         if !has_bracket then
           complex := true
         else
-          let name = strip_tag_trail (String.sub s start (!j - start)) in
-          if name <> "" then acc := Inline.Tag [ Inline.Plain name ] :: !acc;
-          i := !j
+          let raw = String.sub s start (!j - start) in
+          let name = strip_tag_trail raw in
+          if name = "" then
+            complex := true
+          else (
+            acc := Inline.Tag [ Inline.Plain name ] :: !acc;
+            let nl = String.length name in
+            if nl < String.length raw then
+              acc :=
+                Inline.Plain (String.sub raw nl (String.length raw - nl))
+                :: !acc;
+            i := !j;
+            plain_start := !j
+          )
       | '[' when !i + 1 < end_ && s.[!i + 1] = '[' -> (
         (* find_page_ref_end walks to string end; clamp by checking within range *)
         match find_page_ref_end s !i with
@@ -175,24 +185,32 @@ let try_fast_scan_range s off len =
           if String.contains name '[' then
             complex := true
           else (
+            flush_plain !i;
             acc := page_ref_link name :: !acc;
-            i := e
+            i := e;
+            plain_start := e
           )
         | _ -> complex := true)
       | '[' -> complex := true
       | '(' when !i + 1 < end_ && s.[!i + 1] = '(' -> (
         match find_block_ref_end s !i with
         | Some e when e <= end_ ->
+          flush_plain !i;
           let id = String.sub s (!i + 2) (e - !i - 4) in
           acc := block_ref_link id :: !acc;
-          i := e
+          i := e;
+          plain_start := e
         | _ -> incr i)
       | _ -> incr i
     done;
     if !complex then
       None
-    else
-      Some (Type_op.inline_list_with_none_pos (List.rev !acc))
+    else (
+      flush_plain end_;
+      Some
+        (Inline.concat_plains
+           (Type_op.inline_list_with_none_pos (List.rev !acc)))
+    )
 
 let try_fast_scan s = try_fast_scan_range s 0 (String.length s)
 

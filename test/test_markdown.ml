@@ -1159,6 +1159,121 @@ let block =
                   }
               ] )
         ] )
+  ; ( "todo scheduled quote"
+    , testcases
+        [ ( "TODO keeps plain title"
+          , `Quick
+          , check_aux "- TODO todo item"
+              (Type.Heading
+                 { Type.title =
+                     Type_op.inline_list_with_none_pos
+                       [ Inline.Plain "todo item" ]
+                 ; tags = []
+                 ; marker = Some "TODO"
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = "todo_item"
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = None
+                 }) )
+        ; ( "scheduled after TODO heading"
+          , `Quick
+          , check_aux2
+              "- TODO wish [[name]] a happy birthday\n\
+               SCHEDULED: <2025-11-01 Sat 08:00 .+1y>"
+              [ Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos
+                        [ Inline.Plain "wish "
+                        ; Inline.Link
+                            { url = Inline.Page_ref "name"
+                            ; label = [ Inline.Plain "" ]
+                            ; title = None
+                            ; full_text = "[[name]]"
+                            ; metadata = ""
+                            }
+                        ; Inline.Plain " a happy birthday"
+                        ]
+                  ; tags = []
+                  ; marker = Some "TODO"
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "wish__a_happy_birthday"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; paragraph
+                  [ Inline.Timestamp
+                      (Inline.Scheduled
+                         { Timestamp.date = { year = 2025; month = 11; day = 1 }
+                         ; wday = "Sat"
+                         ; time = Some { hour = 8; min = 0 }
+                         ; repetition =
+                             Some (Timestamp.Dotted, Timestamp.Year, 1)
+                         ; active = true
+                         })
+                  ]
+              ] )
+        ; ( "quote with email"
+          , `Quick
+          , check_aux2 "- > \"CachyOS <admin@cachyos.org>\""
+              [ Type.Heading
+                  { title = []
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Quote
+                  [ paragraph
+                      [ Inline.Plain "\"CachyOS "
+                      ; Inline.Email
+                          { Email_address.local_part = "admin"
+                          ; domain = "cachyos.org"
+                          }
+                      ; Inline.Plain "\""
+                      ; Inline.Break_Line
+                      ]
+                  ]
+              ] )
+        ; ( "nested heading positions"
+          , `Quick
+          , fun _ ->
+              let source = "- a\n  - b\n    - c" in
+              let got =
+                Mldoc.Parser.parse default_config source
+                |> List.map (fun (_, p) -> (p.Pos.start_pos, p.Pos.end_pos))
+              in
+              Alcotest.(check (list (pair int int)))
+                "heading byte ranges"
+                [ (0, 4); (4, 10); (10, 17) ]
+                got )
+        ; ( "hashtag in tags property"
+          , `Quick
+          , check_aux "tags:: [[foo]], #generated-page"
+              (Type.Property_Drawer
+                 [ ( "tags"
+                   , "[[foo]], #generated-page"
+                   , [ Inline.Link
+                         { url = Inline.Page_ref "foo"
+                         ; label = [ Inline.Plain "" ]
+                         ; title = None
+                         ; full_text = "[[foo]]"
+                         ; metadata = ""
+                         }
+                     ; Inline.Tag [ Inline.Plain "generated-page" ]
+                     ] )
+                 ]) )
+        ] )
   ]
 
 let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]

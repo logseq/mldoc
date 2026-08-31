@@ -147,12 +147,14 @@ struct
     explode (String.trim s) |> List.map map_char |> String.concat ""
 
   let outline_title config title =
-    if Outline_inline.may_have_outline_markup config title then
+    if title = "" then
+      []
+    else if Outline_inline.may_have_outline_markup config title then
       match parse_string ~consume:All (Outline_inline.parse config) title with
       | Ok title -> title
-      | Error _ -> []
+      | Error _ -> Type_op.inline_list_with_none_pos [ Inline.Plain title ]
     else
-      []
+      Type_op.inline_list_with_none_pos [ Inline.Plain title ]
 
   let make_outline_heading ~level ~unordered ~size ~marker ~priority ~title =
     Heading
