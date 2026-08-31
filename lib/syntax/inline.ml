@@ -1586,16 +1586,28 @@ let try_fast_md_inline s =
       in
       while !i < n && not !complex do
         match s.[!i] with
-        | '\n' ->
-          flush_plain !i;
-          acc := Break_Line :: !acc;
-          incr i;
-          plain_start := !i
+        | '\n'
         | '\r' ->
-          flush_plain !i;
-          incr i;
-          if !i < n && s.[!i] = '\n' then incr i;
-          acc := Break_Line :: !acc;
+          (* Two trailing spaces before newline = CommonMark hard break. *)
+          let rec count_spaces k =
+            if k > !plain_start && s.[k - 1] = ' ' then
+              count_spaces (k - 1)
+            else
+              k
+          in
+          let sp = count_spaces !i in
+          if !i - sp >= 2 then (
+            flush_plain sp;
+            acc := Hard_Break_Line :: !acc
+          ) else (
+            flush_plain !i;
+            acc := Break_Line :: !acc
+          );
+          if s.[!i] = '\r' then (
+            incr i;
+            if !i < n && s.[!i] = '\n' then incr i
+          ) else
+            incr i;
           plain_start := !i
         | '#' when !i + 1 < n && (not (is_ws s.[!i + 1])) && s.[!i + 1] <> '#'
           ->

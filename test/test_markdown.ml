@@ -1445,6 +1445,32 @@ let block =
                   [ paragraph [ Inline.Plain "Saito: Cobb?"; Inline.Break_Line ]
                   ]
               ] )
+        ; ( "org quote blank line is hard break"
+          , `Quick
+          , check_aux2_with logseq_md_config
+              "- #+BEGIN_QUOTE\n  it's a\n  \n  org blockquote\n  #+END_QUOTE"
+              [ Type.Heading
+                  { title = []
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Quote
+                  [ paragraph
+                      [ Inline.Plain "it's a"
+                      ; Inline.Break_Line
+                      ; Inline.Hard_Break_Line
+                      ; Inline.Plain "org blockquote"
+                      ; Inline.Break_Line
+                      ]
+                  ]
+              ] )
         ; ( "org begin query"
           , `Quick
           , fun _ ->
