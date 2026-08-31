@@ -480,6 +480,10 @@ let inline =
           , `Quick
           , check_aux "#tag,.?"
               (paragraph [ I.Tag [ I.Plain "tag" ]; I.Plain ",.?" ]) )
+        ; ( "#test hello"
+          , `Quick
+          , check_aux "#test hello"
+              (paragraph [ I.Tag [ I.Plain "test" ]; I.Plain " hello" ]) )
         ; ( "with '.'"
           , `Quick
           , check_aux "#a.b.c" (paragraph [ I.Tag [ I.Plain "a.b.c" ] ]) )
@@ -768,6 +772,23 @@ let block =
                  { Type.title =
                      Type_op.inline_list_with_none_pos
                        [ Inline.Tag [ I.Plain "tag" ] ]
+                 ; tags = []
+                 ; marker = None
+                 ; level = 1
+                 ; numbering = None
+                 ; priority = None
+                 ; anchor = ""
+                 ; meta = { Type.timestamps = []; properties = [] }
+                 ; unordered = true
+                 ; size = None
+                 }) )
+        ; ( "#test hello is a tag"
+          , `Quick
+          , check_aux "- #test hello"
+              (Type.Heading
+                 { Type.title =
+                     Type_op.inline_list_with_none_pos
+                       [ Inline.Tag [ I.Plain "test" ]; I.Plain " hello" ]
                  ; tags = []
                  ; marker = None
                  ; level = 1
