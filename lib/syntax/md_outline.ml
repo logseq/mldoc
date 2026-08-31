@@ -1,7 +1,7 @@
-(* Fast Markdown document parser (outline_only + full).
+(* Fast Markdown outline parser (parse_outline_only).
    Line-oriented; avoids Angstrom choice/backtracking on the Logseq hot path.
    Outline: title (Plain + refs/tags), properties, timestamps, front matter
-   (first block only). Full: same structure plus mixed markdown inlines. *)
+   (first block only). Full mixed-markdown parse stays on Angstrom. *)
 
 open! Prelude
 open Type

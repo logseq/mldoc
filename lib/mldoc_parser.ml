@@ -146,24 +146,35 @@ let build_md_outline_parsers config =
 let parse config input =
   let outline_only = Conf.(config.parse_outline_only) in
   let md = Conf.is_markdown config in
-  (* Markdown: line-oriented path for outline and full. *)
-  if md then
+  (* Outline markdown uses the line scanner. Full markdown stays on Angstrom so
+     mixed constructs (org blocks, drawers, definition lists, quotes) match
+     published mldoc / Logseq graph-parser. *)
+  if md && outline_only then
     let ast = Md_outline.parse config input in
-    if (not outline_only) || String.contains input '\\' then
+    if String.contains input '\\' then
       List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
     else
       ast
   else
     let parsers =
-      match outline_only with
-      | true -> build_choice_parsers org_outline_parsers config
-      | false -> build_choice_parsers org_full_parsers config
+      if md then
+        build_choice_parsers md_full_parsers config
+      else if outline_only then
+        build_choice_parsers org_outline_parsers config
+      else
+        build_choice_parsers org_full_parsers config
     in
     match parse_string ~consume:All parsers input with
     | Ok result ->
       let ast = Paragraph.concat_paragraph_lines config result in
       let ast =
-        if outline_only then
+        if md then
+          List.map (fun (t, pos) -> (Type_op.md_unescaped t, pos)) ast
+        else
+          ast
+      in
+      let ast =
+        if (not md) && outline_only then
           Prelude.remove
             (fun (t, _) ->
               match t with

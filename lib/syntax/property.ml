@@ -60,6 +60,10 @@ let property_references config s =
     []
   else if not (may_have_property_refs s) then
     []
+  else if String.contains s '{' then
+    (* Macros (`{{…}}`) are not outline refs. try_fast_scan would keep them as
+       Plain and skip Inline.parse of nested page refs. *)
+    parse_refs_inline config s
   else
     match Outline_inline.try_fast_scan s with
     | Some result -> keep_refs (List.map fst result)

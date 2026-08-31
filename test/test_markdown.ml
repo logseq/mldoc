@@ -23,6 +23,13 @@ let check_aux source expect =
   let result = Mldoc.Parser.parse default_config source |> List.hd |> fst in
   fun _ -> check_mldoc_type expect result
 
+let logseq_md_config : Conf.t =
+  { default_config with
+    toc = false
+  ; heading_number = false
+  ; keep_line_break = true
+  }
+
 let check_mldoc_type2 =
   Alcotest.check
     (Alcotest.testable
@@ -36,6 +43,10 @@ let check_mldoc_type2 =
 
 let check_aux2 source expect =
   let result = List.map fst (Mldoc.Parser.parse default_config source) in
+  fun _ -> check_mldoc_type2 expect result
+
+let check_aux2_with config source expect =
+  let result = List.map fst (Mldoc.Parser.parse config source) in
   fun _ -> check_mldoc_type2 expect result
 
 let testcases =
@@ -1356,10 +1367,108 @@ let block =
           , `Quick
           , check_aux "url:: http://example.com/a"
               (Type.Property_Drawer [ ("url", "http://example.com/a", []) ]) )
+        ; ( "property macro value stays a drawer"
+          , `Quick
+          , check_aux "url:: {{docs-base-url url}}"
+              (Type.Property_Drawer [ ("url", "{{docs-base-url url}}", []) ]) )
+        ; ( "definition list"
+          , `Quick
+          , check_aux "term\n: definition"
+              (Type.List
+                 [ { content = [ paragraph [ Inline.Plain "definition" ] ]
+                   ; items = []
+                   ; number = None
+                   ; name =
+                       Type_op.inline_list_with_none_pos [ Inline.Plain "term" ]
+                   ; checkbox = None
+                   ; indent = 0
+                   ; ordered = false
+                   }
+                 ]) )
+        ; ( "src with leading whitespace"
+          , `Quick
+          , check_aux2_with logseq_md_config
+              "\n  ```\n  hello\n  world\n  ```\n"
+              [ paragraph [ Inline.Break_Line ]
+              ; Type.Src
+                  { lines = [ "  hello"; "\n"; "  world"; "\n" ]
+                  ; language = None
+                  ; options = None
+                  ; pos_meta = { Pos.start_pos = 7; end_pos = 25 }
+                  }
+              ] )
+        ; ( "logbook drawer"
+          , `Quick
+          , check_aux2
+              "- DOING logbook block\n\
+              \  :LOGBOOK:\n\
+              \  CLOCK: [2024-08-07 Wed 11:47:50]\n\
+              \  :END:"
+              [ Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos
+                        [ Inline.Plain "logbook block" ]
+                  ; tags = []
+                  ; marker = Some "DOING"
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "logbook_block"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Drawer ("logbook", [ "  CLOCK: [2024-08-07 Wed 11:47:50]" ])
+              ] )
+        ; ( "org begin quote"
+          , `Quick
+          , check_aux2
+              "- From Inception:\n\
+              \  #+BEGIN_QUOTE\n\
+              \  Saito: Cobb?\n\
+              \  #+END_QUOTE"
+              [ Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos
+                        [ Inline.Plain "From Inception:" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "From_Inception-3a-"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ; Type.Quote
+                  [ paragraph [ Inline.Plain "Saito: Cobb?"; Inline.Break_Line ]
+                  ]
+              ] )
+        ; ( "org begin query"
+          , `Quick
+          , fun _ ->
+              match
+                Mldoc.Parser.parse default_config
+                  "- Text before\n\
+                  \  #+BEGIN_QUERY\n\
+                  \  {:query (task todo)}\n\
+                  \  #+END_QUERY"
+                |> List.map fst
+              with
+              | Type.Heading _ :: Type.Custom ("query", _, _, _) :: _ -> ()
+              | other ->
+                Alcotest.fail
+                  ("expected heading + custom query, got "
+                  ^ String.concat "; "
+                      (List.map
+                         (fun t -> Yojson.Safe.to_string (Type.to_yojson t))
+                         other)) )
         ; ( "front matter first block"
           , `Quick
           , check_aux2 "---\ntitle: Hello\n---\n- keep title"
               [ Type.Directive ("title", "Hello")
+              ; paragraph [ Inline.Break_Line ]
               ; Type.Heading
                   { title =
                       Type_op.inline_list_with_none_pos
