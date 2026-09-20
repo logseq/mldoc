@@ -1704,7 +1704,7 @@ let try_fast_md_inline s =
       )
 
 let parse config =
-  if Conf.is_markdown config then
+  if Conf.is_markdown config && not config.inline_type_with_pos then
     take_while (fun _ -> true) >>= fun s ->
     match try_fast_md_inline s with
     | Some result -> return result

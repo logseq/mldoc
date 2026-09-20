@@ -1549,4 +1549,37 @@ let block =
         ] )
   ]
 
-let () = Alcotest.run "mldoc" @@ List.concat [ inline; block ]
+let positioned_inline_sources () =
+  let config = { default_config with inline_type_with_pos = true } in
+  List.iter
+    (fun source ->
+      match
+        Angstrom.parse_string ~consume:Angstrom.Consume.All
+          (Inline.parse config) source
+      with
+      | Error message -> Alcotest.fail message
+      | Ok nodes ->
+        let slices =
+          List.map
+            (fun (_, position) ->
+              match position with
+              | None -> Alcotest.fail ("missing inline position in " ^ source)
+              | Some { Pos.start_pos; end_pos } ->
+                String.sub source start_pos (end_pos - start_pos))
+            nodes
+        in
+        Alcotest.(check string) "positions preserve the complete source" source
+          (String.concat "" slices))
+    [ "Unknown [[missing]]"
+    ; "Legacy ((block-uuid)) stays text"
+    ; "😀 [[missing]] #tag"
+    ]
+
+let () =
+  Alcotest.run "mldoc"
+    (List.concat [ inline; block ]
+    @ [ ( "inline positions"
+        , [ Alcotest.test_case "retain source spans" `Quick
+              positioned_inline_sources
+          ] )
+      ])
