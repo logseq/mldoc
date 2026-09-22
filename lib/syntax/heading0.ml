@@ -95,45 +95,44 @@ struct
       (* Markdown: most titles are plain lines; dispatch on the first
          non-blank char instead of backtracking through every parser. *)
       Angstrom.unsafe_lookahead
-        (peek_line >>= fun line ->
-         let n = String.length line in
-         let rec skip_blank i =
-           if i < n && (line.[i] = ' ' || line.[i] = '\t') then
-             skip_blank (i + 1)
-           else
-             i
-         in
-         let i = skip_blank 0 in
-         let plain = Paragraph.parse in
-         if i >= n then
-           plain
-         else
-           match line.[i] with
-           | ':'
-           | '#' ->
-             Drawer.parse config <|> Block.parse config <|> plain
-           | '`'
-           | '~'
-           | '>'
-           | '<'
-           | '$'
-           | '\\' ->
-             Block.parse config <|> plain
-           | '[' ->
-             Block.parse config <|> Footnote.parse config <|> plain
-           | _ ->
-             let rec has_colon_colon j =
-               if j + 1 >= n then
-                 false
-               else if line.[j] = ':' && line.[j + 1] = ':' then
-                 true
-               else
-                 has_colon_colon (j + 1)
-             in
-             if has_colon_colon i then
-               Drawer.parse config <|> plain
-             else
-               plain)
+        ( peek_line >>= fun line ->
+          let n = String.length line in
+          let rec skip_blank i =
+            if i < n && (line.[i] = ' ' || line.[i] = '\t') then
+              skip_blank (i + 1)
+            else
+              i
+          in
+          let i = skip_blank 0 in
+          let plain = Paragraph.parse in
+          if i >= n then
+            plain
+          else
+            match line.[i] with
+            | ':'
+            | '#' ->
+              Drawer.parse config <|> Block.parse config <|> plain
+            | '`'
+            | '~'
+            | '>'
+            | '<'
+            | '$'
+            | '\\' ->
+              Block.parse config <|> plain
+            | '[' -> Block.parse config <|> Footnote.parse config <|> plain
+            | _ ->
+              let rec has_colon_colon j =
+                if j + 1 >= n then
+                  false
+                else if line.[j] = ':' && line.[j + 1] = ':' then
+                  true
+                else
+                  has_colon_colon (j + 1)
+              in
+              if has_colon_colon i then
+                Drawer.parse config <|> plain
+              else
+                plain )
     else
       Angstrom.unsafe_lookahead
         (choice
@@ -165,8 +164,7 @@ struct
       | '$'
       | '\\' ->
         Some (Block.parse config)
-      | '[' ->
-        Some (Block.parse config <|> Footnote.parse config)
+      | '[' -> Some (Block.parse config <|> Footnote.parse config)
       | _ ->
         let rec has_colon_colon j =
           if j + 1 >= n then
@@ -195,8 +193,8 @@ struct
       in
       match md_title_guard config l (skip_blank 0) n with
       | None -> advance n *> return l
-      | Some guard ->
-        unsafe_lookahead (guard <|> Paragraph.parse) >>= fun t -> (
+      | Some guard -> (
+        unsafe_lookahead (guard <|> Paragraph.parse) >>= fun t ->
         match t with
         | Paragraph_line _ -> advance n *> return l
         | _ -> return "")
@@ -236,8 +234,7 @@ struct
         | '_'
         | '-' ->
           Buffer.add_char b '_'
-        | c ->
-          Buffer.add_string b (Printf.sprintf "-%x-" (int_of_char c)))
+        | c -> Buffer.add_string b (Printf.sprintf "-%x-" (int_of_char c)))
       s;
     Buffer.contents b
 
@@ -302,8 +299,18 @@ struct
       <* optional (end_of_line <|> end_of_input)
 
   let md_markers =
-    [ "TODO"; "DOING"; "WAITING"; "WAIT"; "DONE"; "CANCELED"; "CANCELLED"
-    ; "STARTED"; "IN-PROGRESS"; "NOW"; "LATER" ]
+    [ "TODO"
+    ; "DOING"
+    ; "WAITING"
+    ; "WAIT"
+    ; "DONE"
+    ; "CANCELED"
+    ; "CANCELLED"
+    ; "STARTED"
+    ; "IN-PROGRESS"
+    ; "NOW"
+    ; "LATER"
+    ]
 
   (** Pure-OCaml Markdown heading on a single (peeked) line — mirrors the
       Angstrom [parse] path for [format = Markdown]: level (ATX "#"s or "-"),
@@ -365,9 +372,11 @@ struct
         in
         match level_unord_size with
         | None -> None
-        | Some (level, unordered, size, j) -> (
-          (* require whitespace or EOI after the level *)
-          if j < n && not (is_ws_after line.[j]) then
+        | Some (level, unordered, size, j) ->
+          if
+            (* require whitespace or EOI after the level *)
+            j < n && not (is_ws_after line.[j])
+          then
             None
           else
             (* Each of marker / priority / title is an optional
@@ -376,27 +385,32 @@ struct
             let after_level = j in
             let j1 = skip_sp after_level in
             let marker, j2 =
-              if config.parse_marker && j1 > after_level then (
+              if config.parse_marker && j1 > after_level then
                 let rec try_markers = function
                   | [] -> (None, after_level)
                   | m :: ms ->
                     let ml = String.length m in
-                    if j1 + ml <= n && String.sub line j1 ml = m
-                       && (j1 + ml = n || line.[j1 + ml] = ' ')
+                    if
+                      j1 + ml <= n
+                      && String.sub line j1 ml = m
+                      && (j1 + ml = n || line.[j1 + ml] = ' ')
                     then
                       (Some m, j1 + ml)
                     else
                       try_markers ms
                 in
-                try_markers md_markers)
+                try_markers md_markers
               else
                 (None, after_level)
             in
             let j3 = skip_sp j2 in
             let priority, j4 =
-              if config.parse_priority && j3 > j2 && j3 + 3 < n
-                 && line.[j3] = '[' && line.[j3 + 1] = '#'
-                 && line.[j3 + 3] = ']'
+              if
+                config.parse_priority && j3 > j2
+                && j3 + 3 < n
+                && line.[j3] = '['
+                && line.[j3 + 1] = '#'
+                && line.[j3 + 3] = ']'
               then
                 (Some line.[j3 + 2], j3 + 4)
               else
@@ -425,8 +439,7 @@ struct
                 | '$'
                 | '\\' ->
                   true
-                | '[' ->
-                  (n - j >= 2 && (line.[j + 1] = '^' || line.[j + 1] = ':'))
+                | '[' -> n - j >= 2 && (line.[j + 1] = '^' || line.[j + 1] = ':')
                 | _ ->
                   let rec has_colon_colon k =
                     if k + 1 >= n then
@@ -465,7 +478,7 @@ struct
                    ; numbering = None
                    ; unordered
                    ; size
-                   }))
+                   })
 
   let parse config =
     if config.parse_outline_only && Conf.is_markdown config then

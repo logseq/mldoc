@@ -10,10 +10,10 @@ let char_table s =
   String.iter (fun c -> Bytes.set t (Char.code c) '\001') s;
   Bytes.unsafe_to_string t
 
-let md_escape_chars =
-  char_table "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~\\"
+let md_escape_chars = char_table "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~\\"
 
-let is_md_escape_char c = String.unsafe_get md_escape_chars (Char.code c) = '\001'
+let is_md_escape_char c =
+  String.unsafe_get md_escape_chars (Char.code c) = '\001'
 
 let is_space c = c = ' ' || c = '\t' || c = '\026' || c = '\012'
 

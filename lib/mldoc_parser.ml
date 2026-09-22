@@ -155,7 +155,7 @@ let classify_md_prop_line line i n =
     Mp_other
   else
     match find_key_end i0 with
-    | Some k when k > i0 && k + 1 < stop && line.[k + 1] = ':' -> (
+    | Some k when k > i0 && k + 1 < stop && line.[k + 1] = ':' ->
       (* `key::` found *)
       let v = k + 2 in
       if v < stop && line.[v] = ' ' then
@@ -166,7 +166,7 @@ let classify_md_prop_line line i n =
         if v' >= stop then
           Mp_property (String.sub line i0 (k - i0), "")
         else
-          Mp_other)
+          Mp_other
     | _ ->
       if i0 + 1 < stop && line.[i0] = '#' && line.[i0 + 1] = '+' then
         (* #+NAME: value *)
@@ -199,7 +199,7 @@ let md_full_block config =
   | Some '\n'
   | Some '\r' ->
     Paragraph.sep
-  | _ ->
+  | _ -> (
     peek_line >>= fun line ->
     let n = String.length line in
     let rec skip_blank i =
@@ -239,7 +239,7 @@ let md_full_block config =
       | ':' -> drawer <|> Paragraph.parse
       | '_' -> drawer <|> hr <|> Paragraph.parse
       | '0' .. '9' -> drawer <|> lists <|> Paragraph.parse
-      | _ -> (
+      | _ ->
         (* A plain line can open a definition list when the next line is a
            `: definition` item; try Lists first in that case. *)
         let next_is_def =
@@ -347,9 +347,10 @@ let md_full_parse_raw config input =
             (* blank line: the run continues only when a #+ line follows *)
             let p = skip_blanks cur in
             let le' = line_end p in
-            (match classify_md_prop_line input p (le' - p) with
-            | Mp_hashplus (k, v) -> go (skip_blanks (after_eol le')) ((k, v, []) :: acc)
-            | _ -> `Ok (List.rev acc, cur))
+            match classify_md_prop_line input p (le' - p) with
+            | Mp_hashplus (k, v) ->
+              go (skip_blanks (after_eol le')) ((k, v, []) :: acc)
+            | _ -> `Ok (List.rev acc, cur)
           else
             `Ok (List.rev acc, cur)
     in
@@ -375,9 +376,16 @@ let md_full_parse_raw config input =
         match input.[i] with
         | '#'
         | '-' -> (
-          match Type_parser.Heading.try_parse_md_line config (Lazy.force line_str) with
+          match
+            Type_parser.Heading.try_parse_md_line config (Lazy.force line_str)
+          with
           | Some t ->
-            let e = if le < n then after_eol le else le in
+            let e =
+              if le < n then
+                after_eol le
+              else
+                le
+            in
             loop (mk_pos t cur e :: acc) e
           | None -> fallback acc cur)
         | _ -> (
@@ -407,12 +415,25 @@ let md_full_parse_raw config input =
             | _ ->
               (* next line's first non-blank char ':' opens a definition
                  list, which outranks a plain paragraph *)
-              let p = if le < n then after_eol le else n in
-              let j = if p < n then first_non_blank p (line_end p) else n in
+              let p =
+                if le < n then
+                  after_eol le
+                else
+                  n
+              in
+              let j =
+                if p < n then
+                  first_non_blank p (line_end p)
+                else
+                  n
+              in
               if j < n && input.[j] = ':' then
                 fallback acc cur
               else
-                loop (mk_pos (Type.Paragraph_line (Lazy.force line_str)) cur le :: acc) le))
+                loop
+                  (mk_pos (Type.Paragraph_line (Lazy.force line_str)) cur le
+                  :: acc)
+                  le))
   and fallback acc cur =
     match run_at block_p cur with
     | `Ok ((t, pos), e) -> loop ((t, pos) :: acc) e
