@@ -10,6 +10,8 @@ and Heading : sig
   val parse : Conf.t -> Type.t Angstrom.t
 
   val anchor_link : string -> string
+
+  val try_parse_md_line : Conf.t -> string -> Type.t option
 end =
   Heading0.MakeHeading (Block)
 

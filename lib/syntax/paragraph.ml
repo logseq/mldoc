@@ -35,9 +35,9 @@ let parse_lines config lines pos1 pos2 =
       else
         plain_paragraph content
     else
-      match parse_string ~consume:All (Inline.parse config) content with
-      | Ok result -> Paragraph result
-      | Error _ -> plain_paragraph content
+      match Inline.parse_opt config content with
+      | Some result -> Paragraph result
+      | None -> plain_paragraph content
   in
   (paragraph, { start_pos = pos1; end_pos = pos2 })
 

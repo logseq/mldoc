@@ -1703,6 +1703,22 @@ let try_fast_md_inline s =
           Some (concat_plains (List.map (fun t -> (t, None)) (List.rev !acc)))
       )
 
+(** String-level equivalent of [parse]: try the pure-OCaml Markdown fast
+    path first and fall back to the Angstrom parser. Avoids copying [s]
+    through Angstrom's take_while when the fast path applies. *)
+let parse_opt config s =
+  if Conf.is_markdown config && not config.inline_type_with_pos then
+    match try_fast_md_inline s with
+    | Some result -> Some result
+    | None -> (
+      match parse_string ~consume:All (parse_angstrom config) s with
+      | Result.Ok result -> Some result
+      | Result.Error _ -> None)
+  else
+    match parse_string ~consume:All (parse_angstrom config) s with
+    | Result.Ok result -> Some result
+    | Result.Error _ -> None
+
 let parse config =
   if Conf.is_markdown config && not config.inline_type_with_pos then
     take_while (fun _ -> true) >>= fun s ->

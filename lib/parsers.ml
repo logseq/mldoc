@@ -5,13 +5,17 @@ let whitespace_chars = [ ' '; '\t'; '\n'; '\r'; '\012' ]
 let is_whitespace c = c = ' ' || c = '\t' || c = '\n' || c = '\r' || c = '\012'
 let space_chars = [ ' '; '\t'; '\026'; '\012' ]
 
-module CharSet = Set.Make (Char)
+let char_table s =
+  let t = Bytes.make 256 '\000' in
+  String.iter (fun c -> Bytes.set t (Char.code c) '\001') s;
+  Bytes.unsafe_to_string t
 
 let md_escape_chars =
-  "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~\\" |> explode |> CharSet.of_list
+  char_table "!\"#$%&'()*+,-./:;<=>?@[]^_`{|}~\\"
 
-let is_md_escape_char c = CharSet.mem c md_escape_chars
-let is_space c = List.mem c space_chars
+let is_md_escape_char c = String.unsafe_get md_escape_chars (Char.code c) = '\001'
+
+let is_space c = c = ' ' || c = '\t' || c = '\026' || c = '\012'
 
 let is_tab = function
   | '\t' -> true
@@ -21,7 +25,7 @@ let is_tab_or_space = is_space
 let non_tab_or_space = not << is_tab_or_space
 let non_space = not << is_space
 let eol_chars = [ '\r'; '\n' ]
-let is_eol c = List.mem c eol_chars
+let is_eol c = c = '\r' || c = '\n'
 let non_eol = not << is_eol
 let non_space_eol c = non_space c && non_eol c
 let is_space_eol c = is_space c || is_eol c
