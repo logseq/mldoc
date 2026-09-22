@@ -55,6 +55,22 @@ let rec type_move_forawrd t forward_pos =
 
 let unescaped_md_string s =
   let open Bytes in
+  let len = String.length s in
+  (* Fast path: no escapable backslash, return the string untouched. *)
+  let rec needs_unescape i =
+    if i + 1 >= len then
+      false
+    else if
+      String.unsafe_get s i = '\\'
+      && Parsers.is_md_escape_char (String.unsafe_get s (i + 1))
+    then
+      true
+    else
+      needs_unescape (i + 1)
+  in
+  if not (needs_unescape 0) then
+    s
+  else
   let b = of_string s in
   let n = ref 0 in
   let i = ref 0 in
@@ -96,63 +112,163 @@ let unescaped_md_string s =
     done;
     to_string b'
 
+(* [map_share f l] maps [f] over [l] but returns the original list (and shares
+   every tail) when [f] returns physically-equal results — avoids reallocating
+   unchanged ASTs. *)
+let rec map_share f l =
+  match l with
+  | [] -> l
+  | x :: xs ->
+    let x' = f x in
+    let xs' = map_share f xs in
+    if x' == x && xs' == xs then
+      l
+    else
+      x' :: xs'
+
 let map_escaped_string t f =
   let rec inline_aux (t : Inline.t) =
     match t with
     | Inline.Emphasis (em_type, tl) ->
-      Inline.Emphasis (em_type, List.map inline_aux tl)
-    | Inline.Tag tl -> Inline.Tag (List.map inline_aux tl)
-    | Inline.Plain s -> Inline.Plain (f s)
+      let tl' = map_share inline_aux tl in
+      if tl' == tl then
+        t
+      else
+        Inline.Emphasis (em_type, tl')
+    | Inline.Tag tl ->
+      let tl' = map_share inline_aux tl in
+      if tl' == tl then
+        t
+      else
+        Inline.Tag tl'
+    | Inline.Plain s ->
+      let s' = f s in
+      if s' == s then
+        t
+      else
+        Inline.Plain s'
     | Inline.Link link ->
-      let label = List.map inline_aux link.label in
-      let url =
+      let label' = map_share inline_aux link.label in
+      let url' =
         match link.url with
-        | Inline.File s -> Inline.File (f s)
-        | Inline.Search s -> Inline.Search (f s)
-        | Inline.Page_ref s -> Inline.Page_ref (f s)
+        | Inline.File s ->
+          let s' = f s in
+          if s' == s then link.url else Inline.File s'
+        | Inline.Search s ->
+          let s' = f s in
+          if s' == s then link.url else Inline.Search s'
+        | Inline.Page_ref s ->
+          let s' = f s in
+          if s' == s then link.url else Inline.Page_ref s'
         | Inline.Complex complex ->
-          Inline.Complex { complex with link = f complex.link }
+          let link' = f complex.link in
+          if link' == complex.link then
+            link.url
+          else
+            Inline.Complex { complex with link = link' }
         | Inline.Block_ref _ -> link.url
         | Inline.Embed_data _ -> link.url
       in
-      Inline.Link { link with label; url }
-    | Inline.Subscript tl -> Inline.Subscript (List.map inline_aux tl)
-    | Inline.Superscript tl -> Inline.Superscript (List.map inline_aux tl)
+      if label' == link.label && url' == link.url then
+        t
+      else
+        Inline.Link { link with label = label'; url = url' }
+    | Inline.Subscript tl ->
+      let tl' = map_share inline_aux tl in
+      if tl' == tl then
+        t
+      else
+        Inline.Subscript tl'
+    | Inline.Superscript tl ->
+      let tl' = map_share inline_aux tl in
+      if tl' == tl then
+        t
+      else
+        Inline.Superscript tl'
     | Inline.Footnote_Reference fr ->
-      Inline.Footnote_Reference
-        { fr with definition = Option.map (List.map inline_aux) fr.definition }
+      let definition' =
+        match fr.definition with
+        | None -> fr.definition
+        | Some l ->
+          let l' = map_share inline_aux l in
+          if l' == l then fr.definition else Some l'
+      in
+      if definition' == fr.definition then
+        t
+      else
+        Inline.Footnote_Reference { fr with definition = definition' }
     | _ -> t
   in
+  let inline_pos_aux (t', pos) =
+    let t'' = inline_aux t' in
+    if t'' == t' then
+      (t', pos)
+    else
+      (t'', pos)
+  in
   let rec block_list_aux list_item =
-    let content' = List.map block_aux list_item.content in
-    let items = List.map block_list_aux list_item.items in
-    let name =
-      List.map (fun (t', pos) -> (inline_aux t', pos)) list_item.name
-    in
-    { list_item with content = content'; items; name }
+    let content' = map_share block_aux list_item.content in
+    let items' = map_share block_list_aux list_item.items in
+    let name' = map_share inline_pos_aux list_item.name in
+    if content' == list_item.content && items' == list_item.items
+       && name' == list_item.name
+    then
+      list_item
+    else
+      { list_item with content = content'; items = items'; name = name' }
   and block_aux (t : Type.t) =
     match t with
     | Paragraph l ->
-      Paragraph (List.map (fun (t', pos) -> (inline_aux t', pos)) l)
+      let l' = map_share inline_pos_aux l in
+      if l' == l then
+        t
+      else
+        Paragraph l'
     | Heading heading ->
-      let title' =
-        List.map (fun (t', pos) -> (inline_aux t', pos)) heading.title
-      in
-      Heading { heading with title = title' }
-    | List l -> List (List.map block_list_aux l)
-    | Quote tl -> Quote (List.map block_aux tl)
+      let title' = map_share inline_pos_aux heading.title in
+      if title' == heading.title then
+        t
+      else
+        Heading { heading with title = title' }
+    | List l ->
+      let l' = map_share block_list_aux l in
+      if l' == l then
+        t
+      else
+        List l'
+    | Quote tl ->
+      let tl' = map_share block_aux tl in
+      if tl' == tl then
+        t
+      else
+        Quote tl'
     | Custom (name, opts, data, s) ->
-      let data' = List.map block_aux data in
-      Custom (name, opts, data', s)
+      let data' = map_share block_aux data in
+      if data' == data then
+        t
+      else
+        Custom (name, opts, data', s)
     | Footnote_Definition (name, content) ->
-      let content' = List.map (fun (t', pos) -> (inline_aux t', pos)) content in
-      Footnote_Definition (name, content')
+      let content' = map_share inline_pos_aux content in
+      if content' == content then
+        t
+      else
+        Footnote_Definition (name, content')
     | Table table ->
-      let header = Option.map (List.map (List.map inline_aux)) table.header in
-      let groups =
-        List.map (List.map (List.map (List.map inline_aux))) table.groups
+      let header' =
+        match table.header with
+        | None -> table.header
+        | Some rows ->
+          let rows' = map_share (map_share inline_aux) rows in
+          if rows' == rows then table.header else Some rows'
       in
-      Table { table with header; groups }
+      let groups' =
+        map_share (map_share (map_share (map_share inline_aux))) table.groups
+      in
+      if header' == table.header && groups' == table.groups then
+        t
+      else
+        Table { table with header = header'; groups = groups' }
     | _ -> t
   in
   block_aux t
