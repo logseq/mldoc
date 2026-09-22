@@ -71,46 +71,47 @@ let unescaped_md_string s =
   if not (needs_unescape 0) then
     s
   else
-  let b = of_string s in
-  let n = ref 0 in
-  let i = ref 0 in
-  let lenb = length b in
-  while !i < lenb do
-    n :=
-      !n
-      +
-      match get b !i with
-      | '\\' when !i + 1 < lenb && Parsers.is_md_escape_char (get b (!i + 1)) ->
-        i := !i + 2;
-        1
-      | _ ->
-        incr i;
-        1
-  done;
-  if !n = length b then
-    s
-  else
-    let b' = create !n in
-    n := 0;
+    let b = of_string s in
+    let n = ref 0 in
     let i = ref 0 in
-    let len_1 = length b - 1 in
-    while !i <= len_1 do
-      (match get b !i with
-      | '\\' when !i < len_1 ->
-        let c = get b (!i + 1) in
-        if Parsers.is_md_escape_char c then
-          set b' !n c
-        else (
-          set b' !n '\\';
-          incr n;
-          set b' !n c
-        );
-        incr i
-      | c -> set b' !n c);
-      incr n;
-      incr i
+    let lenb = length b in
+    while !i < lenb do
+      n :=
+        !n
+        +
+        match get b !i with
+        | '\\' when !i + 1 < lenb && Parsers.is_md_escape_char (get b (!i + 1))
+          ->
+          i := !i + 2;
+          1
+        | _ ->
+          incr i;
+          1
     done;
-    to_string b'
+    if !n = length b then
+      s
+    else
+      let b' = create !n in
+      n := 0;
+      let i = ref 0 in
+      let len_1 = length b - 1 in
+      while !i <= len_1 do
+        (match get b !i with
+        | '\\' when !i < len_1 ->
+          let c = get b (!i + 1) in
+          if Parsers.is_md_escape_char c then
+            set b' !n c
+          else (
+            set b' !n '\\';
+            incr n;
+            set b' !n c
+          );
+          incr i
+        | c -> set b' !n c);
+        incr n;
+        incr i
+      done;
+      to_string b'
 
 (* [map_share f l] maps [f] over [l] but returns the original list (and shares
    every tail) when [f] returns physically-equal results — avoids reallocating
@@ -153,13 +154,22 @@ let map_escaped_string t f =
         match link.url with
         | Inline.File s ->
           let s' = f s in
-          if s' == s then link.url else Inline.File s'
+          if s' == s then
+            link.url
+          else
+            Inline.File s'
         | Inline.Search s ->
           let s' = f s in
-          if s' == s then link.url else Inline.Search s'
+          if s' == s then
+            link.url
+          else
+            Inline.Search s'
         | Inline.Page_ref s ->
           let s' = f s in
-          if s' == s then link.url else Inline.Page_ref s'
+          if s' == s then
+            link.url
+          else
+            Inline.Page_ref s'
         | Inline.Complex complex ->
           let link' = f complex.link in
           if link' == complex.link then
@@ -191,7 +201,10 @@ let map_escaped_string t f =
         | None -> fr.definition
         | Some l ->
           let l' = map_share inline_aux l in
-          if l' == l then fr.definition else Some l'
+          if l' == l then
+            fr.definition
+          else
+            Some l'
       in
       if definition' == fr.definition then
         t
@@ -210,8 +223,9 @@ let map_escaped_string t f =
     let content' = map_share block_aux list_item.content in
     let items' = map_share block_list_aux list_item.items in
     let name' = map_share inline_pos_aux list_item.name in
-    if content' == list_item.content && items' == list_item.items
-       && name' == list_item.name
+    if
+      content' == list_item.content
+      && items' == list_item.items && name' == list_item.name
     then
       list_item
     else
@@ -260,7 +274,10 @@ let map_escaped_string t f =
         | None -> table.header
         | Some rows ->
           let rows' = map_share (map_share inline_aux) rows in
-          if rows' == rows then table.header else Some rows'
+          if rows' == rows then
+            table.header
+          else
+            Some rows'
       in
       let groups' =
         map_share (map_share (map_share (map_share inline_aux))) table.groups
