@@ -17,6 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         ocaml-compiler: ["4.14.x", "5.3.x"]
+        package: [mldoc, mldoc-cli, mldoc-js, mldoc-bench]
     steps:
       - uses: actions/checkout@v4
 
@@ -27,10 +28,22 @@ jobs:
           dune-cache: true
 
       - name: Install dependencies
-        run: opam install . --deps-only --with-doc --with-test
+        run: |
+          opam pin add -yn mldoc .
+          if [ "${{ matrix.package }}" = mldoc ]; then
+            opam install ./mldoc.opam --with-doc --with-test
+          else
+            opam install ./${{ matrix.package }}.opam
+          fi
 
-      - name: Build
-        run: opam exec -- dune build @install @JS @main
+      - uses: actions/setup-node@v4
+        if: matrix.package == 'mldoc-js'
+        with:
+          node-version: '22'
+
+      - name: Test installed package
+        run: opam exec -- sh test/package_smoke.sh ${{ matrix.package }} "$(opam var prefix)"
 
       - name: Test
-        run: opam exec -- dune runtest
+        if: matrix.package == 'mldoc'
+        run: opam exec -- dune runtest -p mldoc
