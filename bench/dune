@@ -1,15 +1,28 @@
 (executable
  (name bench)
+ (public_name mldoc-bench)
+ (package mldoc-bench)
  (libraries angstrom mldoc core core_bench core_unix.command_unix))
 
 (executable
  (name time_parse)
+ (public_name mldoc-time-parse)
+ (package mldoc-bench)
  (libraries unix mldoc))
 
 (executable
  (name time_graph)
+ (public_name mldoc-time-graph)
+ (package mldoc-bench)
  (libraries unix mldoc))
 
 (alias
  (name bench)
  (deps bench.exe time_parse.exe time_graph.exe))
+
+(install
+ (package mldoc-bench)
+ (section share)
+ (files
+  (../examples/doc.org as examples/doc.org)
+  (../examples/syntax.md as examples/syntax.md)))

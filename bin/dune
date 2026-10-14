@@ -1,6 +1,7 @@
 (executable
  (name main)
  (public_name mldoc)
+ (package mldoc-cli)
  (libraries angstrom mldoc cmdliner lwt.unix))
 
 (alias

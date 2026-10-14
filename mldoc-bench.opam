@@ -1,0 +1,20 @@
+opam-version: "2.0"
+synopsis: "Benchmark and timing tools for Mldoc"
+maintainer: ["logseq team"]
+authors: ["tiensonqin <tiensonqin@gmail.com>" "RCmerci <rcmerci@gmail.com>"]
+license: "AGPL-3.0-only"
+homepage: "https://github.com/logseq/mldoc"
+bug-reports: "https://github.com/logseq/mldoc/issues"
+available: os != "win32"
+depends: [
+  "dune" {>= "3.5"}
+  "ocaml" {>= "4.14.0"}
+  "mldoc" {= version}
+  "core"
+  "core_bench"
+  "core_unix"
+]
+build: [
+  ["dune" "subst"] {dev}
+  ["dune" "build" "-p" name "-j" jobs "@install"]
+]

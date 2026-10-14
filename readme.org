@@ -6,12 +6,64 @@
    - [[https://logseq.com][Logseq]], a local-first notes app (In development)
 
 ** Build
+   The OCaml library remains named =mldoc=, with the same public modules and
+   parsing/export interfaces. Tools are installed through separate opam packages:
+
+   | Package       | Purpose and installed artifacts                                      |
+   |---------------+----------------------------------------------------------------------|
+   | =mldoc=       | OCaml library; no CLI, JS toolchain, or Core benchmark dependencies    |
+   | =mldoc-cli=   | Native =mldoc= command; adds Cmdliner and Lwt                          |
+   | =mldoc-js=    | =$(opam var mldoc-js:share)/index.js=; adds js_of_ocaml and its PPX     |
+   | =mldoc-bench= | =mldoc-bench=, =mldoc-time-parse=, =mldoc-time-graph=; adds Core packages |
+
+   Companion packages require the matching version of the core library.
+   Core keeps the Angstrom lookahead/continuation fork and Xmlm attribute-newline
+   fork, both pinned to commits. Only the benchmark package is unavailable on
+   Windows because it depends on Jane Street's native benchmark tools.
+
    #+begin_src sh
-     # compile
+     # default: build only the library
      make
 
-     # run test
+     # independently build optional targets
+     make cli
+     make js
+     make bench
+
+     # all targets (includes native benchmarks)
+     make all
+
+     # existing library regression tests
      make test
+
+     # install the library from this checkout
+     opam install ./mldoc.opam
+
+     # register this checkout's core, then install one matching companion
+     opam pin add -yn --kind=path mldoc .
+     opam install ./mldoc-cli.opam
+     # or: ./mldoc-js.opam / ./mldoc-bench.opam
+   #+end_src
+
+   Use an explicit manifest for a single package. =opam install .= selects all
+   packages in the checkout. Make's optional targets build the local core and
+   selected tool together; a companion's opam build uses the installed library.
+
+   The JS opam package provides the existing =Mldoc= JavaScript export; it does
+   not install the npm command wrapper. The npm package and its Node CLI remain
+   available as before. =deploy-npm-package= builds only the JS target.
+
+   Installed benchmarks include their example inputs. Run fixture-generating
+   timing tools in a writable scratch directory, and pass an explicit synthetic
+   or intended graph directory to =mldoc-time-graph=:
+
+   #+begin_src sh
+     bench_dir=$(mktemp -d)
+     cp -R "$(opam var mldoc-bench:share)/examples" "$bench_dir/"
+     cd "$bench_dir"
+     mldoc-bench -help
+     mldoc-time-parse
+     mldoc-time-graph /path/to/benchmark-fixture
    #+end_src
 
 ** Run utop
@@ -35,8 +87,8 @@
 
 *** For OCaml users
     #+BEGIN_SRC sh
-      # compile
-      make
+      # compile the native CLI
+      make cli
 
       # convert org file to html
       _build/default/bin/main.exe ./test.org -o ./test.html

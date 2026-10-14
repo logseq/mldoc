@@ -5,22 +5,17 @@ description:
   "Another Org-mode and Markdown parser implemented using OCaml and Angstrom."
 maintainer: ["logseq team"]
 authors: ["tiensonqin <tiensonqin@gmail.com>" "RCmerci <rcmerci@gmail.com>"]
+license: "AGPL-3.0-only"
 homepage: "https://github.com/logseq/mldoc"
 bug-reports: "https://github.com/logseq/mldoc/issues"
 depends: [
   "dune" {>= "3.5"}
   "ocaml" {>= "4.14.0"}
   "angstrom" {= "dev"}
-  "cmdliner" {>= "1.1.0"}
-  "core" {os != "win32"}
-  "core_bench" {os != "win32"}
-  "core_unix" {os != "win32"}
-  "js_of_ocaml" {>= "5.2.0"}
-  "js_of_ocaml-ppx"
+  "bigstringaf"
   "ppx_deriving_yojson"
   "uri"
   "yojson"
-  "lwt"
   "xmlm" {= "dev"}
   "odoc" {with-doc}
   "alcotest" {with-test}
@@ -42,6 +37,6 @@ build: [
   ]
 ]
 pin-depends: [
-  [ "angstrom.dev" "git+https://github.com/logseq/angstrom#fork" ]
+  [ "angstrom.dev" "git+https://github.com/logseq/angstrom#3be9b966dc2bc9ccf9948d17a7b0df1cb526de15" ]
   [ "xmlm.dev" "git+https://github.com/logseq/xmlm#eb469d536e98c98f2754c0ff8813c92b3a17fe9f" ]
 ]
