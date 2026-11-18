@@ -81,6 +81,96 @@ struct
 
   let tags = char ':' *> seperated_tags <* char ':'
 
+  let rec has_colon_colon line j n =
+    if j + 1 >= n then
+      false
+    else if line.[j] = ':' && line.[j + 1] = ':' then
+      true
+    else
+      has_colon_colon line (j + 1) n
+
+  let is_md_hr_line line i n =
+    let c = line.[i] in
+    (c = '-' || c = '*' || c = '_')
+    && n - i >= 3
+    && line.[i + 1] = c
+    && line.[i + 2] = c
+    &&
+    let rec rest k =
+      if k >= n then
+        true
+      else if line.[k] = c then
+        rest (k + 1)
+      else
+        let rec trailing_spaces m =
+          if m >= n then
+            true
+          else if is_space line.[m] then
+            trailing_spaces (m + 1)
+          else
+            false
+        in
+        trailing_spaces k
+    in
+    rest (i + 3)
+
+  (* Peeked-line classification for a Markdown title line. Returns the parser
+     to run as a lookahead guard, or `None` when the line is plain text. *)
+  let md_title_guard config line i n =
+    let config = { config with Conf.hiccup_in_block = false } in
+    let with_drawer p =
+      if has_colon_colon line i n then
+        Drawer.parse config <|> p
+      else
+        p
+    in
+    if i >= n then
+      None
+    else if is_md_hr_line line i n then
+      Some (Hr.parse config)
+    else
+      match line.[i] with
+      | ':'
+      | '#' ->
+        Some (Drawer.parse config <|> Block.parse config)
+      | '|' -> Some (with_drawer (Table.parse config))
+      | '\\' ->
+        Some (with_drawer (Latex_env.parse config <|> Block.parse config))
+      | '`'
+      | '~'
+      | '>'
+      | '<'
+      | '$' ->
+        Some (with_drawer (Block.parse config))
+      | '[' -> Some (with_drawer (Block.parse config <|> Footnote.parse config))
+      | _ ->
+        if has_colon_colon line i n then
+          Some (Drawer.parse config)
+        else
+          None
+
+  let md_title_may_start_block line i n =
+    if i >= n then
+      false
+    else if is_md_hr_line line i n then
+      true
+    else
+      match line.[i] with
+      | ':'
+      | '#'
+      | '|'
+      | '`'
+      | '~'
+      | '>'
+      | '<'
+      | '$'
+      | '\\' ->
+        true
+      | '[' ->
+        (n - i >= 2 && (line.[i + 1] = '^' || line.[i + 1] = ':'))
+        || has_colon_colon line i n
+      | _ -> has_colon_colon line i n
+
   let title_aux_p config =
     let config = { config with Conf.hiccup_in_block = false } in
     if config.parse_outline_only then
@@ -103,36 +193,9 @@ struct
             else
               i
           in
-          let i = skip_blank 0 in
-          let plain = Paragraph.parse in
-          if i >= n then
-            plain
-          else
-            match line.[i] with
-            | ':'
-            | '#' ->
-              Drawer.parse config <|> Block.parse config <|> plain
-            | '`'
-            | '~'
-            | '>'
-            | '<'
-            | '$'
-            | '\\' ->
-              Block.parse config <|> plain
-            | '[' -> Block.parse config <|> Footnote.parse config <|> plain
-            | _ ->
-              let rec has_colon_colon j =
-                if j + 1 >= n then
-                  false
-                else if line.[j] = ':' && line.[j + 1] = ':' then
-                  true
-                else
-                  has_colon_colon (j + 1)
-              in
-              if has_colon_colon i then
-                Drawer.parse config <|> plain
-              else
-                plain )
+          match md_title_guard config line (skip_blank 0) n with
+          | None -> Paragraph.parse
+          | Some guard -> guard <|> Paragraph.parse )
     else
       Angstrom.unsafe_lookahead
         (choice
@@ -144,41 +207,6 @@ struct
            ; Footnote.parse config
            ; Paragraph.parse
            ])
-
-  (* not include priority, tags, marker
-     return (title_line_string, first Type.t) *)
-  (* Peeked-line classification for a Markdown title line. Returns the parser
-     to run as a lookahead guard, or `None` when the line is plain text. *)
-  let md_title_guard config line i n =
-    let config = { config with Conf.hiccup_in_block = false } in
-    if i >= n then
-      None
-    else
-      match line.[i] with
-      | ':'
-      | '#' ->
-        Some (Drawer.parse config <|> Block.parse config)
-      | '`'
-      | '~'
-      | '>'
-      | '<'
-      | '$'
-      | '\\' ->
-        Some (Block.parse config)
-      | '[' -> Some (Block.parse config <|> Footnote.parse config)
-      | _ ->
-        let rec has_colon_colon j =
-          if j + 1 >= n then
-            false
-          else if line.[j] = ':' && line.[j + 1] = ':' then
-            true
-          else
-            has_colon_colon (j + 1)
-        in
-        if has_colon_colon i then
-          Some (Drawer.parse config)
-        else
-          None
 
   let title config =
     if Conf.is_markdown config && not config.parse_outline_only then
@@ -426,32 +454,7 @@ struct
             in
             (* Defer to the general parsers when the title could start a
                nested drawer/block/footnote (same guard as [title]). *)
-            let title_needs_general =
-              if n - j <= 0 then
-                false
-              else
-                match line.[j] with
-                | ':'
-                | '#'
-                | '`'
-                | '~'
-                | '>'
-                | '<'
-                | '$'
-                | '\\' ->
-                  true
-                | '[' -> n - j >= 2 && (line.[j + 1] = '^' || line.[j + 1] = ':')
-                | _ ->
-                  let rec has_colon_colon k =
-                    if k + 1 >= n then
-                      false
-                    else if line.[k] = ':' && line.[k + 1] = ':' then
-                      true
-                    else
-                      has_colon_colon (k + 1)
-                  in
-                  has_colon_colon j
-            in
+            let title_needs_general = md_title_may_start_block line j n in
             if title_needs_general then
               None
             else

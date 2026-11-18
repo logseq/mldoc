@@ -1659,6 +1659,46 @@ let hiccup_heading_titles () =
       | _ -> Alcotest.fail "Hiccup title must not create a separate block")
     [ "- "; "# "; "\t- "; "- TODO " ]
 
+let heading_nested_blocks () =
+  let table_source =
+    "- | Header A | Header B |\n  | A1 | B1 |\n  | A2 | B2 |"
+  in
+  (match Mldoc.Parser.parse logseq_md_config table_source with
+  | [ (Type.Heading heading, hpos)
+    ; (Type.Table { header = Some header; groups; _ }, tpos)
+    ] ->
+    Alcotest.(check bool) "empty heading title" true (heading.title = []);
+    Alcotest.(check int) "heading end_pos" 2 hpos.Pos.end_pos;
+    Alcotest.(check int) "table start_pos" 2 tpos.Pos.start_pos;
+    Alcotest.(check bool)
+      "first row stays table header" true
+      (header = [ [ Inline.Plain "Header A" ]; [ Inline.Plain "Header B" ] ]);
+    Alcotest.(check bool)
+      "body rows stay in groups" true
+      (groups
+      = [ [ [ [ Inline.Plain "A1" ]; [ Inline.Plain "B1" ] ]
+          ; [ [ Inline.Plain "A2" ]; [ Inline.Plain "B2" ] ]
+          ]
+        ])
+  | _ -> Alcotest.fail "expected empty heading followed by 3-row table");
+  List.iter
+    (fun hr ->
+      match Mldoc.Parser.parse logseq_md_config ("- " ^ hr) with
+      | [ (Type.Heading heading, _); (Type.Horizontal_Rule, _) ] ->
+        Alcotest.(check bool)
+          ("empty heading before " ^ hr)
+          true (heading.title = [])
+      | _ -> Alcotest.fail ("expected Horizontal_Rule after - " ^ hr))
+    [ "---"; "***"; "___" ];
+  let latex_source = "- \\begin{equation}\n  x = 1\n  \\end{equation}" in
+  match Mldoc.Parser.parse logseq_md_config latex_source with
+  | [ (Type.Heading heading, _)
+    ; (Type.Latex_Environment ("equation", None, "x = 1\n  "), _)
+    ] ->
+    Alcotest.(check bool)
+      "empty heading before latex env" true (heading.title = [])
+  | _ -> Alcotest.fail "expected empty heading followed by Latex_Environment"
+
 let () =
   Alcotest.run "mldoc"
     (List.concat [ inline; block ]
@@ -1668,4 +1708,7 @@ let () =
           ] )
       ; ( "hiccup titles"
         , [ Alcotest.test_case "remain inline" `Quick hiccup_heading_titles ] )
+      ; ( "heading nested blocks"
+        , [ Alcotest.test_case "table hr latex" `Quick heading_nested_blocks ]
+        )
       ])
