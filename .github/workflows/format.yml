@@ -7,19 +7,73 @@ on:
 jobs:
   format:
     runs-on: ubuntu-latest
+    env:
+      OPAMYES: "1"
+      OPAMCONFIRMLEVEL: unsafe-yes
+      OPAMERRLOGLEN: "0"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      - name: Restore OCaml and opam cache
+        id: opam-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.opam
+            _opam
+          key: opam-${{ runner.os }}-ocaml-5.5.x-format-${{ hashFiles('.ocamlformat') }}
+          restore-keys: |
+            opam-${{ runner.os }}-ocaml-5.5.x-format-
+            opam-${{ runner.os }}-ocaml-5.5.x-
+
+      - name: Check restored opam environment
+        id: opam-env
+        run: |
+          if [ -f "$HOME/.opam/config" ] && [ -f "_opam/.opam-switch/switch-config" ]; then
+            echo "restored=true" >> "$GITHUB_OUTPUT"
+          else
+            rm -rf "$HOME/.opam" _opam
+            echo "restored=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install opam binary
+        if: steps.opam-env.outputs.restored == 'true'
+        run: |
+          opam_ver="$(cat "$HOME/.opam/.ci-opam-version" 2>/dev/null || echo 2.6.1)"
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/ocaml/opam/releases/download/${opam_ver}/opam-${opam_ver}-x86_64-linux" -o "$HOME/.local/bin/opam"
+          chmod +x "$HOME/.local/bin/opam"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/opam" --version
+          "$HOME/.local/bin/opam" exec -- ocaml -version
+
       - name: Set up OCaml
+        if: steps.opam-env.outputs.restored != 'true'
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 4.14.x
-          dune-cache: true
+          ocaml-compiler: "5.5.x"
+          opam-disable-sandboxing: true
 
       - name: Install formatter
-        run: opam install ocamlformat.0.26.2 dune
+        if: steps.opam-cache.outputs.cache-hit != 'true'
+        run: |
+          opam install ocamlformat.0.29.0 dune -y || {
+            opam update -y
+            opam install ocamlformat.0.29.0 dune -y
+          }
+          opam --version > "$HOME/.opam/.ci-opam-version"
+          opam clean --download-cache --logs --switch-cleanup
+
+      - name: Save OCaml and opam cache
+        if: steps.opam-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.opam
+            _opam
+          key: ${{ steps.opam-cache.outputs.cache-primary-key }}
 
       - name: Check formatting
         run: |

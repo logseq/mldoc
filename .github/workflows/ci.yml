@@ -13,27 +13,102 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      OPAMYES: "1"
+      OPAMCONFIRMLEVEL: unsafe-yes
+      OPAMERRLOGLEN: "0"
     strategy:
       fail-fast: false
       matrix:
-        ocaml-compiler: ["4.14.x", "5.3.x"]
+        ocaml-compiler: ["5.5.x"]
         package: [mldoc, mldoc-cli, mldoc-js, mldoc-bench]
     steps:
       - uses: actions/checkout@v4
 
+      - name: Restore OCaml and opam cache
+        id: opam-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.opam
+            _opam
+          key: opam-${{ runner.os }}-ocaml-${{ matrix.ocaml-compiler }}-${{ matrix.package }}-${{ hashFiles('mldoc.opam', format('{0}.opam', matrix.package)) }}
+          restore-keys: |
+            opam-${{ runner.os }}-ocaml-${{ matrix.ocaml-compiler }}-${{ matrix.package }}-
+            opam-${{ runner.os }}-ocaml-${{ matrix.ocaml-compiler }}-
+
+      - name: Check restored opam environment
+        id: opam-env
+        run: |
+          if [ -f "$HOME/.opam/config" ] && [ -f "_opam/.opam-switch/switch-config" ]; then
+            echo "restored=true" >> "$GITHUB_OUTPUT"
+          else
+            rm -rf "$HOME/.opam" _opam
+            echo "restored=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install opam binary
+        if: steps.opam-env.outputs.restored == 'true'
+        run: |
+          opam_ver="$(cat "$HOME/.opam/.ci-opam-version" 2>/dev/null || echo 2.6.1)"
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL "https://github.com/ocaml/opam/releases/download/${opam_ver}/opam-${opam_ver}-x86_64-linux" -o "$HOME/.local/bin/opam"
+          chmod +x "$HOME/.local/bin/opam"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/opam" --version
+          "$HOME/.local/bin/opam" exec -- ocaml -version
+
       - name: Set up OCaml
+        if: steps.opam-env.outputs.restored != 'true'
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
-          dune-cache: true
+          opam-disable-sandboxing: true
 
       - name: Install dependencies
+        if: steps.opam-cache.outputs.cache-hit != 'true'
+        run: |
+          grep -hoE '\["[A-Za-z0-9_.-]+" +"git\+[^"]+"\]' ./mldoc.opam \
+            | sed 's/\["//; s/"\]$//; s/" "/ /' \
+            | sort -u \
+            | while read -r pkg url; do
+                opam pin add "$pkg" "$url" -y
+              done
+          opam pin add -yn mldoc .
+          if [ "${{ matrix.package }}" != mldoc ]; then
+            opam pin add -yn ${{ matrix.package }} .
+          fi
+          install_deps() {
+            if [ "${{ matrix.package }}" = mldoc ]; then
+              opam install ./mldoc.opam --deps-only --with-doc --with-test -y
+            else
+              opam install ./mldoc.opam ./${{ matrix.package }}.opam --deps-only -y
+            fi
+          }
+          install_deps || {
+            opam update -y
+            install_deps
+          }
+          opam --version > "$HOME/.opam/.ci-opam-version"
+          opam clean --download-cache --logs --switch-cleanup
+
+      - name: Save OCaml and opam cache
+        if: steps.opam-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.opam
+            _opam
+          key: ${{ steps.opam-cache.outputs.cache-primary-key }}
+
+      - name: Build and install package
         run: |
           opam pin add -yn mldoc .
           if [ "${{ matrix.package }}" = mldoc ]; then
-            opam install ./mldoc.opam --with-doc --with-test
+            opam install ./mldoc.opam --with-doc --with-test -y
           else
-            opam install ./${{ matrix.package }}.opam
+            opam pin add -yn ${{ matrix.package }} .
+            opam install ./${{ matrix.package }}.opam -y
           fi
 
       - uses: actions/setup-node@v4
