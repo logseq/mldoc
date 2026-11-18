@@ -781,6 +781,10 @@ let inline =
           , `Quick
           , check_aux "a.b.c:: def\na-b-c::"
               (Property_Drawer [ ("a.b.c", "def", []); ("a-b-c", "", []) ]) )
+        ; ( "simplified-endwith-space"
+          , `Quick
+          , check_aux "a.b.c:: def      \na-b-c::"
+              (Property_Drawer [ ("a.b.c", "def", []); ("a-b-c", "", []) ]) )
         ; ( "empty-property"
           , `Quick
           , check_aux ":PROPERTIES:\r\n:END:\r\n" (Property_Drawer []) )
@@ -1563,6 +1567,34 @@ let block =
           , check_aux2 "---\ntitle: Hello\n---\n- keep title"
               [ Type.Directive ("title", "Hello")
               ; paragraph [ Inline.Break_Line ]
+              ; Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos
+                        [ Inline.Plain "keep title" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = "keep_title"
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ] )
+        ; ( "front matter trailing spaces"
+          , `Quick
+          , check_aux2
+              "---\r\n\
+               title: Blogging Like a Hacker   \r\n\
+               now: 1614485729874   \n\
+               empty:   \n\
+               ---\r\n\
+               - keep title"
+              [ Type.Directive ("title", "Blogging Like a Hacker")
+              ; Type.Directive ("now", "1614485729874")
+              ; Type.Directive ("empty", "")
+              ; paragraph [ Inline.Break_Line; Inline.Break_Line ]
               ; Type.Heading
                   { title =
                       Type_op.inline_list_with_none_pos
