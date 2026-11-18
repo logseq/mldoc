@@ -605,9 +605,18 @@ let metadata =
 let url_ascii_end_punct = [ ','; ';'; '.'; '!'; '?' ]
 let url_cjk_end_punct = [ "，"; "。"; "；"; "！"; "？"; "、"; "：" ]
 
+(* RFC 3986 section 3.1: scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." ).
+   Keep digits allowed on the first character for backwards compatibility. *)
+let is_scheme_char c = is_letter_or_digit c || c = '+' || c = '-' || c = '.'
+
+let scheme_name =
+  let first = satisfy is_letter_or_digit in
+  let rest = take_while is_scheme_char in
+  lift2 (fun c s -> String.make 1 c ^ s) first rest
+
 let link_inline =
-  (* Fail fast on ordinary words: require letter+:// without consuming. *)
-  let protocol_part = take_while1 is_letter_or_digit <* string "://" in
+  (* Fail fast on ordinary words: require scheme:// without consuming. *)
+  let protocol_part = scheme_name <* string "://" in
   let before_path_delim c =
     is_space_eol c
     || List.mem c inline_link_delims
@@ -644,7 +653,7 @@ let link_inline =
           (space_chars @ eol_chars)
     <|> return ""
   in
-  unsafe_lookahead (take_while1 is_letter_or_digit *> string "://")
+  unsafe_lookahead (scheme_name *> string "://")
   *> lift3
        (fun protocol before_path remain ->
          Link
@@ -658,7 +667,7 @@ let link_inline =
 
 let quick_link_aux =
   let protocol_part_and_slashes =
-    both (take_while1 is_letter_or_digit <* string ":") (optional (string "//"))
+    both (scheme_name <* string ":") (optional (string "//"))
   in
   let link_part =
     take_while1 (fun c -> non_space c && not (List.mem c quicklink_delims))

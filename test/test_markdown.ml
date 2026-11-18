@@ -96,6 +96,38 @@ let inline =
                      ; metadata = ""
                      }
                  ]) )
+        ; ( "hyphenated-scheme"
+          , `Quick
+          , check_aux "logseq-og://graph/abc?page=foo"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "logseq-og"
+                           ; link = "graph/abc?page=foo"
+                           }
+                     ; label = [ Plain "logseq-og://graph/abc?page=foo" ]
+                     ; title = None
+                     ; full_text = "logseq-og://graph/abc?page=foo"
+                     ; metadata = ""
+                     }
+                 ]) )
+        ; ( "angle-bracket-hyphenated-scheme"
+          , `Quick
+          , check_aux "<logseq-og://graph/abc?page=foo>"
+              (paragraph
+                 [ I.Link
+                     { url =
+                         I.Complex
+                           { protocol = "logseq-og"
+                           ; link = "graph/abc?page=foo"
+                           }
+                     ; label = [ Plain "logseq-og://graph/abc?page=foo" ]
+                     ; title = None
+                     ; full_text = "logseq-og://graph/abc?page=foo"
+                     ; metadata = ""
+                     }
+                 ]) )
         ; ( "normal-2"
           , `Quick
           , check_aux "[test  normal](http://testtest/asdasd)"
