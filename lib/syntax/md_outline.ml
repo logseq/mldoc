@@ -500,15 +500,18 @@ let parse_front_matter_directive line =
       incr j
     done;
     if !j > i && !j < n && line.[!j] = ':' then
-      let key = String.sub line i (!j - i) in
-      let rest_i = skip_spaces line (!j + 1) in
-      let value =
-        if rest_i >= n then
-          ""
-        else
-          String.sub line rest_i (n - rest_i)
-      in
-      Some (Directive (key, value))
+      let key = String.trim (String.sub line i (!j - i)) in
+      if key = "" then
+        None
+      else
+        let rest_i = skip_spaces line (!j + 1) in
+        let value =
+          if rest_i >= n then
+            ""
+          else
+            String.trim (String.sub line rest_i (n - rest_i))
+        in
+        Some (Directive (key, value))
     else
       None
 

@@ -1059,6 +1059,33 @@ let block =
                   ; size = None
                   }
               ] )
+        ; ( "front matter trailing spaces"
+          , `Quick
+          , check_aux2
+              "---\r\n\
+               title: Blogging Like a Hacker   \r\n\
+               now: 1614485729874   \n\
+               empty:   \n\
+               ---\r\n\
+               - keep title"
+              [ Type.Directive ("title", "Blogging Like a Hacker")
+              ; Type.Directive ("now", "1614485729874")
+              ; Type.Directive ("empty", "")
+              ; Type.Heading
+                  { title =
+                      Type_op.inline_list_with_none_pos
+                        [ Inline.Plain "keep title" ]
+                  ; tags = []
+                  ; marker = None
+                  ; level = 1
+                  ; numbering = None
+                  ; priority = None
+                  ; anchor = ""
+                  ; meta = { Type.timestamps = []; properties = [] }
+                  ; unordered = true
+                  ; size = None
+                  }
+              ] )
         ; ( "front matter only at first block"
           , `Quick
           , check_aux2 "- hello\n---\ntitle: no\n---"
