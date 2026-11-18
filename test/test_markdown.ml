@@ -1640,6 +1640,25 @@ let positioned_inline_sources () =
     ; "😀 [[missing]] #tag"
     ]
 
+let hiccup_heading_titles () =
+  let hiccup = "[:h2 {:style {:color \"red\"}} \"h2 title\"]" in
+  List.iter
+    (fun prefix ->
+      let source = prefix ^ hiccup ^ "\n" in
+      match Mldoc.Parser.parse logseq_md_config source with
+      | [ (Type.Heading heading, position) ] ->
+        Alcotest.(check bool)
+          "Hiccup stays in the heading title" true
+          (Type_op.inline_list_strip_pos heading.title
+          = [ Inline.Inline_Hiccup hiccup ]);
+        Alcotest.(check int)
+          "heading starts at the line start" 0 position.Pos.start_pos;
+        Alcotest.(check int)
+          "heading consumes the complete line" (String.length source)
+          position.Pos.end_pos
+      | _ -> Alcotest.fail "Hiccup title must not create a separate block")
+    [ "- "; "# "; "\t- "; "- TODO " ]
+
 let () =
   Alcotest.run "mldoc"
     (List.concat [ inline; block ]
@@ -1647,4 +1666,6 @@ let () =
         , [ Alcotest.test_case "retain source spans" `Quick
               positioned_inline_sources
           ] )
+      ; ( "hiccup titles"
+        , [ Alcotest.test_case "remain inline" `Quick hiccup_heading_titles ] )
       ])

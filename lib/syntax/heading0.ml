@@ -86,11 +86,11 @@ struct
     if config.parse_outline_only then
       (* Only run Block when the title might be a fence/quote. *)
       Angstrom.unsafe_lookahead
-        (peek_char >>= function
-         | Some '`'
-         | Some '>' ->
-           Block.parse config <|> Paragraph.parse
-         | _ -> Paragraph.parse)
+        ( peek_char >>= function
+          | Some '`'
+          | Some '>' ->
+            Block.parse config <|> Paragraph.parse
+          | _ -> Paragraph.parse )
     else if Conf.is_markdown config then
       (* Markdown: most titles are plain lines; dispatch on the first
          non-blank char instead of backtracking through every parser. *)
@@ -150,6 +150,7 @@ struct
   (* Peeked-line classification for a Markdown title line. Returns the parser
      to run as a lookahead guard, or `None` when the line is plain text. *)
   let md_title_guard config line i n =
+    let config = { config with Conf.hiccup_in_block = false } in
     if i >= n then
       None
     else
@@ -314,10 +315,10 @@ struct
 
   (** Pure-OCaml Markdown heading on a single (peeked) line — mirrors the
       Angstrom [parse] path for [format = Markdown]: level (ATX "#"s or "-"),
-      optional marker, optional priority, and a plain-text title.
-      Returns [None] when the line is not a heading or when the title may
-      start a nested construct (drawer / block / footnote) that the caller
-      must let the general parsers handle. *)
+      optional marker, optional priority, and a plain-text title. Returns [None]
+      when the line is not a heading or when the title may start a nested
+      construct (drawer / block / footnote) that the caller must let the general
+      parsers handle. *)
   let try_parse_md_line config line =
     if (not (Conf.is_markdown config)) || config.parse_outline_only then
       None
