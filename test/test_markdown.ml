@@ -1600,7 +1600,8 @@ let positioned_inline_sources () =
                 String.sub source start_pos (end_pos - start_pos))
             nodes
         in
-        Alcotest.(check string) "positions preserve the complete source" source
+        Alcotest.(check string)
+          "positions preserve the complete source" source
           (String.concat "" slices))
     [ "Unknown [[missing]]"
     ; "Legacy ((block-uuid)) stays text"
